@@ -3,12 +3,13 @@
 ระบบ Character Generator (CG) สำหรับถ่ายทอดสดงานกีฬาสีโรงเรียน เน้นรายการวิ่งกรีฑา
 แสดงอันดับ 1–3 แยกตามสีคณะ (แดง / เขียว / เหลือง / ฟ้า) ออกได้ทั้ง **vMix และ OBS พร้อมกัน**
 
-- เซิร์ฟเวอร์เขียนด้วย **Python มาตรฐานล้วน** — ไม่ต้อง `pip install`, ไม่ต้องลง Node
+- เซิร์ฟเวอร์เป็น **PowerShell ล้วน** (`server.ps1`) — มีติดมากับ Windows ทุกเครื่อง ไม่ต้องติดตั้งอะไรเลย
+  (มี `server.py` เวอร์ชัน Python ให้ด้วย ถ้าเครื่องมี Python — ได้ SSE เรียลไทม์เต็มรูปแบบ)
 - Overlay เป็นหน้าเว็บพื้นหลังโปร่งใส ใส่เป็น Browser Source (OBS) / Web Browser (vMix)
-- หน้า Control สำหรับกรอกผล/สั่งขึ้น–ลง CG อัปเดต overlay แบบเรียลไทม์
+- หน้า Control สำหรับกรอกผล/สั่งขึ้น–ลง CG — overlay อัปเดตตามอัตโนมัติ (PowerShell = polling ~0.25 วิ, Python = SSE ทันที)
 
 ```
-เครื่อง B  ── รัน server.py ──►  http://<ip-B>:8080/overlay
+เครื่อง B  ── start.bat ──►      http://<ip-B>:8080/overlay
                                         │
               เครื่อง A  ── OBS  ───────┤  (Browser Source, 1920×1080)
                           └─ vMix ──────┘  (Web Browser input, 1920×1080)
@@ -18,21 +19,30 @@
 
 ## เริ่มใช้งาน (เครื่อง B — เครื่องที่รันระบบ)
 
-1. ดับเบิลคลิก **`start.bat`** (หรือ `python server.py`)
-2. หน้าต่างจะพิมพ์ URL ออกมา เช่น
+1. **ครั้งแรกครั้งเดียว:** ดับเบิลคลิก **`setup.bat`** → กด **Yes** ตอนถามสิทธิ์ Administrator
+   (เปิดพอร์ต 8080 + firewall ให้เครื่องอื่นเข้าถึงได้)
+   *ถ้าข้ามขั้นนี้ `start.bat` จะเด้ง UAC ขอสิทธิ์ให้เองในการรันครั้งแรก*
+2. ดับเบิลคลิก **`start.bat`**
+3. หน้าต่างจะพิมพ์ URL ออกมา เช่น
    ```
    Control :  http://192.168.1.131:8080/control
-   Overlay :  http://192.168.1.131:8080/overlay   << ใส่ใน OBS / vMix
+   Overlay :  http://192.168.1.131:8080/overlay   <<  ใส่ใน OBS / vMix
    ```
-3. เปิด **Control** ในเบราว์เซอร์เพื่อกรอกข้อมูล
+4. เปิด **Control** ในเบราว์เซอร์เพื่อกรอกข้อมูล
 
-ตัวเลือกตอนสั่ง:
+ตัวเลือกตอนสั่ง (PowerShell):
+```
+powershell -ExecutionPolicy Bypass -File server.ps1 -Port 8080 -Token MYSECRET
+```
+- `-Port` = เปลี่ยนพอร์ต (ถ้าเปลี่ยน ต้องรัน `setup.bat 9000` ด้วยพอร์ตใหม่)
+- `-Token` = ถ้าตั้ง ต้องใส่ token เดียวกันในหน้า Control ก่อนจึงสั่งงานได้ (ควรตั้งเมื่อใช้ผ่านอินเทอร์เน็ต)
+- `-ListenHost localhost` = ทดสอบบนเครื่องเดียว ไม่ต้องใช้ Administrator
+
+### ใช้ Python แทน (ถ้าเครื่องมี Python 3)
 ```
 python server.py --port 8080 --token MYSECRET
 ```
-`--token` = ถ้าตั้ง จะต้องใส่ token เดียวกันในหน้า Control ก่อนจึงสั่งงานได้ (ควรตั้งเมื่อใช้ผ่านอินเทอร์เน็ต)
-
-### เปิด firewall ให้เครื่อง A เข้าถึง (ทำครั้งเดียว, ต้องเปิด CMD แบบ Run as administrator)
+เวอร์ชันนี้ push ผ่าน SSE — overlay อัปเดตทันที ไม่ต้อง `setup.bat` (แต่ยังต้องเปิด firewall)
 ```
 netsh advfirewall firewall add rule name="CG Live" dir=in action=allow protocol=TCP localport=8080
 ```
@@ -75,7 +85,7 @@ Add Input → **More…** → **Web Browser**
 1. ติดตั้ง [Tailscale](https://tailscale.com/download) ทั้งสองเครื่อง ล็อกอินบัญชีเดียวกัน
 2. แต่ละเครื่องจะได้ IP ถาวรขึ้นต้น `100.x.x.x`
 3. ใน OBS/vMix ใช้ `http://100.x.x.x:8080/overlay` (x = ของเครื่อง B) — ไม่ต้องแตะ firewall/พอร์ตฟอร์เวิร์ด
-4. ตั้ง `--token` ด้วยเสมอเมื่อวิ่งข้ามอินเทอร์เน็ต
+4. ตั้ง token ด้วยเสมอเมื่อวิ่งข้ามอินเทอร์เน็ต (`-Token MYSECRET` / `--token MYSECRET`)
 
 ทางเลือกอื่น: `cloudflared tunnel` เปิดพอร์ต 8080 เป็น URL HTTPS สาธารณะ (เหมาะเมื่อ operator อยู่คนละที่กับทั้ง A และ B)
 
@@ -119,8 +129,10 @@ event,lane,name,house
 
 ## โครงสร้างไฟล์
 ```
-server.py                 เซิร์ฟเวอร์ (stdlib ล้วน)
-start.bat                 ตัวเปิดสำหรับ Windows
+server.ps1                เซิร์ฟเวอร์ PowerShell (ค่าเริ่มต้น)
+server.py                 เซิร์ฟเวอร์ Python (ทางเลือก, ได้ SSE)
+start.bat                 ตัวเปิด (เรียก server.ps1)
+setup.bat                 ตั้งค่าพอร์ต + firewall ครั้งเดียว (ขอสิทธิ์ admin)
 public/                   หน้าเว็บ overlay + control
 data/state.default.json   ข้อมูลตั้งต้น (มีรายการตัวอย่าง)
 data/state.json           ข้อมูลใช้งานจริง (สร้างอัตโนมัติ, ไม่เข้า git)

@@ -64,14 +64,49 @@
     connEl.textContent = ok ? "● เชื่อมต่อแล้ว" : "● หลุดการเชื่อมต่อ";
     connEl.className = "conn " + (ok ? "ok" : "bad");
   }
-  var es = new EventSource("/api/events");
-  es.onopen = function () { setConn(true); };
-  es.onerror = function () { setConn(false); };
-  es.onmessage = function (e) {
-    setConn(true);
-    try { state = JSON.parse(e.data); } catch (err) { return; }
-    onState();
-  };
+  var polling = false;
+
+  function startPolling() {
+    if (polling) return;
+    polling = true;
+    var lastText = "";
+    function tick() {
+      fetch("/api/state", { cache: "no-store" })
+        .then(function (r) { return r.text(); })
+        .then(function (txt) {
+          setConn(true);
+          if (txt !== lastText) {
+            lastText = txt;
+            try { state = JSON.parse(txt); } catch (e) { return; }
+            onState();
+          }
+        })
+        .catch(function () { setConn(false); });
+    }
+    tick();
+    setInterval(tick, 400);
+  }
+
+  (function startSSE() {
+    var es, gotMsg = false, done = false;
+    function fallback() {
+      if (done) return;
+      done = true;
+      try { es.close(); } catch (e) {}
+      startPolling();
+    }
+    try { es = new EventSource("/api/events"); }
+    catch (e) { startPolling(); return; }
+
+    var guard = setTimeout(function () { if (!gotMsg) fallback(); }, 2500);
+    es.onopen = function () { setConn(true); };
+    es.onerror = function () { setConn(false); if (!gotMsg) { clearTimeout(guard); fallback(); } };
+    es.onmessage = function (e) {
+      gotMsg = true; clearTimeout(guard); setConn(true);
+      try { state = JSON.parse(e.data); } catch (err) { return; }
+      onState();
+    };
+  })();
 
   function onState() {
     renderHeader();

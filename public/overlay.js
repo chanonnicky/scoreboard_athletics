@@ -103,20 +103,35 @@
     document.body.classList.toggle("is-offline", !!off);
   }
 
+  var polling = false;
+
   function startSSE() {
-    var es = new EventSource("/api/events");
+    var es, gotMsg = false, done = false;
+    function fallback() {
+      if (done) return;
+      done = true;
+      try { es.close(); } catch (e) {}
+      startPolling();
+    }
+    try { es = new EventSource("/api/events"); }
+    catch (e) { startPolling(); return; }
+
+    var guard = setTimeout(function () { if (!gotMsg) fallback(); }, 2500);
     es.onopen = function () { setOffline(false); };
     es.onmessage = function (e) {
-      setOffline(false);
+      gotMsg = true; clearTimeout(guard); setOffline(false);
       try { apply(JSON.parse(e.data)); } catch (err) { /* ignore */ }
     };
     es.onerror = function () {
       setOffline(true);
-      // EventSource reconnect ให้เองอัตโนมัติ
+      // ถ้ายังไม่เคยได้ข้อมูลเลย = server ไม่รองรับ SSE -> เปลี่ยนไป polling
+      if (!gotMsg) { clearTimeout(guard); fallback(); }
     };
   }
 
   function startPolling() {
+    if (polling) return;
+    polling = true;
     var lastText = "";
     function tick() {
       fetch("/api/state", { cache: "no-store" })
@@ -131,7 +146,7 @@
         .catch(function () { setOffline(true); });
     }
     tick();
-    setInterval(tick, 500);
+    setInterval(tick, 250);
   }
 
   if (transport === "poll") startPolling();
