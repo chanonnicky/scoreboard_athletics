@@ -1,0 +1,181 @@
+/* ==== ฟอนต์ไทย ============================================================
+   ออนไลน์: ใช้ Google Fonts (โหลดอัตโนมัติ)
+   ออฟไลน์ (งานจริง): วางไฟล์ .woff2 ไว้ใน public/fonts/ แล้วปลด comment @font-face
+   ดูรายละเอียดใน public/fonts/README.txt
+*/
+@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=Sarabun:wght@400;600;700&display=swap');
+/*
+@font-face { font-family:"Kanit"; src:url("/fonts/Kanit-Regular.woff2") format("woff2"); font-weight:400; font-display:swap; }
+@font-face { font-family:"Kanit"; src:url("/fonts/Kanit-SemiBold.woff2") format("woff2"); font-weight:600; font-display:swap; }
+@font-face { font-family:"Kanit"; src:url("/fonts/Kanit-Bold.woff2") format("woff2"); font-weight:700; font-display:swap; }
+*/
+
+:root {
+  --anim: 450ms;
+  --red: #e53935;
+  --green: #2e9d54;
+  --yellow: #f4c020;
+  --blue: #1e88e5;
+
+  --panel: rgba(14, 19, 28, 0.90);
+  --panel-2: rgba(255, 255, 255, 0.08);
+  --stroke: rgba(255, 255, 255, 0.14);
+  --ink: #fff;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  background: transparent;
+}
+
+body.overlay {
+  font-family: "Kanit", "Sarabun", "Leelawadee UI", "Tahoma", sans-serif;
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#stage {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: top left;
+}
+
+.slot { position: absolute; }
+.slot-full { inset: 0; display: flex; align-items: center; justify-content: center; }
+.slot-lower { left: 0; right: 0; bottom: 96px; display: flex; justify-content: center; }
+
+#offline {
+  position: fixed; left: 14px; bottom: 12px;
+  font: 600 15px/1 "Kanit", sans-serif;
+  color: #ff5252; background: rgba(0,0,0,.6);
+  padding: 6px 12px; border-radius: 6px;
+  opacity: 0; transition: opacity .3s;
+}
+body.is-offline #offline { opacity: 1; }
+
+/* house helpers ---------------------------------------------------------- */
+.h-red    { --house: var(--red);    --ink: #fff; }
+.h-green  { --house: var(--green);  --ink: #fff; }
+.h-yellow { --house: var(--yellow); --ink: #1a1a1a; }
+.h-blue   { --house: var(--blue);   --ink: #fff; }
+
+.dot { display: inline-block; width: .8em; height: .8em; border-radius: 50%;
+  background: var(--house, #999); vertical-align: middle; }
+
+.pill {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--house, #666); color: var(--ink, #fff);
+  font-weight: 600; border-radius: 999px; padding: .18em .9em; white-space: nowrap;
+}
+
+/* ==== animation ======================================================== */
+.cg { will-change: transform, opacity; }
+
+.slot-lower .cg {
+  opacity: 0; transform: translateY(40px);
+  transition: opacity var(--anim) ease, transform var(--anim) cubic-bezier(.2,.7,.2,1);
+}
+.slot-lower .cg.in  { opacity: 1; transform: none; }
+.slot-lower .cg.out { opacity: 0; transform: translateY(40px); }
+
+.slot-full .cg {
+  opacity: 0; transform: scale(.96);
+  transition: opacity var(--anim) ease, transform var(--anim) cubic-bezier(.2,.7,.2,1);
+}
+.slot-full .cg.in  { opacity: 1; transform: none; }
+.slot-full .cg.out { opacity: 0; transform: scale(.96); }
+
+/* ==== template: TOP 3 (lower third) ================================== */
+.t3 {
+  width: 1120px;
+  background: var(--panel);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0,0,0,.45);
+  backdrop-filter: blur(8px);
+}
+.t3-title {
+  font-size: 30px; font-weight: 600; letter-spacing: .3px;
+  padding: 14px 28px; background: rgba(255,255,255,.06);
+  border-bottom: 1px solid var(--stroke);
+}
+.t3-list { padding: 10px 0; }
+.t3-row {
+  display: grid; grid-template-columns: 92px 1fr auto; align-items: center;
+  gap: 20px; padding: 12px 28px 12px 0;
+  position: relative;
+}
+.t3-row::before {
+  content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 10px;
+  background: var(--house); border-radius: 0 6px 6px 0;
+}
+.t3-rank {
+  justify-self: center;
+  width: 54px; height: 54px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30px; font-weight: 700;
+  background: var(--house); color: var(--ink);
+}
+.t3-name { font-size: 40px; font-weight: 600; }
+.t3-house { font-size: 24px; }
+.t3-row .pill { font-size: 22px; }
+
+/* ==== template card (intro / results / tally) ======================= */
+.card {
+  min-width: 900px; max-width: 1500px;
+  background: var(--panel);
+  border-radius: 22px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.5);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+.card-head {
+  padding: 26px 40px;
+  background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.02));
+  border-bottom: 1px solid var(--stroke);
+}
+.card-kicker { font-size: 20px; font-weight: 500; opacity: .7; letter-spacing: 2px; text-transform: uppercase; }
+.card-title { font-size: 46px; font-weight: 700; line-height: 1.15; margin-top: 4px; }
+.card-sub { font-size: 24px; font-weight: 400; opacity: .82; margin-top: 6px; }
+.card-body { padding: 22px 40px 34px; }
+
+/* intro lane table */
+.lanes { width: 100%; border-collapse: collapse; font-size: 28px; }
+.lanes th {
+  text-align: left; font-weight: 600; font-size: 20px; opacity: .6;
+  padding: 6px 16px; border-bottom: 1px solid var(--stroke);
+}
+.lanes td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.06); }
+.lanes td.lane { width: 90px; font-weight: 700; text-align: center; opacity: .9; }
+.lanes td.house { width: 220px; }
+.lanes .pill { font-size: 20px; }
+
+/* results list */
+.rlist { display: flex; flex-direction: column; gap: 10px; }
+.rrow {
+  display: grid; grid-template-columns: 70px 1fr auto; align-items: center; gap: 22px;
+  padding: 14px 20px; border-radius: 12px;
+  background: var(--panel-2);
+  border-left: 8px solid var(--house, #666);
+}
+.rrow .rank { font-size: 30px; font-weight: 700; text-align: center; opacity: .95; }
+.rrow .name { font-size: 32px; font-weight: 600; }
+.rrow .pill { font-size: 20px; }
+.rrow.top .rank { color: #ffd54a; }
+
+/* tally */
+.tally { display: flex; flex-direction: column; gap: 16px; min-width: 780px; }
+.trow { display: grid; grid-template-columns: 260px 1fr 120px; align-items: center; gap: 20px; }
+.trow .tname { font-size: 30px; font-weight: 600; display: flex; align-items: center; gap: 12px; }
+.trow .tbar-wrap { height: 40px; background: rgba(255,255,255,.08); border-radius: 8px; overflow: hidden; }
+.trow .tbar { height: 100%; width: 0; background: var(--house); border-radius: 8px;
+  transition: width 600ms cubic-bezier(.2,.7,.2,1); }
+.trow .tscore { font-size: 38px; font-weight: 700; text-align: right; }
+.trow.lead .tscore { color: #ffd54a; }
+.trow .dot { width: 20px; height: 20px; }

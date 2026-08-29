@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CG Live — คอนโทรล</title>
+  <link rel="stylesheet" href="/control.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🏃 CG Live <span>กีฬาสี</span></div>
+    <div class="onair-status" id="onairStatus"></div>
+    <div class="conn" id="conn">…</div>
+    <label class="tok">
+      token
+      <input type="password" id="token" placeholder="(ถ้าตั้งไว้)" autocomplete="off">
+    </label>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button data-tab="live" class="active">ออกอากาศ</button>
+    <button data-tab="events">รายการ</button>
+    <button data-tab="tally">คะแนน</button>
+    <button data-tab="import">นำเข้า</button>
+    <button data-tab="settings">ตั้งค่า</button>
+  </nav>
+
+  <main id="panel"></main>
+  <div id="toast" class="toast"></div>
+
+  <script src="/templates.js"></script>
+  <script src="/control.js"></script>
+</body>
+</html>

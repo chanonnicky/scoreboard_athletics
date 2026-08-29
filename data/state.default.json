@@ -1,0 +1,48 @@
+{
+  "settings": {
+    "houses": {
+      "red": "#e53935",
+      "green": "#2e9d54",
+      "yellow": "#f4c020",
+      "blue": "#1e88e5"
+    },
+    "houseNames": {
+      "red": "คณะสีแดง",
+      "green": "คณะสีเขียว",
+      "yellow": "คณะสีเหลือง",
+      "blue": "คณะสีฟ้า"
+    },
+    "points": { "1": 5, "2": 3, "3": 2 },
+    "animMs": 450,
+    "meetTitle": "กีฬาสีภายใน"
+  },
+  "roster": [],
+  "events": [
+    {
+      "id": "e_demo",
+      "title": "วิ่ง 100 เมตร ชาย",
+      "ageGroup": "รุ่นอายุ 15 ปี",
+      "round": "รอบชิงชนะเลิศ",
+      "lanes": [
+        { "lane": 1, "name": "สมชาย ใจดี", "house": "blue" },
+        { "lane": 2, "name": "อนุชา แก้วมณี", "house": "red" },
+        { "lane": 3, "name": "ปิยะ วงศ์ทอง", "house": "yellow" },
+        { "lane": 4, "name": "ธนากร ศรีสุข", "house": "green" },
+        { "lane": 5, "name": "กิตติ พันธ์ดี", "house": "red" },
+        { "lane": 6, "name": "วีระ มั่นคง", "house": "blue" }
+      ]
+    }
+  ],
+  "results": {
+    "e_demo": [
+      { "rank": 1, "name": "อนุชา แก้วมณี", "house": "red" },
+      { "rank": 2, "name": "ธนากร ศรีสุข", "house": "green" },
+      { "rank": 3, "name": "ปิยะ วงศ์ทอง", "house": "yellow" }
+    ]
+  },
+  "tally": { "red": 18, "green": 12, "yellow": 9, "blue": 6 },
+  "onair": {
+    "lower": { "template": "top3", "eventId": "e_demo", "visible": false },
+    "full": { "template": "tally", "eventId": null, "visible": false }
+  }
+}
