@@ -1,5 +1,6 @@
 /* ฟังก์ชัน render ของแต่ละ CG template — คืนค่าเป็น HTML string
-   ใช้ร่วมกันทั้ง overlay (แสดงจริง) และ control (พรีวิว)               */
+   ใช้ร่วมกันทั้ง overlay (แสดงจริง) และ control (พรีวิว)
+   หมายเหตุ: ระบบนี้แสดง "สีคณะ" อย่างเดียว ไม่มีชื่อนักกีฬา                */
 window.T = (function () {
   "use strict";
 
@@ -18,9 +19,8 @@ window.T = (function () {
     return "h-" + (h || "").replace(/[^a-z]/gi, "");
   }
 
-  function pill(state, h) {
-    return '<span class="pill ' + hClass(h) + '">' + esc(houseName(state, h)) + "</span>";
-  }
+  var RANK_TH = { 1: "อันดับ 1", 2: "อันดับ 2", 3: "อันดับ 3" };
+  function rankLabel(r) { return RANK_TH[r] || ("อันดับ " + r); }
 
   function sortResults(results) {
     return (results || []).slice().sort(function (a, b) {
@@ -28,7 +28,11 @@ window.T = (function () {
     });
   }
 
-  /* ---- TOP 3 (lower third) ---------------------------------------- */
+  function eventSub(ev) {
+    return [ev.ageGroup, ev.round].filter(Boolean).map(esc).join(" &nbsp;·&nbsp; ");
+  }
+
+  /* ---- TOP 3 (lower third) — บล็อกสีคณะใหญ่ ๆ 3 อันดับ ------------- */
   function top3(state, ev, results) {
     var rows = [1, 2, 3].map(function (rank) {
       var r = (results || []).find(function (x) { return Number(x.rank) === rank; });
@@ -36,68 +40,46 @@ window.T = (function () {
       return (
         '<div class="t3-row ' + hClass(r.house) + '">' +
           '<div class="t3-rank">' + rank + "</div>" +
-          '<div class="t3-name">' + esc(r.name) + "</div>" +
-          '<div class="t3-house">' + pill(state, r.house) + "</div>" +
+          '<div class="t3-house">' + esc(houseName(state, r.house)) + "</div>" +
         "</div>"
       );
     }).join("");
     if (!rows) return null;
 
     var title = esc(ev.title || "");
-    if (ev.ageGroup) title += ' &nbsp;·&nbsp; ' + esc(ev.ageGroup);
+    if (ev.ageGroup) title += " &nbsp;·&nbsp; " + esc(ev.ageGroup);
     return '<div class="t3"><div class="t3-title">' + title + "</div>" +
            '<div class="t3-list">' + rows + "</div></div>";
   }
 
-  /* ---- INTRO + ผังลู่ (full) ------------------------------------- */
+  /* ---- INTRO — การ์ดชื่อรายการอย่างเดียว ------------------------- */
   function intro(state, ev) {
-    var lanes = (ev.lanes || []).slice().sort(function (a, b) {
-      return (Number(a.lane) || 99) - (Number(b.lane) || 99);
-    });
-    var body;
-    if (lanes.length) {
-      body =
-        '<table class="lanes"><thead><tr><th>ลู่</th><th>ชื่อ</th><th>คณะ</th></tr></thead><tbody>' +
-        lanes.map(function (l) {
-          return "<tr>" +
-            '<td class="lane">' + esc(l.lane) + "</td>" +
-            "<td>" + esc(l.name) + "</td>" +
-            '<td class="house">' + pill(state, l.house) + "</td>" +
-          "</tr>";
-        }).join("") +
-        "</tbody></table>";
-    } else {
-      body = '<div class="card-sub">— ยังไม่มีผังลู่ —</div>';
-    }
-
-    var sub = [ev.ageGroup, ev.round].filter(Boolean).map(esc).join(" &nbsp;·&nbsp; ");
+    var sub = eventSub(ev);
     return (
-      '<div class="card">' +
+      '<div class="card card-intro">' +
         '<div class="card-head">' +
           '<div class="card-kicker">' + esc((state.settings && state.settings.meetTitle) || "รายการต่อไป") + "</div>" +
-          '<div class="card-title">' + esc(ev.title || "") + "</div>" +
+          '<div class="card-title big">' + esc(ev.title || "") + "</div>" +
           (sub ? '<div class="card-sub">' + sub + "</div>" : "") +
         "</div>" +
-        '<div class="card-body">' + body + "</div>" +
       "</div>"
     );
   }
 
-  /* ---- ผลเต็มรายการ (full) ------------------------------------- */
+  /* ---- ผลเต็มรายการ (full) — rank + สีคณะ ---------------------- */
   function results(state, ev, res) {
     var list = sortResults(res);
     if (!list.length) return null;
     var rows = list.map(function (r) {
       return (
         '<div class="rrow ' + hClass(r.house) + (Number(r.rank) === 1 ? " top" : "") + '">' +
-          '<div class="rank">' + esc(r.rank) + "</div>" +
-          '<div class="name">' + esc(r.name) + "</div>" +
-          pill(state, r.house) +
+          '<div class="rank">' + esc(rankLabel(r.rank)) + "</div>" +
+          '<div class="rhouse">' + esc(houseName(state, r.house)) + "</div>" +
         "</div>"
       );
     }).join("");
 
-    var sub = [ev.ageGroup, ev.round].filter(Boolean).map(esc).join(" &nbsp;·&nbsp; ");
+    var sub = eventSub(ev);
     return (
       '<div class="card">' +
         '<div class="card-head">' +

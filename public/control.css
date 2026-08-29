@@ -153,3 +153,25 @@ table.tbl .hcell { width: 150px; }
 .toast.err { border-color: var(--danger); }
 
 .dirty-badge { color: var(--warn); font-size: 12px; margin-left: 8px; }
+
+/* results editor — แตะสีคณะเรียงอันดับ */
+.hbtns { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0 4px; }
+.hbtn {
+  flex: 1 1 120px; min-height: 56px;
+  border: 2px solid var(--hc, #666); border-radius: 10px;
+  background: var(--bg-3);
+  background: color-mix(in srgb, var(--hc, #666) 22%, var(--bg-3));
+  color: var(--ink); font: 600 16px/1.2 inherit; cursor: pointer;
+}
+.hbtn:hover { background: var(--hc, #666); }
+.hbtn:active { transform: translateY(1px); }
+
+.res-lines { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.res-line { display: flex; align-items: center; gap: 10px; }
+.res-rank {
+  width: 30px; height: 30px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-3); border: 1px solid var(--stroke); border-radius: 8px;
+  font-weight: 700; font-size: 14px;
+}
+.res-line select { flex: 1; max-width: 260px; }

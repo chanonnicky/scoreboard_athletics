@@ -187,45 +187,25 @@ def import_csv(kind, text):
     reader.fieldnames = fields
 
     with _state_lock:
-        if kind == "roster":
-            roster = []
-            for i, row in enumerate(reader, 1):
-                name = (row.get("name") or "").strip()
-                if not name:
-                    continue
-                roster.append({"id": i, "name": name, "house": (row.get("house") or "").strip()})
-            STATE["roster"] = roster
-            return {"roster": len(roster)}
-
-        if kind == "startlist":
-            groups, order = {}, []
-            for row in reader:
-                title = (row.get("event") or "").strip()
-                if not title:
-                    continue
-                if title not in groups:
-                    groups[title] = []
-                    order.append(title)
-                lane_raw = (row.get("lane") or "").strip()
-                groups[title].append({
-                    "lane": int(lane_raw) if lane_raw.isdigit() else lane_raw,
-                    "name": (row.get("name") or "").strip(),
-                    "house": (row.get("house") or "").strip(),
-                })
+        if kind == "events":
             events = STATE.setdefault("events", [])
             by_title = {e["title"]: e for e in events}
-            for title in order:
+            seen = 0
+            for row in reader:
+                title = (row.get("title") or row.get("event") or "").strip()
+                if not title:
+                    continue
+                seen += 1
+                age = (row.get("agegroup") or row.get("age") or "").strip()
+                rnd = (row.get("round") or "").strip()
                 if title in by_title:
-                    by_title[title]["lanes"] = groups[title]
+                    by_title[title]["ageGroup"] = age
+                    by_title[title]["round"] = rnd
                 else:
-                    events.append({
-                        "id": _new_id("e"),
-                        "title": title,
-                        "ageGroup": "",
-                        "round": "",
-                        "lanes": groups[title],
-                    })
-            return {"events": len(order)}
+                    ev = {"id": _new_id("e"), "title": title, "ageGroup": age, "round": rnd}
+                    events.append(ev)
+                    by_title[title] = ev
+            return {"events": seen}
 
         raise ValueError("unknown import kind: %r" % kind)
 

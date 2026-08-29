@@ -15,6 +15,7 @@
 
   var sel = { eventId: localStorage.getItem("cg_sel_event") || "" };
   var editing = null; // draft ของ event ที่กำลังแก้
+  var resDraft = { eid: null, rows: [] }; // ผลอันดับที่กำลังแก้ (array ของ house key เรียงตามอันดับ)
 
   var TPL_NAMES = { top3: "อันดับ 1–3", intro: "แนะนำรายการ", results: "ผลเต็มรายการ", tally: "คะแนนรวมคณะสี" };
 
@@ -161,25 +162,12 @@
     var c = state.settings && state.settings.houses;
     return (c && c[h]) || "#888";
   }
-  function houseSelect(name, selected) {
-    return '<select name="' + name + '">' + houseKeys().map(function (h) {
-      return '<option value="' + h + '"' + (h === selected ? " selected" : "") + ">" + esc(houseName(h)) + "</option>";
-    }).join("") + "</select>";
-  }
   function eventSelect(id, selected, extra) {
     var opts = (state.events || []).map(function (e) {
       return '<option value="' + e.id + '"' + (e.id === selected ? " selected" : "") + ">" + esc(e.title) + "</option>";
     }).join("");
     return '<select id="' + id + '"' + (extra || "") + ">" +
       (opts || '<option value="">— ยังไม่มีรายการ —</option>') + "</select>";
-  }
-  function nameDatalist(ev) {
-    var names = {};
-    (state.roster || []).forEach(function (r) { names[r.name] = 1; });
-    if (ev) (ev.lanes || []).forEach(function (l) { if (l.name) names[l.name] = 1; });
-    return '<datalist id="nameList">' + Object.keys(names).map(function (n) {
-      return "<option value=\"" + esc(n) + "\">";
-    }).join("") + "</datalist>";
   }
   function currentEvent() {
     return (state.events || []).find(function (e) { return e.id === sel.eventId; }) || null;
@@ -198,9 +186,6 @@
   // ========================================================= //
   function renderLive() {
     var ev = currentEvent();
-    var results = ev ? ((state.results || {})[ev.id] || []) : [];
-    if (!results.length) results = [{ rank: 1, name: "", house: houseKeys()[0] }, { rank: 2, name: "", house: houseKeys()[0] }, { rank: 3, name: "", house: houseKeys()[0] }];
-
     var o = state.onair || {};
     function nowLine(slot) {
       var s = o[slot] || {};
@@ -243,18 +228,8 @@
         "</div>" +
 
         '<div class="card">' +
-          '<div class="row"><h2 style="margin:0">ผลการแข่งขัน — ' + esc(ev ? ev.title : "(เลือกรายการก่อน)") + "</h2>" +
-            '<span class="spacer"></span>' +
-            '<button class="btn sm" data-act="res-fill-lanes">เติมจากผังลู่</button>' +
-            '<button class="btn sm" data-act="res-add">+ เพิ่มอันดับ</button>' +
-          "</div>" +
-          '<table class="tbl" style="margin-top:10px"><thead><tr><th style="width:70px">อันดับ</th><th>ชื่อ</th><th class="hcell">คณะสี</th><th style="width:44px"></th></tr></thead>' +
-          '<tbody id="resBody">' + results.map(resRow).join("") + "</tbody></table>" +
-          '<div class="row" style="margin-top:12px">' +
-            '<button class="btn ok" data-act="res-save"' + (ev ? "" : " disabled") + ">บันทึกผล</button>" +
-            '<span class="muted">บันทึกแล้วจะอัปเดต CG ที่แสดงอยู่ทันที</span>' +
-          "</div>" +
-          nameDatalist(ev) +
+          '<div class="row"><h2 style="margin:0">ผลการแข่งขัน — ' + esc(ev ? ev.title : "(เลือกรายการก่อน)") + "</h2></div>" +
+          '<div id="resEditor"></div>' +
         "</div>" +
 
       "</div>" +
@@ -265,26 +240,53 @@
       "</div>" +
 
       "</div>";
+
+    renderResEditor();
   }
 
-  function resRow(r) {
-    return "<tr>" +
-      '<td><input type="number" name="rank" min="1" value="' + esc(r.rank) + '"></td>' +
-      '<td><input type="text" name="name" list="nameList" value="' + esc(r.name) + '"></td>' +
-      '<td>' + houseSelect("house", r.house) + "</td>" +
-      '<td><button class="btn sm danger" data-act="res-del">✕</button></td>' +
-    "</tr>";
+  function ensureDraft(ev) {
+    var eid = ev ? ev.id : null;
+    if (resDraft.eid !== eid) {
+      resDraft = {
+        eid: eid,
+        rows: eid ? ((state.results || {})[eid] || []).slice()
+          .sort(function (a, b) { return (Number(a.rank) || 99) - (Number(b.rank) || 99); })
+          .map(function (r) { return r.house; }) : [],
+      };
+    }
   }
 
-  function gatherResults() {
-    var out = [];
-    [].forEach.call(panel.querySelectorAll("#resBody tr"), function (tr) {
-      var name = tr.querySelector('[name=name]').value.trim();
-      if (!name) return;
-      var rankRaw = tr.querySelector('[name=rank]').value.trim();
-      out.push({ rank: Number(rankRaw) || rankRaw, name: name, house: tr.querySelector('[name=house]').value });
-    });
-    return out;
+  function renderResEditor() {
+    var host = document.getElementById("resEditor");
+    if (!host) return;
+    var ev = currentEvent();
+    ensureDraft(ev);
+    var hk = houseKeys();
+
+    var tapBtns = hk.map(function (h) {
+      return '<button class="hbtn" data-act="res-tap" data-house="' + h + '" style="--hc:' + houseColor(h) + '">' + esc(houseName(h)) + "</button>";
+    }).join("");
+
+    var lines = resDraft.rows.map(function (h, i) {
+      return '<div class="res-line">' +
+        '<span class="res-rank">' + (i + 1) + "</span>" +
+        '<select data-act="res-set" data-i="' + i + '">' + hk.map(function (x) {
+          return '<option value="' + x + '"' + (x === h ? " selected" : "") + ">" + esc(houseName(x)) + "</option>";
+        }).join("") + "</select>" +
+        '<button class="btn sm danger" data-act="res-rm" data-i="' + i + '">✕</button>' +
+      "</div>";
+    }).join("");
+
+    host.innerHTML =
+      '<p class="muted">แตะสีคณะ "เรียงตามลำดับเข้าเส้น" — แตะแล้วต่อท้ายอันดับถัดไป</p>' +
+      '<div class="hbtns">' + tapBtns + "</div>" +
+      '<div class="res-lines">' + (lines || '<span class="muted">— ยังไม่มีผล —</span>') + "</div>" +
+      '<div class="row" style="margin-top:12px">' +
+        '<button class="btn ok" data-act="res-save"' + (ev ? "" : " disabled") + ">บันทึกผล</button>" +
+        '<button class="btn" data-act="res-clear">ล้าง</button>' +
+        '<button class="btn sm" data-act="res-add-row">+ เพิ่มอันดับ</button>' +
+        '<span class="muted">บันทึกแล้วอัปเดต CG ที่แสดงอยู่ทันที</span>' +
+      "</div>";
   }
 
   // ========================================================= //
@@ -299,16 +301,15 @@
         '<button class="btn sm" data-act="reload">โหลดใหม่</button>' +
         '<span id="dirtyBadge" class="dirty-badge"></span></div>' +
       (evs.length
-        ? '<table class="tbl" style="margin-top:10px"><thead><tr><th>รายการ</th><th>รุ่น</th><th>รอบ</th><th style="width:60px">ลู่</th><th style="width:150px"></th></tr></thead><tbody>' +
+        ? '<table class="tbl" style="margin-top:10px"><thead><tr><th>รายการ</th><th>รุ่น</th><th>รอบ</th><th style="width:150px"></th></tr></thead><tbody>' +
           evs.map(function (e) {
             return "<tr>" +
               "<td>" + esc(e.title) + "</td><td>" + esc(e.ageGroup || "") + "</td><td>" + esc(e.round || "") + "</td>" +
-              "<td>" + ((e.lanes || []).length) + "</td>" +
               '<td><button class="btn sm" data-act="ev-edit" data-id="' + e.id + '">แก้ไข</button> ' +
               '<button class="btn sm danger" data-act="ev-del" data-id="' + e.id + '">ลบ</button></td>' +
             "</tr>";
           }).join("") + "</tbody></table>"
-        : '<p class="muted" style="margin-top:10px">ยังไม่มีรายการ — เพิ่มเอง หรือไปที่แท็บ "นำเข้า" เพื่อโหลดสตาร์ทลิสต์</p>') +
+        : '<p class="muted" style="margin-top:10px">ยังไม่มีรายการ — เพิ่มเอง หรือไปที่แท็บ "นำเข้า" เพื่อโหลดตารางรายการแข่ง</p>') +
       "</div>";
   }
 
@@ -322,33 +323,11 @@
           '<label class="field" style="flex:1">รุ่นอายุ<input type="text" id="evAge" value="' + esc(e.ageGroup || "") + '" placeholder="รุ่นอายุ 15 ปี"></label>' +
           '<label class="field" style="flex:1">รอบ<input type="text" id="evRound" value="' + esc(e.round || "") + '" placeholder="รอบชิงชนะเลิศ"></label>' +
         "</div>" +
-        '<div class="row" style="margin-top:14px"><h3 style="margin:0">ผังลู่วิ่ง</h3><span class="spacer"></span>' +
-          '<button class="btn sm" data-act="ev-lane-add">+ เพิ่มลู่</button></div>' +
-        '<table class="tbl"><thead><tr><th style="width:70px">ลู่</th><th>ชื่อ</th><th class="hcell">คณะสี</th><th style="width:44px"></th></tr></thead>' +
-        '<tbody id="laneBody">' + (e.lanes || []).map(laneRow).join("") + "</tbody></table>" +
-        '<div class="row" style="margin-top:14px">' +
+        '<div class="row" style="margin-top:16px">' +
           '<button class="btn ok" data-act="ev-save">บันทึกรายการ</button>' +
           '<button class="btn" data-act="ev-cancel">ยกเลิก</button>' +
         "</div>" +
       "</div>";
-  }
-  function laneRow(l) {
-    return "<tr>" +
-      '<td><input type="number" name="lane" min="1" value="' + esc(l.lane) + '"></td>' +
-      '<td><input type="text" name="name" value="' + esc(l.name || "") + '"></td>' +
-      "<td>" + houseSelect("house", l.house) + "</td>" +
-      '<td><button class="btn sm danger" data-act="ev-lane-del">✕</button></td>' +
-    "</tr>";
-  }
-  function gatherLanes() {
-    var out = [];
-    [].forEach.call(panel.querySelectorAll("#laneBody tr"), function (tr) {
-      var name = tr.querySelector('[name=name]').value.trim();
-      var laneRaw = tr.querySelector('[name=lane]').value.trim();
-      if (!name && !laneRaw) return;
-      out.push({ lane: Number(laneRaw) || laneRaw, name: name, house: tr.querySelector('[name=house]').value });
-    });
-    return out;
   }
 
   // ========================================================= //
@@ -385,19 +364,11 @@
   // ========================================================= //
   function renderImport() {
     panel.innerHTML =
-      '<div class="card"><h2>นำเข้ารายชื่อ (roster)</h2>' +
-        '<p class="muted">คอลัมน์: <code>name,house</code> — house ใช้ค่า red / green / yellow / blue</p>' +
-        '<div class="row" style="margin:8px 0"><input type="file" id="rosterFile" accept=".csv,text/csv"></div>' +
-        '<textarea id="rosterCsv" placeholder="name,house&#10;สมชาย ใจดี,blue">name,house\n</textarea>' +
-        '<div class="row" style="margin-top:10px"><button class="btn ok" data-act="imp-roster">นำเข้ารายชื่อ</button>' +
-        '<span class="muted">มีในระบบตอนนี้: ' + ((state.roster || []).length) + " คน</span></div>" +
-      "</div>" +
-
-      '<div class="card"><h2>นำเข้าสตาร์ทลิสต์ (startlist)</h2>' +
-        '<p class="muted">คอลัมน์: <code>event,lane,name,house</code> — แถวที่ <code>event</code> เหมือนกันจะรวมเป็นรายการเดียว</p>' +
-        '<div class="row" style="margin:8px 0"><input type="file" id="startFile" accept=".csv,text/csv"></div>' +
-        '<textarea id="startCsv" placeholder="event,lane,name,house">event,lane,name,house\n</textarea>' +
-        '<div class="row" style="margin-top:10px"><button class="btn ok" data-act="imp-startlist">นำเข้าสตาร์ทลิสต์</button>' +
+      '<div class="card"><h2>นำเข้าตารางรายการแข่ง</h2>' +
+        '<p class="muted">คอลัมน์: <code>title,ageGroup,round</code> &nbsp;(<code>title</code> ซ้ำ = รายการเดิม จะอัปเดตทับ)</p>' +
+        '<div class="row" style="margin:8px 0"><input type="file" id="eventsFile" accept=".csv,text/csv"></div>' +
+        '<textarea id="eventsCsv" placeholder="title,ageGroup,round&#10;วิ่ง 100 เมตร ชาย,รุ่นอายุ 15 ปี,รอบชิงชนะเลิศ">title,ageGroup,round\n</textarea>' +
+        '<div class="row" style="margin-top:10px"><button class="btn ok" data-act="imp-events">นำเข้ารายการ</button>' +
         '<span class="muted">มีรายการตอนนี้: ' + ((state.events || []).length) + "</span></div>" +
       "</div>";
   }
@@ -481,29 +452,26 @@
     "show-full-tally": function () { cmd({ action: "show", slot: "full", template: "tally", eventId: null }); },
     "hide-full": function () { cmd({ action: "hide", slot: "full" }); },
 
-    "res-add": function () {
-      var tb = document.getElementById("resBody");
-      var n = tb.querySelectorAll("tr").length + 1;
-      tb.insertAdjacentHTML("beforeend", resRow({ rank: n, name: "", house: houseKeys()[0] }));
+    "res-tap": function (b) {
+      if (!sel.eventId) return toast("เลือกรายการก่อน", true);
+      resDraft.rows.push(b.dataset.house);
+      renderResEditor();
     },
-    "res-del": function (b) { b.closest("tr").remove(); },
-    "res-fill-lanes": function () {
-      var ev = currentEvent();
-      if (!ev || !(ev.lanes || []).length) return toast("รายการนี้ยังไม่มีผังลู่", true);
-      var tb = document.getElementById("resBody");
-      tb.innerHTML = ev.lanes.map(function (l, i) {
-        return resRow({ rank: i + 1, name: l.name, house: l.house });
-      }).join("");
-      toast("เติมชื่อจากผังลู่แล้ว — จัดอันดับ/ลบแถวที่ไม่ติด แล้วกดบันทึก");
+    "res-rm": function (b) {
+      resDraft.rows.splice(Number(b.dataset.i), 1);
+      renderResEditor();
     },
+    "res-clear": function () { resDraft.rows = []; renderResEditor(); },
+    "res-add-row": function () { resDraft.rows.push(houseKeys()[0]); renderResEditor(); },
     "res-save": function () {
       if (!sel.eventId) return;
-      cmd({ action: "setResults", eventId: sel.eventId, results: gatherResults() }).then(function (ok) {
-        if (ok) { toast("บันทึกผลแล้ว"); render(); }
+      var results = resDraft.rows.map(function (h, i) { return { rank: i + 1, house: h }; });
+      cmd({ action: "setResults", eventId: sel.eventId, results: results }).then(function (ok) {
+        if (ok) { toast("บันทึกผลแล้ว"); resDraft.eid = null; render(); }
       });
     },
 
-    "ev-new": function () { editing = { id: "", title: "", ageGroup: "", round: "", lanes: [] }; render(); },
+    "ev-new": function () { editing = { id: "", title: "", ageGroup: "", round: "" }; render(); },
     "ev-edit": function (b) {
       var e = (state.events || []).find(function (x) { return x.id === b.dataset.id; });
       if (e) { editing = JSON.parse(JSON.stringify(e)); render(); }
@@ -513,18 +481,12 @@
       if (e && confirm("ลบรายการ \"" + e.title + "\" ?")) cmd({ action: "deleteEvent", eventId: b.dataset.id });
     },
     "ev-cancel": function () { editing = null; render(); },
-    "ev-lane-add": function () {
-      var tb = document.getElementById("laneBody");
-      tb.insertAdjacentHTML("beforeend", laneRow({ lane: tb.querySelectorAll("tr").length + 1, name: "", house: houseKeys()[0] }));
-    },
-    "ev-lane-del": function (b) { b.closest("tr").remove(); },
     "ev-save": function () {
       var ev = {
         id: editing.id,
         title: document.getElementById("evTitle").value.trim(),
         ageGroup: document.getElementById("evAge").value.trim(),
         round: document.getElementById("evRound").value.trim(),
-        lanes: gatherLanes(),
       };
       if (!ev.title) return toast("ใส่ชื่อรายการก่อน", true);
       cmd({ action: "upsertEvent", event: ev }).then(function (ok) {
@@ -551,15 +513,10 @@
       cmd({ action: "addEventPointsToTally", eventId: id }).then(function (ok) { if (ok) toast("บวกแต้มแล้ว"); });
     },
 
-    "imp-roster": function () {
-      var csv = document.getElementById("rosterCsv").value.trim();
+    "imp-events": function () {
+      var csv = document.getElementById("eventsCsv").value.trim();
       if (!csv) return toast("ไม่มีข้อมูล", true);
-      importCsv("roster", csv).then(function (j) { if (j) toast("นำเข้ารายชื่อ " + (j.imported.roster || 0) + " คน"); });
-    },
-    "imp-startlist": function () {
-      var csv = document.getElementById("startCsv").value.trim();
-      if (!csv) return toast("ไม่มีข้อมูล", true);
-      importCsv("startlist", csv).then(function (j) { if (j) toast("นำเข้า " + (j.imported.events || 0) + " รายการ"); });
+      importCsv("events", csv).then(function (j) { if (j) toast("นำเข้า " + (j.imported.events || 0) + " รายการ"); });
     },
 
     "set-save": function () {
@@ -602,11 +559,15 @@
       render();
       return;
     }
-    if (t.id === "rosterFile" || t.id === "startFile") {
+    if (t.dataset && t.dataset.act === "res-set") {
+      resDraft.rows[Number(t.dataset.i)] = t.value;
+      return;
+    }
+    if (t.id === "eventsFile") {
       var f = t.files && t.files[0];
       if (!f) return;
       f.text().then(function (txt) {
-        document.getElementById(t.id === "rosterFile" ? "rosterCsv" : "startCsv").value = txt;
+        document.getElementById("eventsCsv").value = txt;
         toast("โหลดไฟล์แล้ว — กดปุ่มนำเข้า");
       });
     }

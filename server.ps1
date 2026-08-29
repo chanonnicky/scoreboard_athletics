@@ -142,50 +142,29 @@ function Import-CsvText($kind, $text) {
   if ($text.Length -gt 0 -and $text[0] -eq [char]0xFEFF) { $text = $text.Substring(1) }
   $rows = @($text | ConvertFrom-Csv)
 
-  if ($kind -eq "roster") {
-    $list = New-Object System.Collections.ArrayList
-    $i = 0
-    foreach ($row in $rows) {
-      $name = ("" + $row.name).Trim()
-      if (-not $name) { continue }
-      $i++
-      $d = New-Dict; $d["id"] = $i; $d["name"] = $name; $d["house"] = ("" + $row.house).Trim()
-      [void]$list.Add($d)
-    }
-    $script:State["roster"] = $list.ToArray()
-    return @{ roster = $list.Count }
-  }
-
-  if ($kind -eq "startlist") {
-    $groups = [ordered]@{}
-    foreach ($row in $rows) {
-      $title = ("" + $row.event).Trim()
-      if (-not $title) { continue }
-      if (-not $groups.Contains($title)) { $groups[$title] = New-Object System.Collections.ArrayList }
-      $laneRaw = ("" + $row.lane).Trim()
-      $lane = 0
-      $isNum = [int]::TryParse($laneRaw, [ref]$lane)
-      $d = New-Dict
-      $d["lane"]  = if ($isNum) { $lane } else { $laneRaw }
-      $d["name"]  = ("" + $row.name).Trim()
-      $d["house"] = ("" + $row.house).Trim()
-      [void]$groups[$title].Add($d)
-    }
+  if ($kind -eq "events") {
     $events = [System.Collections.ArrayList]@($script:State["events"])
-    foreach ($title in $groups.Keys) {
+    $seen = 0
+    foreach ($row in $rows) {
+      $title = ("" + $row.title).Trim()
+      if (-not $title) { $title = ("" + $row.event).Trim() }
+      if (-not $title) { continue }
+      $seen++
+      $age = ("" + $row.ageGroup).Trim(); if (-not $age) { $age = ("" + $row.age).Trim() }
+      $rnd = ("" + $row.round).Trim()
       $found = $null
       foreach ($e in $events) { if ([string]$e["title"] -eq $title) { $found = $e; break } }
       if ($found) {
-        $found["lanes"] = $groups[$title].ToArray()
+        $found["ageGroup"] = $age; $found["round"] = $rnd
       } else {
         $d = New-Dict
         $d["id"] = "e_" + [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() + "_" + $events.Count
-        $d["title"] = $title; $d["ageGroup"] = ""; $d["round"] = ""; $d["lanes"] = $groups[$title].ToArray()
+        $d["title"] = $title; $d["ageGroup"] = $age; $d["round"] = $rnd
         [void]$events.Add($d)
       }
     }
     $script:State["events"] = $events.ToArray()
-    return @{ events = $groups.Count }
+    return @{ events = $seen }
   }
 
   throw "unknown import kind: $kind"
