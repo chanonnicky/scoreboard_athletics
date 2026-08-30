@@ -1,12 +1,31 @@
-/* control.js — หน้าคอนโทรลสำหรับ operator */
+/* control.js — 2 โหมด: /control (operator สั่ง CG) และ /score (คนจดคะแนน) */
 (function () {
   "use strict";
+
+  var MODE = location.pathname.replace(/\/+$/, "") === "/score" ? "score" : "control";
 
   var esc = T.esc;
   var panel = document.getElementById("panel");
   var tabsEl = document.getElementById("tabs");
   var toastEl = document.getElementById("toast");
   var tokenInput = document.getElementById("token");
+
+  if (MODE === "score") {
+    document.title = "CG Live — จดคะแนน";
+    document.body.classList.add("mode-score");
+    tabsEl.hidden = true;
+    var brand = document.querySelector(".brand");
+    if (brand) brand.innerHTML = "🏁 จดคะแนน <span>กีฬาสี</span>";
+  }
+  (function crossLink() {
+    var bar = document.querySelector(".topbar");
+    if (!bar) return;
+    var a = document.createElement("a");
+    a.className = "mode-link";
+    a.href = MODE === "score" ? "/control" : "/score";
+    a.textContent = MODE === "score" ? "→ คอนโทรล" : "→ จดคะแนน";
+    bar.insertBefore(a, document.getElementById("conn"));
+  })();
 
   var state = null;
   var activeTab = "live";
@@ -17,7 +36,9 @@
   var editing = null; // draft ของ event ที่กำลังแก้
   var resDraft = { eid: null, rows: [] }; // ผลอันดับที่กำลังแก้ (array ของ house key เรียงตามอันดับ)
 
-  var TPL_NAMES = { top3: "อันดับ 1–3", intro: "แนะนำรายการ", results: "ผลเต็มรายการ", tally: "คะแนนรวมคณะสี" };
+  var TPL_NAMES = {
+    top3: "อันดับ 1–3", results: "ผลการแข่งขัน", schedule: "ตารางการแข่งขัน",
+  };
 
   // ---- token ------------------------------------------------------- //
   tokenInput.value = localStorage.getItem("cg_token") || "";
@@ -117,6 +138,9 @@
 
   function safeRender() {
     var a = document.activeElement;
+    // กำลังกรอกผลการแข่งขัน (ยังมีการบันทึกอัตโนมัติค้างอยู่) —
+    // ไม่ rebuild ทั้งหน้า พรีวิว overlay จะได้ไม่โหลดใหม่ระหว่างแตะ
+    if (resSaveTimer) return;
     if (panel.contains(a) && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) {
       pendingRender = true;
       var b = document.getElementById("dirtyBadge");
@@ -172,13 +196,70 @@
   function currentEvent() {
     return (state.events || []).find(function (e) { return e.id === sel.eventId; }) || null;
   }
+  // เปลี่ยนรายการที่เลือก -> ถ้า "ตารางแข่ง" ออกอากาศอยู่ ให้เลื่อนตามทันที
+  function followSelection() {
+    var fo = (state.onair || {}).full || {};
+    if (fo.visible && fo.template === "schedule") {
+      cmd({ action: "show", slot: "full", template: "schedule", eventId: sel.eventId });
+    }
+  }
 
   // ---- render dispatch ------------------------------------ //
   function render() {
     pendingRender = false;
     if (!state) { panel.innerHTML = '<p class="muted">กำลังโหลด…</p>'; return; }
     if (!sel.eventId && state.events && state.events[0]) sel.eventId = state.events[0].id;
-    ({ live: renderLive, events: renderEvents, tally: renderTally, import: renderImport, settings: renderSettings }[activeTab] || renderLive)();
+    if (MODE === "score") { renderScore(); return; }
+    ({ live: renderLive, events: renderEvents, import: renderImport, settings: renderSettings }[activeTab] || renderLive)();
+  }
+
+  // ========================================================= //
+  //  SCORE  (หน้า /score — เฉพาะจดคะแนน)
+  // ========================================================= //
+  function eventIndex() {
+    var evs = state.events || [];
+    for (var i = 0; i < evs.length; i++) if (evs[i].id === sel.eventId) return i;
+    return -1;
+  }
+  function scoreStep(dir) {
+    var evs = state.events || [];
+    var ni = eventIndex() + dir;
+    if (ni < 0 || ni >= evs.length) return;
+    saveResultsNow();
+    sel.eventId = evs[ni].id;
+    localStorage.setItem("cg_sel_event", sel.eventId);
+    followSelection();
+    render();
+  }
+  function renderScore() {
+    var evs = state.events || [];
+    var ev = currentEvent();
+    var idx = eventIndex();
+    var resById = state.results || {};
+    var done = 0;
+    evs.forEach(function (e) { if ((resById[e.id] || []).length) done++; });
+
+    panel.innerHTML =
+      '<div class="card">' +
+        '<div class="row">' +
+          '<button class="btn" data-act="score-prev"' + (idx <= 0 ? " disabled" : "") + ">‹ ก่อนหน้า</button>" +
+          '<label class="field" style="flex:1">รายการที่กำลังกรอกผล' +
+            eventSelect("scoreEvent", sel.eventId, ' data-role="selEvent"') +
+          "</label>" +
+          '<button class="btn" data-act="score-next"' + (idx < 0 || idx >= evs.length - 1 ? " disabled" : "") + ">ถัดไป ›</button>" +
+        "</div>" +
+        '<p class="muted" style="margin-top:8px">' +
+          (idx >= 0 ? "รายการที่ " + (idx + 1) + " / " + evs.length : "เลือกรายการ") +
+          ' &nbsp;·&nbsp; กรอกผลแล้ว ' + done + " / " + evs.length + " รายการ</p>" +
+        '<span id="dirtyBadge" class="dirty-badge"></span>' +
+      "</div>" +
+
+      '<div class="card">' +
+        '<h2 style="margin:0 0 10px">ผลการแข่งขัน — ' + esc(ev ? ev.title : "(เลือกรายการ)") + "</h2>" +
+        '<div id="resEditor"></div>' +
+      "</div>";
+
+    renderResEditor();
   }
 
   // ========================================================= //
@@ -207,11 +288,13 @@
           '<button class="btn sm" data-act="reload">โหลดใหม่</button>' +
         "</div></div>" +
 
+        '<p class="muted" style="margin:-4px 0 10px">แสดงได้ทีละช่อง — ขึ้นช่องหนึ่งอีกช่องจะลงอัตโนมัติ</p>' +
+
         '<div class="slot-box">' +
           "<h3>แถบล่าง (Lower third)</h3>" +
           '<div class="now">' + nowLine("lower") + "</div>" +
           '<div class="row">' +
-            '<button class="btn primary" data-act="show-lower-top3">▶ อันดับ 1–3</button>' +
+            '<button class="btn primary lg" data-act="show-lower-top3">▶ ขึ้นอันดับ 1–3</button>' +
             '<button class="btn" data-act="hide-lower">ซ่อน</button>' +
           "</div>" +
         "</div>" +
@@ -220,9 +303,8 @@
           "<h3>เต็มจอ (Full screen)</h3>" +
           '<div class="now">' + nowLine("full") + "</div>" +
           '<div class="row">' +
-            '<button class="btn primary" data-act="show-full-intro">▶ แนะนำรายการ</button>' +
-            '<button class="btn primary" data-act="show-full-results">▶ ผลเต็มรายการ</button>' +
-            '<button class="btn primary" data-act="show-full-tally">▶ คะแนนรวม</button>' +
+            '<button class="btn primary" data-act="show-full-schedule">▶ ตารางแข่ง</button>' +
+            '<button class="btn primary" data-act="show-full-results">▶ ผลการแข่งขัน</button>' +
             '<button class="btn" data-act="hide-full">ซ่อน</button>' +
           "</div>" +
         "</div>" +
@@ -282,11 +364,28 @@
       '<div class="hbtns">' + tapBtns + "</div>" +
       '<div class="res-lines">' + (lines || '<span class="muted">— ยังไม่มีผล —</span>') + "</div>" +
       '<div class="row" style="margin-top:12px">' +
-        '<button class="btn ok" data-act="res-save"' + (ev ? "" : " disabled") + ">บันทึกผล</button>" +
-        '<button class="btn" data-act="res-clear">ล้าง</button>' +
+        '<button class="btn" data-act="res-clear">ล้างผล</button>' +
         '<button class="btn sm" data-act="res-add-row">+ เพิ่มอันดับ</button>' +
-        '<span class="muted">บันทึกแล้วอัปเดต CG ที่แสดงอยู่ทันที</span>' +
+        '<span class="muted">แตะแล้ว <b>บันทึก + อัปเดต CG อัตโนมัติ</b> (ไม่ต้องกดบันทึก)</span>' +
       "</div>";
+  }
+
+  // บันทึกผลอัตโนมัติ (debounce 500ms) — ไม่ต้องกดปุ่มบันทึก
+  var resSaveTimer = null;
+  function scheduleResSave() {
+    if (!sel.eventId) return;
+    if (resSaveTimer) clearTimeout(resSaveTimer);
+    resSaveTimer = setTimeout(saveResultsNow, 500);
+  }
+  function saveResultsNow() {
+    if (!resSaveTimer) return;            // ไม่มีการแก้ที่ค้างอยู่
+    clearTimeout(resSaveTimer); resSaveTimer = null;
+    if (!sel.eventId) return;
+    var eid = sel.eventId;
+    var results = resDraft.rows.map(function (h, i) { return { rank: i + 1, house: h }; });
+    cmd({ action: "setResults", eventId: eid, results: results }).then(function (ok) {
+      if (ok) toast("บันทึกผลแล้ว");
+    });
   }
 
   // ========================================================= //
@@ -301,10 +400,10 @@
         '<button class="btn sm" data-act="reload">โหลดใหม่</button>' +
         '<span id="dirtyBadge" class="dirty-badge"></span></div>' +
       (evs.length
-        ? '<table class="tbl" style="margin-top:10px"><thead><tr><th>รายการ</th><th>รุ่น</th><th>รอบ</th><th style="width:150px"></th></tr></thead><tbody>' +
+        ? '<table class="tbl" style="margin-top:10px"><thead><tr><th>รายการ</th><th>ระดับชั้น</th><th style="width:150px"></th></tr></thead><tbody>' +
           evs.map(function (e) {
             return "<tr>" +
-              "<td>" + esc(e.title) + "</td><td>" + esc(e.ageGroup || "") + "</td><td>" + esc(e.round || "") + "</td>" +
+              "<td>" + esc(e.title) + "</td><td>" + esc(e.level || e.ageGroup || "") + "</td>" +
               '<td><button class="btn sm" data-act="ev-edit" data-id="' + e.id + '">แก้ไข</button> ' +
               '<button class="btn sm danger" data-act="ev-del" data-id="' + e.id + '">ลบ</button></td>' +
             "</tr>";
@@ -320,41 +419,11 @@
         "<h2>" + (e.id ? "แก้ไขรายการ" : "รายการใหม่") + "</h2>" +
         '<div class="row" style="margin-top:8px">' +
           '<label class="field" style="flex:2">ชื่อรายการ<input type="text" id="evTitle" value="' + esc(e.title || "") + '" placeholder="เช่น วิ่ง 100 เมตร ชาย"></label>' +
-          '<label class="field" style="flex:1">รุ่นอายุ<input type="text" id="evAge" value="' + esc(e.ageGroup || "") + '" placeholder="รุ่นอายุ 15 ปี"></label>' +
-          '<label class="field" style="flex:1">รอบ<input type="text" id="evRound" value="' + esc(e.round || "") + '" placeholder="รอบชิงชนะเลิศ"></label>' +
+          '<label class="field" style="flex:1">ระดับชั้น<input type="text" id="evLevel" value="' + esc(e.level || e.ageGroup || "") + '" placeholder="เช่น มัธยมต้น"></label>' +
         "</div>" +
         '<div class="row" style="margin-top:16px">' +
           '<button class="btn ok" data-act="ev-save">บันทึกรายการ</button>' +
           '<button class="btn" data-act="ev-cancel">ยกเลิก</button>' +
-        "</div>" +
-      "</div>";
-  }
-
-  // ========================================================= //
-  //  TALLY
-  // ========================================================= //
-  function renderTally() {
-    var t = state.tally || {};
-    var p = (state.settings && state.settings.points) || {};
-    panel.innerHTML =
-      '<div class="card"><h2>คะแนนรวมคณะสี</h2>' +
-        '<table class="tbl" style="margin-top:8px"><tbody>' +
-        houseKeys().map(function (h) {
-          return "<tr><td><span class=\"hswatch\" style=\"background:" + houseColor(h) + "\"></span>" + esc(houseName(h)) + "</td>" +
-            '<td><input type="number" name="score" data-house="' + h + '" value="' + (Number(t[h]) || 0) + '"></td></tr>';
-        }).join("") +
-        "</tbody></table>" +
-        '<div class="row" style="margin-top:12px">' +
-          '<button class="btn ok" data-act="tally-save">บันทึกคะแนน</button>' +
-          '<button class="btn danger" data-act="tally-zero">ล้างเป็น 0</button>' +
-          '<span id="dirtyBadge" class="dirty-badge"></span>' +
-        "</div>" +
-      "</div>" +
-
-      '<div class="card"><h3 style="margin-top:0">บวกแต้มอัตโนมัติจากผลรายการ</h3>' +
-        '<p class="muted">อันดับ 1 = ' + (p["1"] || 0) + " แต้ม, อันดับ 2 = " + (p["2"] || 0) + " แต้ม, อันดับ 3 = " + (p["3"] || 0) + ' แต้ม (แก้ได้ในแท็บตั้งค่า)</p>' +
-        '<div class="row" style="margin-top:8px">' + eventSelect("ptsEvent", sel.eventId) +
-          '<button class="btn primary" data-act="tally-addpts">บวกแต้มจากรายการนี้</button>' +
         "</div>" +
       "</div>";
   }
@@ -365,9 +434,9 @@
   function renderImport() {
     panel.innerHTML =
       '<div class="card"><h2>นำเข้าตารางรายการแข่ง</h2>' +
-        '<p class="muted">คอลัมน์: <code>title,ageGroup,round</code> &nbsp;(<code>title</code> ซ้ำ = รายการเดิม จะอัปเดตทับ)</p>' +
+        '<p class="muted">คอลัมน์: <code>title,level</code> &nbsp;(<code>title</code> ซ้ำ = รายการเดิม จะอัปเดตทับ)</p>' +
         '<div class="row" style="margin:8px 0"><input type="file" id="eventsFile" accept=".csv,text/csv"></div>' +
-        '<textarea id="eventsCsv" placeholder="title,ageGroup,round&#10;วิ่ง 100 เมตร ชาย,รุ่นอายุ 15 ปี,รอบชิงชนะเลิศ">title,ageGroup,round\n</textarea>' +
+        '<textarea id="eventsCsv" placeholder="title,level&#10;วิ่ง 100 เมตร ชาย,มัธยมต้น">title,level\n</textarea>' +
         '<div class="row" style="margin-top:10px"><button class="btn ok" data-act="imp-events">นำเข้ารายการ</button>' +
         '<span class="muted">มีรายการตอนนี้: ' + ((state.events || []).length) + "</span></div>" +
       "</div>";
@@ -382,6 +451,9 @@
     panel.innerHTML =
       '<div class="card"><h2>ตั้งค่าทั่วไป</h2>' +
         '<label class="field" style="max-width:360px">ชื่องาน (แสดงบน CG)<input type="text" id="setMeet" value="' + esc(s.meetTitle || "") + '"></label>' +
+        '<label class="field" style="max-width:420px;margin-top:12px">โลโก้โรงเรียน (พาธ/URL — เว้นว่าง = ไม่แสดง)' +
+          '<input type="text" id="setLogo" value="' + esc(s.logo == null ? "" : s.logo) + '" placeholder="/pictures/logo.png"></label>' +
+        '<p class="muted" style="margin-top:4px">วางไฟล์โลโก้ไว้ที่ <code>public/pictures/logo.png</code> — จะขึ้นมุมของ CG ทุกอัน</p>' +
         '<div class="row" style="margin-top:12px">' +
           '<label class="field">ความเร็ว animation (ms)<input type="number" id="setAnim" min="0" step="50" value="' + (s.animMs || 450) + '"></label>' +
         "</div>" +
@@ -392,12 +464,6 @@
             '<td><input type="color" data-hcolor="' + h + '" value="' + toHex(houseColor(h)) + '"></td>' +
             '<td><input type="text" data-hname="' + h + '" value="' + esc(houseName(h)) + '"></td></tr>';
         }).join("") + "</tbody></table>" +
-        '<h3>แต้มต่ออันดับ</h3>' +
-        '<div class="row">' +
-          ["1", "2", "3"].map(function (k) {
-            return '<label class="field">อันดับ ' + k + '<input type="number" data-pts="' + k + '" min="0" value="' + (((s.points || {})[k]) || 0) + '"></label>';
-          }).join("") +
-        "</div>" +
         '<div class="row" style="margin-top:14px">' +
           '<button class="btn ok" data-act="set-save">บันทึกการตั้งค่า</button>' +
           '<span id="dirtyBadge" class="dirty-badge"></span>' +
@@ -441,37 +507,32 @@
       cmd({ action: "show", slot: "lower", template: "top3", eventId: sel.eventId });
     },
     "hide-lower": function () { cmd({ action: "hide", slot: "lower" }); },
-    "show-full-intro": function () {
-      if (!sel.eventId) return toast("เลือกรายการก่อน", true);
-      cmd({ action: "show", slot: "full", template: "intro", eventId: sel.eventId });
-    },
     "show-full-results": function () {
-      if (!sel.eventId) return toast("เลือกรายการก่อน", true);
-      cmd({ action: "show", slot: "full", template: "results", eventId: sel.eventId });
+      cmd({ action: "show", slot: "full", template: "results", eventId: null });
     },
-    "show-full-tally": function () { cmd({ action: "show", slot: "full", template: "tally", eventId: null }); },
+    "show-full-schedule": function () {
+      cmd({ action: "show", slot: "full", template: "schedule", eventId: sel.eventId });
+    },
     "hide-full": function () { cmd({ action: "hide", slot: "full" }); },
 
     "res-tap": function (b) {
       if (!sel.eventId) return toast("เลือกรายการก่อน", true);
       resDraft.rows.push(b.dataset.house);
       renderResEditor();
+      scheduleResSave();
     },
     "res-rm": function (b) {
       resDraft.rows.splice(Number(b.dataset.i), 1);
       renderResEditor();
+      scheduleResSave();
     },
-    "res-clear": function () { resDraft.rows = []; renderResEditor(); },
-    "res-add-row": function () { resDraft.rows.push(houseKeys()[0]); renderResEditor(); },
-    "res-save": function () {
-      if (!sel.eventId) return;
-      var results = resDraft.rows.map(function (h, i) { return { rank: i + 1, house: h }; });
-      cmd({ action: "setResults", eventId: sel.eventId, results: results }).then(function (ok) {
-        if (ok) { toast("บันทึกผลแล้ว"); resDraft.eid = null; render(); }
-      });
-    },
+    "res-clear": function () { resDraft.rows = []; renderResEditor(); scheduleResSave(); },
+    "res-add-row": function () { resDraft.rows.push(houseKeys()[0]); renderResEditor(); scheduleResSave(); },
 
-    "ev-new": function () { editing = { id: "", title: "", ageGroup: "", round: "" }; render(); },
+    "score-prev": function () { scoreStep(-1); },
+    "score-next": function () { scoreStep(1); },
+
+    "ev-new": function () { editing = { id: "", title: "", level: "" }; render(); },
     "ev-edit": function (b) {
       var e = (state.events || []).find(function (x) { return x.id === b.dataset.id; });
       if (e) { editing = JSON.parse(JSON.stringify(e)); render(); }
@@ -485,32 +546,12 @@
       var ev = {
         id: editing.id,
         title: document.getElementById("evTitle").value.trim(),
-        ageGroup: document.getElementById("evAge").value.trim(),
-        round: document.getElementById("evRound").value.trim(),
+        level: document.getElementById("evLevel").value.trim(),
       };
       if (!ev.title) return toast("ใส่ชื่อรายการก่อน", true);
       cmd({ action: "upsertEvent", event: ev }).then(function (ok) {
         if (ok) { toast("บันทึกรายการแล้ว"); editing = null; render(); }
       });
-    },
-
-    "tally-save": function () {
-      var t = {};
-      [].forEach.call(panel.querySelectorAll('[name=score]'), function (i) {
-        t[i.dataset.house] = Number(i.value) || 0;
-      });
-      cmd({ action: "setTally", tally: t }).then(function (ok) { if (ok) toast("บันทึกคะแนนแล้ว"); });
-    },
-    "tally-zero": function () {
-      if (!confirm("ล้างคะแนนทุกคณะเป็น 0 ?")) return;
-      var t = {};
-      houseKeys().forEach(function (h) { t[h] = 0; });
-      cmd({ action: "setTally", tally: t });
-    },
-    "tally-addpts": function () {
-      var id = document.getElementById("ptsEvent").value;
-      if (!id) return toast("เลือกรายการก่อน", true);
-      cmd({ action: "addEventPointsToTally", eventId: id }).then(function (ok) { if (ok) toast("บวกแต้มแล้ว"); });
     },
 
     "imp-events": function () {
@@ -520,16 +561,16 @@
     },
 
     "set-save": function () {
-      var houses = {}, houseNames = {}, points = {};
+      var houses = {}, houseNames = {};
       [].forEach.call(panel.querySelectorAll("[data-hcolor]"), function (i) { houses[i.dataset.hcolor] = i.value; });
       [].forEach.call(panel.querySelectorAll("[data-hname]"), function (i) { houseNames[i.dataset.hname] = i.value.trim(); });
-      [].forEach.call(panel.querySelectorAll("[data-pts]"), function (i) { points[i.dataset.pts] = Number(i.value) || 0; });
       cmd({
         action: "setSettings",
         settings: {
           meetTitle: document.getElementById("setMeet").value.trim(),
+          logo: document.getElementById("setLogo").value.trim(),
           animMs: Number(document.getElementById("setAnim").value) || 450,
-          houses: houses, houseNames: houseNames, points: points,
+          houses: houses, houseNames: houseNames,
         },
       }).then(function (ok) { if (ok) toast("บันทึกการตั้งค่าแล้ว"); });
     },
@@ -554,13 +595,16 @@
   panel.addEventListener("change", function (e) {
     var t = e.target;
     if (t.dataset && t.dataset.role === "selEvent") {
+      saveResultsNow();  // เซฟผลรายการเดิมที่ค้างอยู่ก่อนสลับ
       sel.eventId = t.value;
       localStorage.setItem("cg_sel_event", sel.eventId);
+      followSelection();
       render();
       return;
     }
     if (t.dataset && t.dataset.act === "res-set") {
       resDraft.rows[Number(t.dataset.i)] = t.value;
+      scheduleResSave();
       return;
     }
     if (t.id === "eventsFile") {

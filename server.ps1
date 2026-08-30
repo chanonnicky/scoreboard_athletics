@@ -38,7 +38,8 @@ $CTypes = @{
   ".js"    = "application/javascript; charset=utf-8"
   ".json"  = "application/json; charset=utf-8"
   ".woff2" = "font/woff2"; ".woff" = "font/woff"; ".ttf" = "font/ttf"
-  ".png"   = "image/png"; ".jpg" = "image/jpeg"; ".svg" = "image/svg+xml"
+  ".png"   = "image/png"; ".jpg" = "image/jpeg"; ".jpeg" = "image/jpeg"
+  ".svg"   = "image/svg+xml"; ".webp" = "image/webp"
   ".ico"   = "image/x-icon"; ".txt" = "text/plain; charset=utf-8"
 }
 
@@ -78,9 +79,14 @@ function Apply-Command($cmd) {
 
   switch ($action) {
     "show" {
+      $slot = [string]$cmd["slot"]
       $d = New-Dict
       $d["template"] = $cmd["template"]; $d["eventId"] = $cmd["eventId"]; $d["visible"] = $true
-      $onair[[string]$cmd["slot"]] = $d
+      $onair[$slot] = $d
+      # only one slot visible at a time -- hide the others
+      foreach ($k in @($onair.Keys)) {
+        if ($k -ne $slot -and $onair[$k]) { $onair[$k]["visible"] = $false }
+      }
     }
     "hide" {
       $slot = [string]$cmd["slot"]
@@ -150,16 +156,17 @@ function Import-CsvText($kind, $text) {
       if (-not $title) { $title = ("" + $row.event).Trim() }
       if (-not $title) { continue }
       $seen++
-      $age = ("" + $row.ageGroup).Trim(); if (-not $age) { $age = ("" + $row.age).Trim() }
-      $rnd = ("" + $row.round).Trim()
+      $lvl = ("" + $row.level).Trim()
+      if (-not $lvl) { $lvl = ("" + $row.ageGroup).Trim() }
+      if (-not $lvl) { $lvl = ("" + $row.age).Trim() }
       $found = $null
       foreach ($e in $events) { if ([string]$e["title"] -eq $title) { $found = $e; break } }
       if ($found) {
-        $found["ageGroup"] = $age; $found["round"] = $rnd
+        $found["level"] = $lvl
       } else {
         $d = New-Dict
         $d["id"] = "e_" + [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() + "_" + $events.Count
-        $d["title"] = $title; $d["ageGroup"] = $age; $d["round"] = $rnd
+        $d["title"] = $title; $d["level"] = $lvl
         [void]$events.Add($d)
       }
     }
@@ -222,6 +229,7 @@ function Handle-Request($ctx) {
   if ($path -eq "/") { $ctx.Response.Redirect("/control"); $ctx.Response.Close(); return }
   if ($path -eq "/healthz") { Send-Text $ctx 200 "ok"; return }
   if ($path -eq "/control") { Serve-File $ctx (Join-Path $Public "control.html"); return }
+  if ($path -eq "/score")   { Serve-File $ctx (Join-Path $Public "control.html"); return }
   if ($path -eq "/overlay") { Serve-File $ctx (Join-Path $Public "overlay.html"); return }
 
   if ($path -eq "/api/state" -and $method -eq "GET") {
@@ -310,6 +318,7 @@ Write-Host $bar
 Write-Host " CG Live  -  scoreboard_athletics  (PowerShell)"
 Write-Host $bar
 Write-Host "  Control :  http://${ip}:$Port/control"
+Write-Host "  Score   :  http://${ip}:$Port/score        (score-recording page)"
 Write-Host "  Overlay :  http://${ip}:$Port/overlay      <<  put this in OBS / vMix"
 Write-Host "  Local   :  http://127.0.0.1:$Port/control"
 if ($Token) { Write-Host "  Token   :  $Token" }

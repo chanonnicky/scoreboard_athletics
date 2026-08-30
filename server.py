@@ -46,6 +46,8 @@ CTYPES = {
     ".ttf": "font/ttf",
     ".png": "image/png",
     ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
     ".svg": "image/svg+xml",
     ".ico": "image/x-icon",
     ".txt": "text/plain; charset=utf-8",
@@ -115,6 +117,10 @@ def apply_command(cmd):
                 "eventId": cmd.get("eventId"),
                 "visible": True,
             }
+            # แสดงได้ทีละช่องเท่านั้น — ซ่อนช่องอื่น
+            for other, conf in onair.items():
+                if other != slot:
+                    conf["visible"] = False
 
         elif action == "hide":
             slot = cmd["slot"]
@@ -196,13 +202,11 @@ def import_csv(kind, text):
                 if not title:
                     continue
                 seen += 1
-                age = (row.get("agegroup") or row.get("age") or "").strip()
-                rnd = (row.get("round") or "").strip()
+                lvl = (row.get("level") or row.get("agegroup") or row.get("age") or "").strip()
                 if title in by_title:
-                    by_title[title]["ageGroup"] = age
-                    by_title[title]["round"] = rnd
+                    by_title[title]["level"] = lvl
                 else:
-                    ev = {"id": _new_id("e"), "title": title, "ageGroup": age, "round": rnd}
+                    ev = {"id": _new_id("e"), "title": title, "level": lvl}
                     events.append(ev)
                     by_title[title] = ev
             return {"events": seen}
@@ -261,7 +265,7 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/":
             return self._send(302, b"", extra={"Location": "/control"})
-        if path == "/control":
+        if path in ("/control", "/score"):
             return self._serve_path(os.path.join(PUBLIC, "control.html"))
         if path == "/overlay":
             return self._serve_path(os.path.join(PUBLIC, "overlay.html"))
@@ -376,6 +380,7 @@ def main():
     print(" CG Live  —  scoreboard_athletics")
     print(line)
     print("  Control :  http://%s:%d/control" % (ip, args.port))
+    print("  Score   :  http://%s:%d/score        (หน้าจดคะแนน)" % (ip, args.port))
     print("  Overlay :  http://%s:%d/overlay      << ใส่ใน OBS / vMix" % (ip, args.port))
     print("  Local   :  http://127.0.0.1:%d/control" % args.port)
     if TOKEN:

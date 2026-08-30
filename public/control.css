@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&display=swap');
+@import url('https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/LINESeedSansTH/LINESeedSansTH.css');
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -20,7 +20,7 @@
 }
 
 body {
-  font-family: "Kanit", "Leelawadee UI", "Tahoma", sans-serif;
+  font-family: "LINE Seed Sans TH", "Kanit", "Leelawadee UI", "Tahoma", sans-serif;
   background: var(--bg);
   color: var(--ink);
   font-size: 15px;
@@ -46,6 +46,14 @@ body {
 .conn.ok { color: #b6f0c8; } .conn.bad { color: #ffc9c9; }
 .tok { font-size: 12px; color: var(--ink-dim); display: flex; align-items: center; gap: 6px; }
 .tok input { width: 120px; }
+.mode-link { color: #93c5fd; font-size: 13px; text-decoration: none; white-space: nowrap; }
+.mode-link:hover { text-decoration: underline; }
+
+/* ---- โหมด /score (จดคะแนน) ---- */
+.mode-score main { max-width: 760px; }
+.mode-score .hbtn { min-height: 84px; font-size: 19px; }
+.mode-score .res-line select { max-width: none; font-size: 16px; padding: 10px; }
+.mode-score .res-rank { width: 34px; height: 34px; font-size: 15px; }
 
 /* ---- tabs ---- */
 .tabs { display: flex; gap: 4px; padding: 10px 18px 0; background: var(--bg-2); border-bottom: 1px solid var(--stroke); }
@@ -94,6 +102,7 @@ button.btn.primary { background: var(--accent); border-color: var(--accent); col
 button.btn.ok { background: var(--ok); border-color: var(--ok); color: #06240f; font-weight: 600; }
 button.btn.danger { background: transparent; border-color: var(--danger); color: #ffb4b4; }
 button.btn.sm { padding: 5px 9px; font-size: 13px; }
+button.btn.lg { padding: 12px 22px; font-size: 17px; }
 button.btn:disabled { opacity: .45; cursor: not-allowed; }
 
 /* ---- live tab ---- */
@@ -154,14 +163,19 @@ table.tbl .hcell { width: 150px; }
 
 .dirty-badge { color: var(--warn); font-size: 12px; margin-left: 8px; }
 
-/* results editor — แตะสีคณะเรียงอันดับ */
-.hbtns { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0 4px; }
+/* results editor — แตะสีคณะเรียงอันดับ (ทุกปุ่มขนาดเท่ากัน) */
+.hbtns {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 10px; margin: 10px 0 4px;
+}
+@media (max-width: 560px) { .hbtns { grid-template-columns: repeat(2, 1fr); } }
 .hbtn {
-  flex: 1 1 120px; min-height: 56px;
+  width: 100%; min-height: 64px; padding: 8px 10px;
   border: 2px solid var(--hc, #666); border-radius: 10px;
   background: var(--bg-3);
   background: color-mix(in srgb, var(--hc, #666) 22%, var(--bg-3));
-  color: var(--ink); font: 600 16px/1.2 inherit; cursor: pointer;
+  color: var(--ink); font: 600 15px/1.2 inherit; cursor: pointer;
+  overflow-wrap: anywhere;
 }
 .hbtn:hover { background: var(--hc, #666); }
 .hbtn:active { transform: translateY(1px); }

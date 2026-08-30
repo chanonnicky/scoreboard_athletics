@@ -3,3 +3,7 @@ __pycache__/
 data/state.json
 data/state.json.tmp
 .DS_Store
+public/pictures/*
+!public/pictures/README.txt
+!public/pictures/logo.png
+/Picture/

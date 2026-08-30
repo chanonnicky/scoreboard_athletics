@@ -7,12 +7,12 @@
       "blue": "#1e88e5"
     },
     "houseNames": {
-      "red": "คณะสีแดง",
-      "green": "คณะสีเขียว",
-      "yellow": "คณะสีเหลือง",
-      "blue": "คณะสีฟ้า"
+      "red": "Red Falcon",
+      "green": "Green Dragon",
+      "yellow": "Yellow Lion",
+      "blue": "Blue Shark"
     },
-    "points": { "1": 5, "2": 3, "3": 2 },
+    "logo": "/pictures/logo.png",
     "animMs": 450,
     "meetTitle": "กีฬาสีภายใน"
   },
@@ -20,8 +20,7 @@
     {
       "id": "e_demo",
       "title": "วิ่ง 100 เมตร ชาย",
-      "ageGroup": "รุ่นอายุ 15 ปี",
-      "round": "รอบชิงชนะเลิศ"
+      "level": "มัธยมต้น"
     }
   ],
   "results": {
@@ -31,9 +30,8 @@
       { "rank": 3, "house": "yellow" }
     ]
   },
-  "tally": { "red": 18, "green": 12, "yellow": 9, "blue": 6 },
   "onair": {
     "lower": { "template": "top3", "eventId": "e_demo", "visible": false },
-    "full": { "template": "tally", "eventId": null, "visible": false }
+    "full": { "template": "results", "eventId": null, "visible": false }
   }
 }

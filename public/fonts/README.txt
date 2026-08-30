@@ -1,22 +1,24 @@
-ฟอนต์ไทยสำหรับ overlay
-======================
+ฟอนต์: LINE Seed Sans TH
+========================
 
-ค่าเริ่มต้น overlay.css / control.css โหลดฟอนต์ "Kanit" จาก Google Fonts (ต้องมีเน็ต)
-ถ้าเครื่องมีเน็ตตอนงาน ไม่ต้องทำอะไรเพิ่ม
+overlay.css / control.css โหลด "LINE Seed Sans TH" จาก jsDelivr CDN
+    https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/LINESeedSansTH/LINESeedSansTH.css
+(ไฟล์เดียวมีทั้งอักษรไทยและละติน — ต้องมีเน็ตตอนเปิดหน้าเว็บครั้งแรก)
+ถ้าไม่มีเน็ต ระบบจะ fallback ไปฟอนต์ระบบ Windows ("Leelawadee UI" / "Tahoma") ซึ่งอ่านไทยได้ปกติ
 
 ใช้งานแบบออฟไลน์ (แนะนำสำหรับงานจริง)
 ------------------------------------
-1. ดาวน์โหลดไฟล์ .woff2 มาวางในโฟลเดอร์นี้:
-     Kanit-Regular.woff2
-     Kanit-SemiBold.woff2
-     Kanit-Bold.woff2
-   ดาวน์โหลดได้จาก https://fonts.google.com/specimen/Kanit  (ปุ่ม "Get font" -> "Download all")
-   แล้วแปลง .ttf เป็น .woff2 (เช่นเว็บ https://cloudconvert.com/ttf-to-woff2) หรือใช้ .ttf ตรง ๆ ก็ได้
-   (ถ้าใช้ .ttf ให้แก้ src ใน @font-face เป็น format("truetype") และนามสกุล .ttf)
+1. ดาวน์โหลด LINE Seed Sans TH จาก https://seed.line.me  (ฟรี, SIL Open Font License)
+   หรือดึง .woff2 จาก repo: https://github.com/lazywasabi/thai-web-fonts/tree/main/fonts/LINESeedSansTH
+   วางไฟล์เหล่านี้ในโฟลเดอร์นี้:
+     LINESeedSansTH-Regular.woff2
+     LINESeedSansTH-Bold.woff2
+     LINESeedSansTH-ExtraBold.woff2
 
-2. เปิดไฟล์ public/overlay.css และ public/control.css
-   - ลบ/คอมเมนต์บรรทัด @import url('https://fonts.googleapis.com/...')
-   - ปลดคอมเมนต์บล็อก @font-face { font-family:"Kanit"; ... }
+2. เปิด public/overlay.css และ public/control.css
+   - ลบ/คอมเมนต์บรรทัด @import url('https://cdn.jsdelivr.net/...')
+   - ปลดคอมเมนต์บล็อก @font-face { font-family:"LINE Seed Sans TH"; ... }
+     (มีอยู่แล้วใน overlay.css — ก๊อปไปใส่ control.css ด้วยถ้าต้องการ)
 
-ถ้าไม่ทำอะไรเลยและไม่มีเน็ต ระบบจะ fallback ไปใช้ฟอนต์ระบบ Windows
-"Leelawadee UI" / "Tahoma" ซึ่งอ่านภาษาไทยได้ปกติ
+หมายเหตุ: LINE Seed Sans มีน้ำหนัก 100 / 400 / 700 / 800 / 900 (ไม่มี 500/600)
+เบราว์เซอร์จะปัดไปน้ำหนักใกล้เคียงให้เอง

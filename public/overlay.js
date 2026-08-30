@@ -16,7 +16,65 @@
   stage.style.transform = "scale(" + scale + ")";
 
   var SLOTS = ["full", "lower"];
-  var last = {}; // slot -> { template, eventId, visible }
+  var last = {}; // slot -> { template, eventId, visible, sig }
+
+  // ---- เทมเพลตแบบแบ่งหน้า (results): สลับ .apage อัตโนมัติทุก 10 วิ ---- //
+  var PAGE_INTERVAL = 10000;
+  var PAGED_TEMPLATES = { results: 1 };
+  var pagerTimers = {};
+
+  function stopPager(slot) {
+    if (pagerTimers[slot]) { clearInterval(pagerTimers[slot]); delete pagerTimers[slot]; }
+  }
+
+  function pagesOf(slot) {
+    var host = document.getElementById("slot-" + slot);
+    var cg = host && host.querySelector(".cg:not(.out)");
+    return (cg && cg.querySelectorAll(".apage")) || [];
+  }
+
+  function startPager(slot) {
+    stopPager(slot);
+    var idx = 0;
+    // แสดงหน้าแรก (ให้แถวไล่เข้าเหมือนตอนเปลี่ยนหน้า)
+    var init = pagesOf(slot);
+    for (var i = 0; i < init.length; i++) init[i].classList.remove("show", "leaving");
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        var ps = pagesOf(slot);
+        if (ps[0]) ps[0].classList.add("show");
+      });
+    });
+    pagerTimers[slot] = setInterval(function () {
+      var pages = pagesOf(slot);
+      if (!pages.length) { stopPager(slot); return; }
+      if (pages.length < 2) return;
+      var out = pages[idx % pages.length];
+      out.classList.remove("show");
+      out.classList.add("leaving");
+      (function (p) { setTimeout(function () { p.classList.remove("leaving"); }, 650); })(out);
+      idx = (idx + 1) % pages.length;
+      pages[idx].classList.add("show");
+    }, PAGE_INTERVAL);
+  }
+
+  function eventsSig(state) {
+    return (state.events || []).map(function (e) {
+      return e.id + "~" + (e.title || "") + "~" + (e.level || e.ageGroup || "");
+    }).join("|");
+  }
+  function pagedSig(state) {
+    var r = state.results || {};
+    var s = state.settings || {};
+    var rs = Object.keys(r).sort().map(function (k) {
+      return k + ":" + (r[k] || []).map(function (x) { return x.rank + "" + x.house; }).join(",");
+    }).join("|");
+    return eventsSig(state) + "||" + rs + "||" + (s.meetTitle || "") + "||" + JSON.stringify(s.houseNames || {});
+  }
+  // schedule เปลี่ยนตามรายการ + รายการที่เลือก (ไม่สนผลการแข่ง)
+  function schedSig(state, eid) {
+    return (eid || "") + "||" + eventsSig(state) + "||" + ((state.settings || {}).meetTitle || "");
+  }
 
   function animMs(state) {
     return (state.settings && state.settings.animMs) || 450;
@@ -29,11 +87,10 @@
   function buildTemplate(conf, state) {
     var ev = conf.eventId ? (state.events || []).find(function (e) { return e.id === conf.eventId; }) : null;
     switch (conf.template) {
-      case "top3":    return ev ? T.top3(state, ev, (state.results || {})[ev.id] || []) : null;
-      case "results": return ev ? T.results(state, ev, (state.results || {})[ev.id] || []) : null;
-      case "intro":   return ev ? T.intro(state, ev) : null;
-      case "tally":   return T.tally(state);
-      default:        return null;
+      case "top3":     return ev ? T.top3(state, ev, (state.results || {})[ev.id] || []) : null;
+      case "results":  return T.results(state);
+      case "schedule": return T.schedule(state, conf.eventId);
+      default:         return null;
     }
   }
 
@@ -44,9 +101,15 @@
     var ms = animMs(state);
 
     var html = conf.visible ? buildTemplate(conf, state) : null;
+    var isPaged = html != null && PAGED_TEMPLATES[conf.template];
+    var sig = html == null ? null
+      : isPaged ? pagedSig(state)
+      : conf.template === "schedule" ? schedSig(state, conf.eventId)
+      : null;
 
     // ไม่มีอะไรจะแสดง -> เอาออก
     if (html == null) {
+      stopPager(slot);
       if (cur) {
         cur.classList.remove("in");
         cur.classList.add("out");
@@ -57,8 +120,12 @@
       return;
     }
 
-    var sameShell = cur && prev.visible &&
-      prev.template === conf.template && prev.eventId === conf.eventId;
+    // เนื้อหาเดิม -> ไม่ต้องทำอะไร (results: pager เล่นต่อ / schedule: หน้าต่างเท่าเดิม)
+    var cont = cur && prev.visible && prev.template === conf.template;
+    if (cont && sig != null && prev.sig === sig) return;
+
+    var sameShell = (cont && isPaged) || (cur && prev.visible && prev.template === conf.template &&
+      (prev.eventId === conf.eventId || conf.template === "schedule"));
 
     if (sameShell) {
       // อัปเดตข้อมูลสด ไม่ต้อง re-animate
@@ -75,9 +142,28 @@
       wrap.innerHTML = html;
       host.appendChild(wrap);
       void wrap.offsetWidth; // reflow
-      requestAnimationFrame(function () { wrap.classList.add("in"); });
+      // double rAF: การันตีว่าเฟรมแรก (opacity:0) ถูกวาดก่อน แล้วค่อยเริ่ม transition
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () { wrap.classList.add("in"); });
+      });
     }
-    last[slot] = { template: conf.template, eventId: conf.eventId, visible: true };
+
+    if (isPaged) startPager(slot);
+    else stopPager(slot);
+
+    // schedule: ไล่แถวเข้าใหม่ทุกครั้ง (โผล่ครั้งแรก / เลื่อนหน้าต่าง)
+    if (conf.template === "schedule") {
+      var sl = host.querySelector(".cg:not(.out) .slist");
+      if (sl) {
+        sl.classList.remove("go");
+        void sl.offsetWidth;
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () { sl.classList.add("go"); });
+        });
+      }
+    }
+
+    last[slot] = { template: conf.template, eventId: conf.eventId, visible: true, sig: sig };
   }
 
   function apply(state) {

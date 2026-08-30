@@ -1,13 +1,13 @@
-/* ==== ฟอนต์ไทย ============================================================
-   ออนไลน์: ใช้ Google Fonts (โหลดอัตโนมัติ)
-   ออฟไลน์ (งานจริง): วางไฟล์ .woff2 ไว้ใน public/fonts/ แล้วปลด comment @font-face
+/* ==== ฟอนต์: LINE Seed Sans TH ============================================
+   ออนไลน์: โหลดจาก jsDelivr CDN (ไทย + ละติน อยู่ในไฟล์เดียว)
+   ออฟไลน์ (งานจริง): วางไฟล์ .woff2 ใน public/fonts/ แล้วปลด comment บล็อก @font-face
    ดูรายละเอียดใน public/fonts/README.txt
 */
-@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;600;700&family=Sarabun:wght@400;600;700&display=swap');
+@import url('https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/LINESeedSansTH/LINESeedSansTH.css');
 /*
-@font-face { font-family:"Kanit"; src:url("/fonts/Kanit-Regular.woff2") format("woff2"); font-weight:400; font-display:swap; }
-@font-face { font-family:"Kanit"; src:url("/fonts/Kanit-SemiBold.woff2") format("woff2"); font-weight:600; font-display:swap; }
-@font-face { font-family:"Kanit"; src:url("/fonts/Kanit-Bold.woff2") format("woff2"); font-weight:700; font-display:swap; }
+@font-face { font-family:"LINE Seed Sans TH"; src:url("/fonts/LINESeedSansTH-Regular.woff2") format("woff2"); font-weight:400; font-display:swap; }
+@font-face { font-family:"LINE Seed Sans TH"; src:url("/fonts/LINESeedSansTH-Bold.woff2") format("woff2"); font-weight:700; font-display:swap; }
+@font-face { font-family:"LINE Seed Sans TH"; src:url("/fonts/LINESeedSansTH-ExtraBold.woff2") format("woff2"); font-weight:800; font-display:swap; }
 */
 
 :root {
@@ -17,7 +17,7 @@
   --yellow: #f4c020;
   --blue: #1e88e5;
 
-  --panel: rgba(14, 19, 28, 0.90);
+  --panel: rgba(14, 19, 28, 0.94);
   --panel-2: rgba(255, 255, 255, 0.08);
   --stroke: rgba(255, 255, 255, 0.14);
   --ink: #fff;
@@ -33,7 +33,7 @@ html, body {
 }
 
 body.overlay {
-  font-family: "Kanit", "Sarabun", "Leelawadee UI", "Tahoma", sans-serif;
+  font-family: "LINE Seed Sans TH", "Kanit", "Leelawadee UI", "Tahoma", sans-serif;
   color: #fff;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -47,12 +47,12 @@ body.overlay {
 }
 
 .slot { position: absolute; }
-.slot-full { inset: 0; display: flex; align-items: center; justify-content: center; }
+.slot-full { inset: 0; }
 .slot-lower { left: 0; right: 0; bottom: 96px; display: flex; justify-content: center; }
 
 #offline {
   position: fixed; left: 14px; bottom: 12px;
-  font: 600 15px/1 "Kanit", sans-serif;
+  font: 600 15px/1 "LINE Seed Sans TH", sans-serif;
   color: #ff5252; background: rgba(0,0,0,.6);
   padding: 6px 12px; border-radius: 6px;
   opacity: 0; transition: opacity .3s;
@@ -75,7 +75,11 @@ body.is-offline #offline { opacity: 1; }
 }
 
 /* ==== animation ======================================================== */
-.cg { will-change: transform, opacity; }
+.cg {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
 
 .slot-lower .cg {
   opacity: 0; transform: translateY(40px);
@@ -84,94 +88,211 @@ body.is-offline #offline { opacity: 1; }
 .slot-lower .cg.in  { opacity: 1; transform: none; }
 .slot-lower .cg.out { opacity: 0; transform: translateY(40px); }
 
+/* full screen: การ์ดทั้งสอง (schedule / results) วางทับกันกลางจอ
+   ตอนสลับจึงเป็น cross-fade ลื่น ๆ ไม่มี layout กระโดด */
 .slot-full .cg {
-  opacity: 0; transform: scale(.96);
-  transition: opacity var(--anim) ease, transform var(--anim) cubic-bezier(.2,.7,.2,1);
+  position: absolute; left: 50%; top: 50%;
+  opacity: 0; transform: translate(-50%, -50%) scale(.965);
+  transition: opacity var(--anim) ease, transform var(--anim) cubic-bezier(.4, 0, .2, 1);
 }
-.slot-full .cg.in  { opacity: 1; transform: none; }
-.slot-full .cg.out { opacity: 0; transform: scale(.96); }
+.slot-full .cg.in  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.slot-full .cg.out { opacity: 0; transform: translate(-50%, -50%) scale(1.03); }
 
-/* ==== template: TOP 3 (lower third) — บล็อกสีคณะใหญ่ =============== */
+/* ==== template: TOP 3 (lower third) — แถบยาวแถวเดียว, อันดับ 1 เด่นสุด ==== */
 .t3 {
-  width: 1000px;
+  display: flex; align-items: stretch;
+  width: 1640px; height: 108px;
   background: var(--panel);
-  border-radius: 18px;
+  border-radius: 14px;
   overflow: hidden;
-  box-shadow: 0 24px 60px rgba(0,0,0,.45);
-  backdrop-filter: blur(8px);
-}
-.t3-title {
-  font-size: 30px; font-weight: 600; letter-spacing: .3px;
-  padding: 16px 30px; background: rgba(255,255,255,.06);
-  border-bottom: 1px solid var(--stroke);
-}
-.t3-list { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-.t3-row {
-  position: relative; isolation: isolate;
-  display: grid; grid-template-columns: 96px 1fr; align-items: stretch;
-  border-radius: 12px; overflow: hidden;
-}
-.t3-row::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background: var(--house); opacity: .22;
-}
-.t3-rank {
-  display: flex; align-items: center; justify-content: center;
-  font-size: 40px; font-weight: 800;
-  background: var(--house); color: var(--ink);
-}
-.t3-house {
-  display: flex; align-items: center;
-  padding: 16px 26px; font-size: 44px; font-weight: 700;
+  box-shadow: 0 18px 48px rgba(0,0,0,.42);
 }
 
-/* ==== template card (intro / results / tally) ======================= */
+/* ซ้าย: โลโก้ + ชื่อรายการ */
+.t3-head {
+  display: flex; align-items: center; gap: 16px;
+  flex: none; max-width: 500px;
+  padding: 0 24px;
+  background: rgba(255,255,255,.06);
+  border-right: 1px solid var(--stroke);
+}
+.t3-head .cg-logo { height: 56px; width: auto; flex: none; }
+.t3-title-text {
+  font-size: 22px; font-weight: 700; line-height: 1.15;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* ขวา: อันดับ 1-3 เรียงในแถวเดียว */
+.t3-list { display: flex; align-items: stretch; flex: 1; }
+.t3-item {
+  position: relative; isolation: isolate;
+  display: flex; align-items: center; gap: 16px;
+  flex: 1; padding: 0 24px;
+  border-bottom: 5px solid var(--house, #666);
+}
+.t3-item + .t3-item { border-left: 1px solid var(--stroke); }
+.t3-item::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background: var(--house, #666); opacity: .16;
+}
+.t3-house { font-weight: 700; line-height: 1.05; }
+
+/* ไล่อันดับ 1-2-3 เข้าทีละช่องตอนแถบล่างโผล่ */
+.slot-lower .cg .t3-item {
+  opacity: 0; transform: translateY(14px);
+  transition: opacity .4s ease, transform .46s cubic-bezier(.16,.84,.44,1);
+}
+.slot-lower .cg.in .t3-item { opacity: 1; transform: none; }
+.slot-lower .cg.in .t3-item:nth-child(1) { transition-delay: .10s; }
+.slot-lower .cg.in .t3-item:nth-child(2) { transition-delay: .18s; }
+.slot-lower .cg.in .t3-item:nth-child(3) { transition-delay: .26s; }
+
+.t3-medal {
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; font-weight: 800; color: #2b2000; flex: none;
+  border: 3px solid rgba(255,255,255,.55);
+  box-shadow: inset 0 -4px 8px rgba(0,0,0,.28), 0 4px 10px rgba(0,0,0,.35);
+}
+.t3-medal-1 { background: radial-gradient(circle at 35% 30%, #ffe9a8, #f3c43c 55%, #b07d0a); }
+.t3-medal-2 { background: radial-gradient(circle at 35% 30%, #fafafa, #c9ced3 55%, #868d95); }
+.t3-medal-3 { background: radial-gradient(circle at 35% 30%, #f2cda6, #d0863c 55%, #8a5626); }
+
+/* อันดับ 1 = เด่นที่สุด (กว้างกว่า, เหรียญ+ชื่อใหญ่กว่า, พื้นเข้มกว่า) */
+.t3-r1 { flex: 1.6; }
+.t3-r1::before { opacity: .30; }
+.t3-r1 .t3-medal { width: 68px; height: 68px; font-size: 33px; }
+.t3-r1 .t3-house { font-size: 33px; }
+.t3-r2 .t3-medal, .t3-r3 .t3-medal { width: 48px; height: 48px; font-size: 23px; }
+.t3-r2 .t3-house, .t3-r3 .t3-house { font-size: 24px; }
+
+/* ==== template card (results) ====================================== */
 .card {
+  position: relative;
   min-width: 900px; max-width: 1500px;
   background: var(--panel);
   border-radius: 22px;
   box-shadow: 0 30px 80px rgba(0,0,0,.5);
-  backdrop-filter: blur(10px);
   overflow: hidden;
 }
 .card-head {
-  padding: 26px 40px;
+  position: relative;
+  padding: 26px 160px 26px 40px;
   background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.02));
   border-bottom: 1px solid var(--stroke);
 }
+.card-head .cg-logo { position: absolute; top: 22px; right: 34px; height: 60px; width: auto; }
 .card-kicker { font-size: 20px; font-weight: 500; opacity: .7; letter-spacing: 2px; text-transform: uppercase; }
 .card-title { font-size: 46px; font-weight: 700; line-height: 1.15; margin-top: 4px; }
 .card-title.big { font-size: 64px; }
 .card-sub { font-size: 26px; font-weight: 400; opacity: .82; margin-top: 8px; }
 .card-body { padding: 22px 40px 34px; }
 
-/* intro — การ์ดชื่อรายการอย่างเดียว */
-.card-intro { text-align: center; }
-.card-intro .card-head { border-bottom: none; padding: 46px 60px; }
-
-/* results list — อันดับ + สีคณะ */
-.rlist { display: flex; flex-direction: column; gap: 12px; }
-.rrow {
-  position: relative; isolation: isolate;
-  display: grid; grid-template-columns: 220px 1fr; align-items: center;
-  padding: 18px 26px; border-radius: 12px;
-  border-left: 10px solid var(--house, #666);
+/* results — ทุกรายการ + สีคณะที่ได้อันดับ (แบ่งหน้า, overlay.js สลับ .apage) */
+.tpl-results-card { min-width: 1240px; max-width: 1600px; }
+.tpl-results-card .card-head { padding: 16px 150px 16px 40px; }
+.tpl-results-card .card-title { font-size: 32px; }
+.tpl-results-card .card-head .cg-logo { height: 46px; top: 16px; }
+.tpl-results-card .card-body {
+  position: relative; overflow: hidden;
+  padding: 0; min-height: 850px;
 }
-.rrow::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background: var(--house, #666); opacity: .16;
+/* แต่ละหน้าซ้อนกัน (absolute) */
+.tpl-results-card .apage {
+  position: absolute; inset: 0; display: flex;
+  padding: 16px 40px 20px;
+  pointer-events: none;
 }
-.rrow .rank { font-size: 30px; font-weight: 700; opacity: .95; }
-.rrow .rhouse { font-size: 38px; font-weight: 700; }
-.rrow.top .rank { color: #ffd54a; }
+.tpl-results-card .apage.show { pointer-events: auto; z-index: 2; }
+/* กระจายแถวให้เต็มความสูงหน้า (space-between = ถ้าล้นแถวแรกไม่หลุด) */
+.tpl-results-card .rlist2 { flex: 1; justify-content: space-between; }
 
-/* tally */
-.tally { display: flex; flex-direction: column; gap: 16px; min-width: 780px; }
-.trow { display: grid; grid-template-columns: 260px 1fr 120px; align-items: center; gap: 20px; }
-.trow .tname { font-size: 30px; font-weight: 600; display: flex; align-items: center; gap: 12px; }
-.trow .tbar-wrap { height: 40px; background: rgba(255,255,255,.08); border-radius: 8px; overflow: hidden; }
-.trow .tbar { height: 100%; width: 0; background: var(--house); border-radius: 8px;
-  transition: width 600ms cubic-bezier(.2,.7,.2,1); }
-.trow .tscore { font-size: 38px; font-weight: 700; text-align: right; }
-.trow.lead .tscore { color: #ffd54a; }
-.trow .dot { width: 20px; height: 20px; }
+/* เปลี่ยนหน้า: แถวไล่เข้าทีละแถวจากขวา, หน้าเก่ากวาดออกทางซ้าย */
+.tpl-results-card .rrow2 {
+  opacity: 0; transform: translateX(52px);
+  transition: opacity .5s ease, transform .62s cubic-bezier(.16,.84,.44,1);
+  will-change: transform, opacity;
+}
+.tpl-results-card .apage.show .rrow2 { opacity: 1; transform: none; }
+.tpl-results-card .apage.leaving .rrow2 {
+  opacity: 0; transform: translateX(-42px);
+  transition: opacity .3s ease, transform .36s ease;
+  transition-delay: 0s !important;
+}
+.tpl-results-card .apage.show .rrow2:nth-child(1)  { transition-delay: .03s; }
+.tpl-results-card .apage.show .rrow2:nth-child(2)  { transition-delay: .08s; }
+.tpl-results-card .apage.show .rrow2:nth-child(3)  { transition-delay: .13s; }
+.tpl-results-card .apage.show .rrow2:nth-child(4)  { transition-delay: .18s; }
+.tpl-results-card .apage.show .rrow2:nth-child(5)  { transition-delay: .23s; }
+.tpl-results-card .apage.show .rrow2:nth-child(6)  { transition-delay: .28s; }
+.tpl-results-card .apage.show .rrow2:nth-child(7)  { transition-delay: .33s; }
+.tpl-results-card .apage.show .rrow2:nth-child(8)  { transition-delay: .38s; }
+.tpl-results-card .apage.show .rrow2:nth-child(9)  { transition-delay: .43s; }
+.tpl-results-card .apage.show .rrow2:nth-child(10) { transition-delay: .48s; }
+.tpl-results-card .apage.show .rrow2:nth-child(11) { transition-delay: .53s; }
+.tpl-results-card .apage.show .rrow2:nth-child(12) { transition-delay: .58s; }
+
+.rlist2 { display: flex; flex-direction: column; gap: 8px; }
+.rrow2 {
+  display: grid; grid-template-columns: 58px 1fr auto; align-items: center; gap: 24px;
+  padding: 14px 28px; border-radius: 12px; background: rgba(255,255,255,.05);
+}
+.rrow2 .rno { font-size: 26px; font-weight: 700; opacity: .42; text-align: center; }
+.rrow2 .rtitle {
+  min-width: 0; font-size: 30px; font-weight: 700; line-height: 1.15;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rrow2 .rtitle .rlevel { font-size: 19px; font-weight: 400; opacity: .5; margin-left: 12px; }
+.rres { display: flex; gap: 9px; flex: none; }
+.rres.rwait { font-size: 22px; opacity: .38; font-weight: 500; }
+.rchip {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--house, #666); color: var(--ink, #fff);
+  border-radius: 999px; padding: 4px 16px 4px 5px;
+  font-size: 19px; font-weight: 600; white-space: nowrap;
+}
+.rchip b {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: rgba(255,255,255,.4); font-size: 15px; font-weight: 800; color: inherit;
+}
+
+/* schedule — หน้าต่าง ~11 รายการรอบ ๆ รายการที่กำลังแข่ง (อ่านง่าย) */
+.tpl-sched-card { min-width: 1100px; max-width: 1400px; }
+.slist { display: flex; flex-direction: column; gap: 8px; }
+.srow {
+  display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 22px;
+  padding: 12px 26px; border-radius: 10px;
+}
+.srow .smark { font-size: 26px; font-weight: 700; text-align: center; opacity: .5; }
+.srow .stitle { font-size: 32px; font-weight: 600; line-height: 1.15; }
+.srow .slevel { font-size: 24px; opacity: .68; white-space: nowrap; }
+.srow.past .smark, .srow.past .stitle, .srow.past .slevel { opacity: .34; }
+.srow.cur {
+  background: rgba(255,213,74,.18);
+  box-shadow: inset 0 0 0 2px rgba(255,213,74,.65);
+  padding-top: 16px; padding-bottom: 16px;
+}
+.srow.cur .smark { color: #ffd54a; opacity: 1; font-size: 30px; }
+.srow.cur .stitle { font-weight: 800; font-size: 37px; }
+.srow.cur .slevel { opacity: .95; font-size: 27px; }
+
+/* schedule: ไล่แถวเข้าจากขวา ตอนโผล่/ตอนเลื่อนหน้าต่าง (overlay.js เติม .go) */
+.slist .srow {
+  opacity: 0; transform: translateX(46px);
+  transition: opacity .45s ease, transform .55s cubic-bezier(.16,.84,.44,1);
+  will-change: transform, opacity;
+}
+.slist.go .srow { opacity: 1; transform: none; }
+.slist.go .srow:nth-child(1)  { transition-delay: .03s; }
+.slist.go .srow:nth-child(2)  { transition-delay: .07s; }
+.slist.go .srow:nth-child(3)  { transition-delay: .11s; }
+.slist.go .srow:nth-child(4)  { transition-delay: .15s; }
+.slist.go .srow:nth-child(5)  { transition-delay: .19s; }
+.slist.go .srow:nth-child(6)  { transition-delay: .23s; }
+.slist.go .srow:nth-child(7)  { transition-delay: .27s; }
+.slist.go .srow:nth-child(8)  { transition-delay: .31s; }
+.slist.go .srow:nth-child(9)  { transition-delay: .35s; }
+.slist.go .srow:nth-child(10) { transition-delay: .39s; }
+.slist.go .srow:nth-child(11) { transition-delay: .43s; }
+.slist.go .srow:nth-child(12) { transition-delay: .47s; }
+.slist.go .srow:nth-child(13) { transition-delay: .51s; }
