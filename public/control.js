@@ -221,7 +221,7 @@
     for (var i = 0; i < evs.length; i++) if (evs[i].id === sel.eventId) return i;
     return -1;
   }
-  function scoreStep(dir) {
+  function stepEvent(dir) {
     var evs = state.events || [];
     var ni = eventIndex() + dir;
     if (ni < 0 || ni >= evs.length) return;
@@ -242,11 +242,11 @@
     panel.innerHTML =
       '<div class="card">' +
         '<div class="row">' +
-          '<button class="btn" data-act="score-prev"' + (idx <= 0 ? " disabled" : "") + ">‹ ก่อนหน้า</button>" +
+          '<button class="btn" data-act="seek-prev"' + (idx <= 0 ? " disabled" : "") + ">‹ ก่อนหน้า</button>" +
           '<label class="field" style="flex:1">รายการที่กำลังกรอกผล' +
             eventSelect("scoreEvent", sel.eventId, ' data-role="selEvent"') +
           "</label>" +
-          '<button class="btn" data-act="score-next"' + (idx < 0 || idx >= evs.length - 1 ? " disabled" : "") + ">ถัดไป ›</button>" +
+          '<button class="btn" data-act="seek-next"' + (idx < 0 || idx >= evs.length - 1 ? " disabled" : "") + ">ถัดไป ›</button>" +
         "</div>" +
         '<p class="muted" style="margin-top:8px">' +
           (idx >= 0 ? "รายการที่ " + (idx + 1) + " / " + evs.length : "เลือกรายการ") +
@@ -268,6 +268,8 @@
   function renderLive() {
     var ev = currentEvent();
     var o = state.onair || {};
+    var idx = eventIndex();
+    var nEv = (state.events || []).length;
     function nowLine(slot) {
       var s = o[slot] || {};
       if (!s.visible || !s.template) return "ซ่อนอยู่";
@@ -280,13 +282,17 @@
       '<div class="grid"><div>' +
 
         '<div class="card"><div class="row">' +
+          '<button class="btn" data-act="seek-prev"' + (idx <= 0 ? " disabled" : "") + ' title="รายการก่อนหน้า">‹</button>' +
           '<label class="field" style="flex:1">รายการที่เลือก' +
             eventSelect("liveEvent", sel.eventId, ' data-role="selEvent"') +
           "</label>" +
+          '<button class="btn" data-act="seek-next"' + (idx < 0 || idx >= nEv - 1 ? " disabled" : "") + ' title="รายการถัดไป">›</button>' +
           '<button class="btn danger" data-act="hide-all">■ ซ่อนทั้งหมด</button>' +
           '<span id="dirtyBadge" class="dirty-badge"></span>' +
           '<button class="btn sm" data-act="reload">โหลดใหม่</button>' +
-        "</div></div>" +
+        "</div>" +
+        (idx >= 0 ? '<p class="muted" style="margin-top:6px">รายการที่ ' + (idx + 1) + " / " + nEv + "</p>" : "") +
+        "</div>" +
 
         '<p class="muted" style="margin:-4px 0 10px">แสดงได้ทีละช่อง — ขึ้นช่องหนึ่งอีกช่องจะลงอัตโนมัติ</p>' +
 
@@ -529,8 +535,8 @@
     "res-clear": function () { resDraft.rows = []; renderResEditor(); scheduleResSave(); },
     "res-add-row": function () { resDraft.rows.push(houseKeys()[0]); renderResEditor(); scheduleResSave(); },
 
-    "score-prev": function () { scoreStep(-1); },
-    "score-next": function () { scoreStep(1); },
+    "seek-prev": function () { stepEvent(-1); },
+    "seek-next": function () { stepEvent(1); },
 
     "ev-new": function () { editing = { id: "", title: "", level: "" }; render(); },
     "ev-edit": function (b) {
