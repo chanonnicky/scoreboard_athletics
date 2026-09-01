@@ -48,6 +48,14 @@ python server.py --port 8080 --token MYSECRET
 netsh advfirewall firewall add rule name="CG Live" dir=in action=allow protocol=TCP localport=8080
 ```
 
+### macOS / Linux (ใช้ `start.sh`)
+```
+./start.sh                  # พอร์ต 8080 (ค่าเริ่มต้น)
+./start.sh --port 9000      # กำหนดพอร์ตเอง
+```
+`start.sh` จะหา Python 3 ให้เอง และส่ง argument (`--port`, `--host`, `--token`) ต่อไปให้ `server.py`
+ครั้งแรกถ้ารันไม่ได้ ให้เปิดสิทธิ์ก่อนด้วย `chmod +x start.sh`
+
 ---
 
 ## ตั้งค่าเครื่อง A (เครื่องที่มี OBS + vMix)
@@ -141,6 +149,7 @@ title,level
 server.ps1                เซิร์ฟเวอร์ PowerShell (ค่าเริ่มต้น)
 server.py                 เซิร์ฟเวอร์ Python (ทางเลือก, ได้ SSE)
 start.bat                 ตัวเปิด (เรียก server.ps1)
+start.sh                  ตัวเปิดบน macOS / Linux (เรียก server.py)
 setup.bat                 ตั้งค่าพอร์ต + firewall ครั้งเดียว (ขอสิทธิ์ admin)
 public/                   หน้าเว็บ overlay + control
 data/state.default.json   ข้อมูลตั้งต้น (มีรายการตัวอย่าง)
