@@ -56,6 +56,15 @@ netsh advfirewall firewall add rule name="CG Live" dir=in action=allow protocol=
 `start.sh` จะหา Python 3 ให้เอง และส่ง argument (`--port`, `--host`, `--token`) ต่อไปให้ `server.py`
 ครั้งแรกถ้ารันไม่ได้ ให้เปิดสิทธิ์ก่อนด้วย `chmod +x start.sh`
 
+**ให้เครื่องอื่นใน wifi เดียวกันเข้าถึง (macOS):**
+- `start.sh` เลือกใช้ **system python ของ macOS** (`/usr/bin/python3`) โดยอัตโนมัติ
+  เพราะ python จาก conda/homebrew เป็น unsigned → macOS firewall จะบล็อกการเชื่อมต่อจากเครื่องอื่น
+  (เข้าจาก `127.0.0.1` ได้ แต่จาก LAN IP ไม่ได้)
+- ดู LAN IP ของเครื่องที่รัน:  `ipconfig getifaddr en0`
+- เครื่องอื่นเปิดเบราว์เซอร์ไปที่ `http://<LAN-IP>:8080/control` (หรือ `/overlay`, `/score`)
+- ถ้าเข้าไม่ได้: ทั้งสองเครื่องต้องอยู่ wifi/subnet เดียวกัน และครั้งแรกที่รัน หาก macOS เด้งถาม
+  "อนุญาตการเชื่อมต่อขาเข้า" ให้กด **Allow**
+
 ---
 
 ## ตั้งค่าเครื่อง A (เครื่องที่มี OBS + vMix)

@@ -8,7 +8,12 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 # หา Python 3
-if command -v python3 >/dev/null 2>&1; then
+# บน macOS เลือก system python (/usr/bin/python3 ที่ Apple เซ็นชื่อ) ก่อนเสมอ
+# เพราะ python จาก conda/homebrew เป็น unsigned — macOS Application Firewall จะบล็อก
+# การเชื่อมต่อขาเข้าจากเครื่องอื่นใน wifi (เข้าจาก 127.0.0.1 ได้ แต่จาก LAN IP ไม่ได้)
+if [ "$(uname)" = "Darwin" ] && [ -x /usr/bin/python3 ]; then
+  PY=/usr/bin/python3
+elif command -v python3 >/dev/null 2>&1; then
   PY=python3
 elif command -v python >/dev/null 2>&1; then
   PY=python
