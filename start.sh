@@ -17,6 +17,31 @@ else
   exit 1
 fi
 
+# หาพอร์ตจาก argument (--port 9000 หรือ --port=9000) ค่าเริ่มต้น 8080
+PORT=8080
+prev=""
+for arg in "$@"; do
+  case "$arg" in
+    --port=*) PORT="${arg#--port=}" ;;
+    *) [ "$prev" = "--port" ] && PORT="$arg" ;;
+  esac
+  prev="$arg"
+done
+
+# เช็กว่าพอร์ตว่างไหม (ถ้ามี lsof) — แจ้งเตือนก่อนแทนที่จะโยน traceback ยาวๆ
+if command -v lsof >/dev/null 2>&1; then
+  PID=$(lsof -nP -iTCP:"$PORT" -sTCP:LISTEN -t 2>/dev/null | head -n1 || true)
+  if [ -n "$PID" ]; then
+    echo "  พอร์ต $PORT ถูกใช้อยู่แล้ว (PID $PID)"
+    echo
+    echo "  แก้ได้ 2 ทาง:"
+    echo "    1) ใช้พอร์ตอื่น:   ./start.sh --port 9000"
+    echo "    2) ปิดตัวที่ค้าง:  kill $PID   แล้วรัน ./start.sh ใหม่"
+    echo
+    exit 1
+  fi
+fi
+
 echo "  กำลังเริ่ม CG Live ..."
 echo
 exec "$PY" server.py "$@"
