@@ -10,33 +10,24 @@
 
   var esc = T.esc;
   var panel = document.getElementById("panel");
-  var tabsEl = document.getElementById("tabs");
   var toastEl = document.getElementById("toast");
   var tokenInput = document.getElementById("token");
 
   if (MODE === "score") {
     document.title = "CG Live — จดคะแนน" + (SCORE_SPORT ? " " + SCORE_SPORT : "");
     document.body.classList.add("mode-score");
-    tabsEl.hidden = true;
     var brand = document.querySelector(".brand");
     if (brand) brand.innerHTML = "🏁 จดคะแนน <span>" + (SCORE_SPORT || "กีฬาสี") + "</span>";
   }
-  (function crossLink() {
-    var bar = document.querySelector(".topbar");
-    if (!bar) return;
-    var a = document.createElement("a");
-    a.className = "mode-link";
-    a.href = MODE === "score" ? "/control" : "/score";
-    a.textContent = MODE === "score" ? "→ คอนโทรล" : "→ จดคะแนน";
-    bar.insertBefore(a, document.getElementById("conn"));
-  })();
 
   var state = null;
-  var activeTab = "live";
+  var activeView = viewFromHash();   // /control: live | events | import | settings (จาก location.hash)
   var firstLoaded = false;
   var pendingRender = false;
 
-  var sel = { eventId: localStorage.getItem("cg_sel_event") || "" };
+  var selOverride = null;   // ค่ารายการที่เลือกแบบชั่วคราว (optimistic) จนกว่าเซิร์ฟเวอร์จะสะท้อนกลับ
+  var lastSelfSet = null;   // รายการที่ "เครื่องนี้" เป็นคนเปลี่ยนล่าสุด (กัน toast เด้งใส่ตัวเอง)
+  var selTimer = null;      // debounce ส่ง setSettings.selEventId
   var editing = null; // draft ของ event ที่กำลังแก้
   var resDraft = { eid: null, rows: [] }; // ผลอันดับที่กำลังแก้ (array ของ house key เรียงตามอันดับ)
   var sportSel = null;      // key กีฬาที่กำลังแก้ในแท็บกีฬา
@@ -140,6 +131,20 @@
 
   function onState() {
     renderHeader();
+
+    // รายการที่เลือก = แชร์ทั้งงาน — เคลียร์ override เมื่อเซิร์ฟเวอร์สะท้อนค่าเรากลับมา
+    // และเด้ง toast เมื่อ "เครื่องอื่น" เปลี่ยนรายการ
+    var srvSel = (state.settings && state.settings.selEventId) || "";
+    var mine = (srvSel === selOverride) || (srvSel === lastSelfSet);
+    if (selOverride && srvSel === selOverride) selOverride = null;
+    if (firstLoaded && srvSel && !mine && srvSel !== onState._lastSel) {
+      var ev = (state.events || []).find(function (e) { return e.id === srvSel; });
+      if (ev) toast("รายการถูกเปลี่ยนเป็น: " + ev.title);
+    }
+    onState._lastSel = srvSel;
+
+    renderSidebar();
+
     if (!firstLoaded) { firstLoaded = true; render(); return; }
     safeRender();
   }
@@ -172,16 +177,82 @@
     }).join("");
   }
 
-  // ---- tabs -------------------------------------------------- //
-  tabsEl.addEventListener("click", function (e) {
-    var b = e.target.closest("button[data-tab]");
-    if (!b) return;
-    activeTab = b.dataset.tab;
-    [].forEach.call(tabsEl.children, function (c) { c.classList.toggle("active", c === b); });
+  // ---- sidebar nav ----------------------------------------- //
+  function viewFromHash() {
+    var h = (location.hash || "").replace(/^#/, "");
+    return (h === "events" || h === "import" || h === "settings") ? h : "live";
+  }
+  function closeDrawer() { document.body.classList.remove("sb-open"); }
+
+  function goView(view) {           // สลับวิวภายในหน้า /control โดยไม่รีโหลด
     editing = null;
-    sportDraft = null; // เข้าแท็บกีฬาใหม่ = โหลดข้อมูลล่าสุด
+    sportDraft = null;
+    activeView = view;
+    var newHash = view === "live" ? "" : "#" + view;
+    if (location.hash !== newHash) {
+      if (newHash) { location.hash = newHash; return; }       // hashchange จะ render ให้
+      history.replaceState("", document.title, location.pathname);
+    }
+    markActiveNav();
+    render();
+  }
+
+  window.addEventListener("hashchange", function () {
+    activeView = viewFromHash();
+    editing = null;
+    sportDraft = null;
+    closeDrawer();
+    markActiveNav();
     render();
   });
+
+  (function wireDrawer() {
+    var t = document.getElementById("sbToggle");
+    if (t) t.addEventListener("click", function () { document.body.classList.toggle("sb-open"); });
+    var bd = document.getElementById("sbBackdrop");
+    if (bd) bd.addEventListener("click", closeDrawer);
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeDrawer(); });
+    var nav = document.getElementById("sbNav");
+    if (nav) nav.addEventListener("click", function (e) {
+      var a = e.target.closest("a.sb-item");
+      if (!a) return;
+      closeDrawer();
+      // ลิงก์ภายในหน้า /control (สลับวิว) — ทำด้วย hash ไม่ต้องรีโหลด
+      var m = a.getAttribute("href").match(/^\/control(?:#(events|import|settings))?$/);
+      if (m && MODE === "control") { e.preventDefault(); goView(m[1] || "live"); }
+    });
+  })();
+
+  function renderSidebar() {
+    if (!state) return;
+    var sports = state.sports || [];
+    var sig = sports.map(function (s) { return s.key + "|" + (s.name || "") + "|" + (s.icon || ""); }).join("~");
+    if (sig !== renderSidebar._sig) {
+      renderSidebar._sig = sig;
+      var sc = document.getElementById("sbScoreSports");
+      var bd = document.getElementById("sbBoardSports");
+      if (sc) sc.innerHTML = sports.map(function (sp) {
+        return '<a class="sb-item sb-sub" data-nav href="/score/' + esc(sp.key) + '">' +
+          esc((sp.icon ? sp.icon + " " : "") + (sp.name || sp.key)) + "</a>";
+      }).join("");
+      if (bd) bd.innerHTML = sports.map(function (sp) {
+        return '<a class="sb-item sb-sub" href="/scoreboard/' + esc(sp.key) + '" target="_blank">🔴 สด ' +
+          esc(sp.name || sp.key) + "</a>";
+      }).join("");
+    }
+    markActiveNav();
+  }
+  function markActiveNav() {
+    var p = location.pathname.replace(/\/+$/, ""), hash = location.hash || "";
+    [].forEach.call(document.querySelectorAll("#sbNav [data-nav]"), function (a) {
+      var href = a.getAttribute("href"), on;
+      if (href.indexOf("#") >= 0) on = (p + hash) === href;
+      else if (href === "/control") on = (p === "/control") && !hash;
+      else on = (p === href);
+      a.classList.toggle("active", on);
+    });
+  }
+  markActiveNav();
 
   // ---- shared bits ----------------------------------------- //
   function houseKeys() {
@@ -207,14 +278,36 @@
     return '<select id="' + id + '"' + (extra || "") + ">" +
       (opts || '<option value="">— ยังไม่มีรายการ —</option>') + "</select>";
   }
-  function currentEvent() {
-    return (state.events || []).find(function (e) { return e.id === sel.eventId; }) || null;
+  // ---- รายการที่เลือก (แชร์ทั้งงาน = state.settings.selEventId) ---- //
+  function selectedEventId() {
+    var evs = (state && state.events) || [];
+    function ok(id) { for (var i = 0; i < evs.length; i++) if (evs[i].id === id) return true; return false; }
+    if (selOverride && ok(selOverride)) return selOverride;
+    var s = (state && state.settings && state.settings.selEventId) || "";
+    return ok(s) ? s : (evs[0] ? evs[0].id : "");
   }
-  // เปลี่ยนรายการที่เลือก -> ถ้า "ตารางแข่ง" ออกอากาศอยู่ ให้เลื่อนตามทันที
+  function setSelectedEvent(id) {
+    if (!id || id === selectedEventId()) return;
+    saveResultsNow();                 // เซฟผลรายการเดิมที่ค้างอยู่ก่อนสลับ
+    selOverride = id;
+    lastSelfSet = id;
+    if (selTimer) clearTimeout(selTimer);
+    selTimer = setTimeout(function () {
+      selTimer = null;
+      cmd({ action: "setSettings", settings: { selEventId: selOverride || id } });
+    }, 250);
+    if (MODE === "control") followSelection();
+    render();
+  }
+  function currentEvent() {
+    return (state.events || []).find(function (e) { return e.id === selectedEventId(); }) || null;
+  }
+  // เปลี่ยนรายการที่เลือก -> ถ้า "ตารางแข่ง" ออกอากาศอยู่ ให้เลื่อนตามทันที (เฉพาะหน้าคุม)
   function followSelection() {
+    if (MODE !== "control") return;
     var fo = (state.onair || {}).full || {};
     if (fo.visible && fo.template === "schedule") {
-      cmd({ action: "show", slot: "full", template: "schedule", eventId: sel.eventId });
+      cmd({ action: "show", slot: "full", template: "schedule", eventId: selectedEventId() });
     }
   }
 
@@ -222,9 +315,8 @@
   function render() {
     pendingRender = false;
     if (!state) { panel.innerHTML = '<p class="muted">กำลังโหลด…</p>'; return; }
-    if (!sel.eventId && state.events && state.events[0]) sel.eventId = state.events[0].id;
     if (MODE === "score") { return SCORE_SPORT ? renderSportScore() : renderScore(); }
-    ({ live: renderLive, events: renderEvents, import: renderImport, settings: renderSettings }[activeTab] || renderLive)();
+    ({ live: renderLive, events: renderEvents, import: renderImport, settings: renderSettings }[activeView] || renderLive)();
   }
 
   // ========================================================= //
@@ -232,18 +324,15 @@
   // ========================================================= //
   function eventIndex() {
     var evs = state.events || [];
-    for (var i = 0; i < evs.length; i++) if (evs[i].id === sel.eventId) return i;
+    var cur = selectedEventId();
+    for (var i = 0; i < evs.length; i++) if (evs[i].id === cur) return i;
     return -1;
   }
   function stepEvent(dir) {
     var evs = state.events || [];
     var ni = eventIndex() + dir;
     if (ni < 0 || ni >= evs.length) return;
-    saveResultsNow();
-    sel.eventId = evs[ni].id;
-    localStorage.setItem("cg_sel_event", sel.eventId);
-    followSelection();
-    render();
+    setSelectedEvent(evs[ni].id);
   }
   function renderScore() {
     var evs = state.events || [];
@@ -257,8 +346,8 @@
       '<div class="card">' +
         '<div class="row">' +
           '<button class="btn" data-act="seek-prev"' + (idx <= 0 ? " disabled" : "") + ">‹ ก่อนหน้า</button>" +
-          '<label class="field" style="flex:1">รายการที่กำลังกรอกผล' +
-            eventSelect("scoreEvent", sel.eventId, ' data-role="selEvent"') +
+          '<label class="field" style="flex:1">รายการที่กำลังกรอกผล (ใช้ร่วมทั้งงาน)' +
+            eventSelect("scoreEvent", selectedEventId(), ' data-role="selEvent"') +
           "</label>" +
           '<button class="btn" data-act="seek-next"' + (idx < 0 || idx >= evs.length - 1 ? " disabled" : "") + ">ถัดไป ›</button>" +
         "</div>" +
@@ -279,77 +368,111 @@
   // ========================================================= //
   //  LIVE
   // ========================================================= //
-  function renderLive() {
-    var ev = currentEvent();
-    var o = state.onair || {};
-    var idx = eventIndex();
-    var nEv = (state.events || []).length;
-    function nowLine(slot) {
-      var s = o[slot] || {};
-      if (!s.visible || !s.template) return "ซ่อนอยู่";
+  // กล่องสถานะ 1 ช่อง (lower/full) ในแผง "ออกอากาศตอนนี้"
+  function onairSlotHtml(slot, title) {
+    var s = (state.onair || {})[slot] || {};
+    var live = !!(s.visible && s.template);
+    var inner;
+    if (!live) {
+      inner = '<div class="oa-empty">— จอว่าง —</div>';
+    } else {
       var label = TPL_NAMES[s.template] || s.template;
       if (s.template === "sportMatches" && s.sport) {
         var sp = (state.sports || []).find(function (x) { return x.key === s.sport; });
         if (sp) label += " · " + (sp.name || s.sport);
       }
-      var e2 = (state.events || []).find(function (x) { return x.id === s.eventId; });
-      return "<b>▶ " + esc(label) + (e2 ? " · " + esc(e2.title) : "") + "</b>";
+      var ev2 = (state.events || []).find(function (x) { return x.id === s.eventId; });
+      if (ev2) label += " · " + ev2.title;
+      inner = '<div class="oa-live"><span class="oa-badge">● LIVE</span>' + esc(label) + "</div>";
     }
-    var full = o.full || {};
+    return '<div class="onair-slot' + (live ? " on" : "") + '">' +
+      '<div class="oa-name">' + title + "</div>" + inner + "</div>";
+  }
+
+  function renderLive() {
+    var ev = currentEvent();
+    var idx = eventIndex();
+    var nEv = (state.events || []).length;
+    var lo = (state.onair && state.onair.lower) || {};
+    var fu = (state.onair && state.onair.full) || {};
+    var top3On = !!(lo.visible && lo.template === "top3");
+    var schedOn = !!(fu.visible && fu.template === "schedule");
+    var resOn = !!(fu.visible && fu.template === "results");
+    var sportOn = !!(fu.visible && fu.template === "sportMatches");
+    var collapsed = localStorage.getItem("cg_preview_collapsed") === "1";
+
+    function cmdBtn(act, on, label, extra) {
+      return '<button class="btn primary' + (on ? " is-live" : "") + '" data-act="' + act + '"' + (extra || "") + ">" +
+        (on ? "● " : "▶ ") + label + (on ? " · ออกอยู่" : "") + "</button>";
+    }
     var sportBtns = (state.sports || []).map(function (sp) {
-      var on = full.visible && full.template === "sportMatches" && full.sport === sp.key;
-      return '<button class="btn ' + (on ? "ok" : "primary") + '" data-act="show-full-sport" data-sport="' + esc(sp.key) + '">' +
-        (on ? "▶ " : "") + esc((sp.icon ? sp.icon + " " : "") + (sp.name || sp.key)) + "</button>";
+      var on = fu.visible && fu.template === "sportMatches" && fu.sport === sp.key;
+      return cmdBtn("show-full-sport", on, esc((sp.icon ? sp.icon + " " : "") + (sp.name || sp.key)),
+        ' data-sport="' + esc(sp.key) + '"');
     }).join("");
 
     panel.innerHTML =
-      '<div class="grid"><div>' +
+      '<div class="grid' + (collapsed ? " grid-noprev" : "") + '"><div>' +
 
-        '<div class="card"><div class="row">' +
-          '<button class="btn" data-act="seek-prev"' + (idx <= 0 ? " disabled" : "") + ' title="รายการก่อนหน้า">‹</button>' +
-          '<label class="field" style="flex:1">รายการที่เลือก' +
-            eventSelect("liveEvent", sel.eventId, ' data-role="selEvent"') +
-          "</label>" +
-          '<button class="btn" data-act="seek-next"' + (idx < 0 || idx >= nEv - 1 ? " disabled" : "") + ' title="รายการถัดไป">›</button>' +
-          '<button class="btn danger" data-act="hide-all">■ ซ่อนทั้งหมด</button>' +
-          '<span id="dirtyBadge" class="dirty-badge"></span>' +
-          '<button class="btn sm" data-act="reload">โหลดใหม่</button>' +
-        "</div>" +
-        (idx >= 0 ? '<p class="muted" style="margin-top:6px">รายการที่ ' + (idx + 1) + " / " + nEv + "</p>" : "") +
-        "</div>" +
-
-        '<p class="muted" style="margin:-4px 0 10px">แสดงได้ทีละช่อง — ขึ้นช่องหนึ่งอีกช่องจะลงอัตโนมัติ</p>' +
-
-        '<div class="slot-box">' +
-          "<h3>แถบล่าง (Lower third)</h3>" +
-          '<div class="now">' + nowLine("lower") + "</div>" +
-          '<div class="row">' +
-            '<button class="btn primary lg" data-act="show-lower-top3">▶ ขึ้นอันดับ 1–3</button>' +
-            '<button class="btn" data-act="hide-lower">ซ่อน</button>' +
+        '<div class="card onair-card">' +
+          '<div class="row" style="justify-content:space-between;align-items:center">' +
+            '<h2 style="margin:0">ออกอากาศตอนนี้</h2>' +
+            '<button class="btn danger lg" data-act="hide-all">■ ลงจอทั้งหมด</button>' +
           "</div>" +
-        "</div>" +
-
-        '<div class="slot-box">' +
-          "<h3>เต็มจอ (Full screen)</h3>" +
-          '<div class="now">' + nowLine("full") + "</div>" +
-          '<div class="row">' +
-            '<button class="btn primary" data-act="show-full-schedule">▶ ตารางแข่ง</button>' +
-            '<button class="btn primary" data-act="show-full-results">▶ ผลการแข่งขัน</button>' +
-            sportBtns +
-            '<button class="btn" data-act="hide-full">ซ่อน</button>' +
+          '<div class="onair-slots">' +
+            onairSlotHtml("lower", "แถบล่าง") +
+            onairSlotHtml("full", "เต็มจอ") +
           "</div>" +
         "</div>" +
 
         '<div class="card">' +
-          '<div class="row"><h2 style="margin:0">ผลการแข่งขัน — ' + esc(ev ? ev.title : "(เลือกรายการก่อน)") + "</h2></div>" +
+          '<div class="row">' +
+            '<button class="btn" data-act="seek-prev"' + (idx <= 0 ? " disabled" : "") + ' title="รายการก่อนหน้า">‹</button>' +
+            '<label class="field" style="flex:1">รายการแข่งขัน (ใช้ร่วมทั้งงาน)' +
+              eventSelect("liveEvent", selectedEventId(), ' data-role="selEvent"') +
+            "</label>" +
+            '<button class="btn" data-act="seek-next"' + (idx < 0 || idx >= nEv - 1 ? " disabled" : "") + ' title="รายการถัดไป">›</button>' +
+            '<button class="btn sm" data-act="reload">โหลดใหม่</button>' +
+            '<span id="dirtyBadge" class="dirty-badge"></span>' +
+          "</div>" +
+          '<p class="muted" style="margin-top:6px">' +
+            (idx >= 0 ? "รายการที่ " + (idx + 1) + " / " + nEv + " · " : "") +
+            'คนจดคะแนนทุกคนเห็นรายการเดียวกันนี้ — กำหนด “แถบล่าง (อันดับ 1–3)” และ “ตารางแข่ง”' +
+          "</p>" +
+        "</div>" +
+
+        '<div class="card">' +
+          '<h2 style="margin:0 0 4px">สั่งขึ้นจอ</h2>' +
+          '<p class="muted" style="margin:0 0 10px">ขึ้นได้ทีละอย่าง — ขึ้นอันใหม่ อันเก่าจะลงเอง</p>' +
+          "<h3>แถบล่าง</h3>" +
+          '<div class="cmd-grid">' +
+            cmdBtn("show-lower-top3", top3On, "อันดับ 1–3", ' style="min-width:170px"') +
+            '<button class="btn" data-act="hide-lower"' + (top3On ? "" : " disabled") + ">ซ่อนแถบล่าง</button>" +
+          "</div>" +
+          "<h3>เต็มจอ</h3>" +
+          '<div class="cmd-grid">' +
+            cmdBtn("show-full-schedule", schedOn, "ตารางแข่ง") +
+            cmdBtn("show-full-results", resOn, "ผลการแข่งขัน") +
+            sportBtns +
+            '<button class="btn" data-act="hide-full"' + (schedOn || resOn || sportOn ? "" : " disabled") + ">ซ่อนเต็มจอ</button>" +
+          "</div>" +
+        "</div>" +
+
+        '<div class="card">' +
+          '<div class="row"><h2 style="margin:0">กรอกผล — ' + esc(ev ? ev.title : "(เลือกรายการก่อน)") + "</h2></div>" +
           '<div id="resEditor"></div>' +
         "</div>" +
 
       "</div>" +
 
-      '<div class="preview-wrap"><div class="preview-label">พรีวิว overlay (โปร่งใส = ลายตาราง)</div>' +
-        '<div class="preview"><iframe src="/live?transport=poll" title="preview"></iframe></div>' +
-        '<div class="preview-label">มุมมองนี้อัปเดตสดเหมือนที่ออกใน OBS/vMix</div>' +
+      '<div class="preview-wrap' + (collapsed ? " collapsed" : "") + '">' +
+        '<div class="row" style="justify-content:space-between;align-items:center">' +
+          '<div class="preview-label">พรีวิว overlay (โปร่งใส = ลายตาราง)</div>' +
+          '<button class="btn sm" data-act="preview-toggle">' + (collapsed ? "แสดงพรีวิว" : "ซ่อนพรีวิว") + "</button>" +
+        "</div>" +
+        (collapsed ? "" :
+          '<div class="preview"><iframe src="/live?transport=poll" title="preview"></iframe></div>' +
+          '<div class="preview-label">มุมมองนี้อัปเดตสดเหมือนที่ออกใน OBS/vMix</div>') +
       "</div>" +
 
       "</div>";
@@ -404,15 +527,15 @@
   // บันทึกผลอัตโนมัติ (debounce 500ms) — ไม่ต้องกดปุ่มบันทึก
   var resSaveTimer = null;
   function scheduleResSave() {
-    if (!sel.eventId) return;
+    if (!selectedEventId()) return;
     if (resSaveTimer) clearTimeout(resSaveTimer);
     resSaveTimer = setTimeout(saveResultsNow, 500);
   }
   function saveResultsNow() {
     if (!resSaveTimer) return;            // ไม่มีการแก้ที่ค้างอยู่
     clearTimeout(resSaveTimer); resSaveTimer = null;
-    if (!sel.eventId) return;
-    var eid = sel.eventId;
+    var eid = (resDraft && resDraft.eid) || selectedEventId();
+    if (!eid) return;
     var results = resDraft.rows.map(function (h, i) { return { rank: i + 1, house: h }; });
     cmd({ action: "setResults", eventId: eid, results: results }).then(function (ok) {
       if (ok) toast("บันทึกผลแล้ว");
@@ -727,8 +850,9 @@
 
     "hide-all": function () { cmd({ action: "hideAll" }); },
     "show-lower-top3": function () {
-      if (!sel.eventId) return toast("เลือกรายการก่อน", true);
-      cmd({ action: "show", slot: "lower", template: "top3", eventId: sel.eventId });
+      var eid = selectedEventId();
+      if (!eid) return toast("เลือกรายการก่อน", true);
+      cmd({ action: "show", slot: "lower", template: "top3", eventId: eid });
     },
     "hide-lower": function () { cmd({ action: "hide", slot: "lower" }); },
     "show-full-results": function () {
@@ -738,12 +862,18 @@
       cmd({ action: "show", slot: "full", template: "sportMatches", eventId: null, sport: b.dataset.sport });
     },
     "show-full-schedule": function () {
-      cmd({ action: "show", slot: "full", template: "schedule", eventId: sel.eventId });
+      cmd({ action: "show", slot: "full", template: "schedule", eventId: selectedEventId() });
     },
     "hide-full": function () { cmd({ action: "hide", slot: "full" }); },
 
+    "preview-toggle": function () {
+      var c = localStorage.getItem("cg_preview_collapsed") === "1";
+      localStorage.setItem("cg_preview_collapsed", c ? "0" : "1");
+      render();
+    },
+
     "res-tap": function (b) {
-      if (!sel.eventId) return toast("เลือกรายการก่อน", true);
+      if (!selectedEventId()) return toast("เลือกรายการก่อน", true);
       resDraft.rows.push(b.dataset.house);
       renderResEditor();
       scheduleResSave();
@@ -864,11 +994,7 @@
   panel.addEventListener("change", function (e) {
     var t = e.target;
     if (t.dataset && t.dataset.role === "selEvent") {
-      saveResultsNow();  // เซฟผลรายการเดิมที่ค้างอยู่ก่อนสลับ
-      sel.eventId = t.value;
-      localStorage.setItem("cg_sel_event", sel.eventId);
-      followSelection();
-      render();
+      setSelectedEvent(t.value);
       return;
     }
     if (t.dataset && t.dataset.act === "res-set") {

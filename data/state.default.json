@@ -14,7 +14,8 @@
     },
     "logo": "/pictures/logo.png",
     "animMs": 450,
-    "meetTitle": "กีฬาสีภายใน"
+    "meetTitle": "กีฬาสีภายใน",
+    "selEventId": ""
   },
   "events": [
     {

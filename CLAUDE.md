@@ -114,10 +114,20 @@ state and one operator control:
 | `/scoreboard` (alias `/board`) | board.html | **Scoreboard type 1** — opaque venue screen, auto-rotates all results (`?view=all\|results\|<sport>`) |
 | `/scoreboard/<sport>` | board.html | **Scoreboard type 2** — live single-match scoreboard of that sport's `currentId` |
 
-`control.js` picks its mode from `location.pathname`: `/control` → Live control (tabs), `/score` →
-athletics scoring, `/score/<sport>` → per-sport scoring (`SCORE_SPORT`). `board.js` picks its mode
-from the path: `/scoreboard/<sport>` → live mode (renders `T.sportLive`, no rotation, in-place score
-updates); otherwise the rotate-all mode.
+`control.js` picks its mode from `location.pathname`: `/control` → Live control, `/score` →
+athletics scoring, `/score/<sport>` → per-sport scoring (`SCORE_SPORT`). All three share one
+**app shell** (`control.html`): a left `.sidebar` (nav to control / per-sport score / manage /
+open-display links; collapses to a `body.sb-open` drawer < 900px) + `.app-main`. On `/control`
+the four "manage" views (`live` | `events` | `import` | `settings`) are switched via
+`location.hash` (`activeView` / `viewFromHash()` / `hashchange`), not tabs. `board.js` picks its
+mode from the path: `/scoreboard/<sport>` → live mode (renders `T.sportLive`, no rotation,
+in-place score updates); otherwise the rotate-all mode.
+
+The **selected event** is meet-wide shared state at `settings.selEventId` (written via
+`setSettings`, which shallow-merges — no new command). `control.js` reads it through
+`selectedEventId()` (optimistic `selOverride` until the server echoes) and writes via
+`setSelectedEvent()` (debounced 250ms); every operator page follows it. `followSelection()` (move
+the on-air `schedule` window when the pointer moves) is gated to `/control`.
 
 ### Frontend: one template module, shared by every consumer
 
