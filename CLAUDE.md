@@ -49,10 +49,11 @@ there are no automated tests. Two reliable checks:
 `server.py` (Python, real-time **SSE**) and `server.ps1` (PowerShell, **polling only**, the
 Windows default) are independent reimplementations of the *same* HTTP API and behavior. Any
 change to routes, command handling, or the state model must be made in **both** files, or Windows
-and macOS deployments diverge. Known gaps that live in `server.py` only (mirror into `server.ps1`
-before relying on Windows): the `/board` route, the duplicate-event-id fixes
-(`dedupe_event_ids` + `_new_id` counter), the `football`→`sports` migration in `load_state`, and
-the `setSport`/`deleteSport` commands.
+and macOS deployments diverge. They are currently in parity (routes incl. `/board`; commands incl.
+`setSport`/`deleteSport`; the id-dedupe + `football`→`sports` migration on load). Two intentional
+differences: `server.ps1` has no SSE (`/api/events` 404s → clients poll), and it must stay
+**ASCII-only** (PS 5.1 reads BOM-less scripts as ANSI), so its migration names the legacy sport
+`"Football"` rather than the Thai name `server.py` uses.
 
 Clients auto-detect transport: overlay/board try SSE first and fall back to polling `/api/state`
 every ~0.25–1s (`?transport=poll` forces it). So the Python SSE path is an optimization, not a
