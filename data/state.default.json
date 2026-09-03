@@ -33,5 +33,47 @@
   "onair": {
     "lower": { "template": "top3", "eventId": "e_demo", "visible": false },
     "full": { "template": "results", "eventId": null, "visible": false }
-  }
+  },
+  "sports": [
+    {
+      "key": "football", "name": "ฟุตบอล", "icon": "⚽",
+      "points": { "win": 3, "draw": 1, "loss": 0 },
+      "matches": [
+        { "id": "fb_t_g1", "level": "ม.ต้น", "title": "คู่ที่ 1", "stage": "group", "home": "red", "away": "green", "hs": 2, "as": 1, "done": true },
+        { "id": "fb_t_g2", "level": "ม.ต้น", "title": "คู่ที่ 2", "stage": "group", "home": "blue", "away": "yellow", "hs": 0, "as": 0, "done": true },
+        { "id": "fb_t_g3", "level": "ม.ต้น", "title": "คู่ที่ 3", "stage": "group", "home": "red", "away": "blue", "hs": 1, "as": 1, "done": true },
+        { "id": "fb_t_g4", "level": "ม.ต้น", "title": "คู่ที่ 4", "stage": "group", "home": "green", "away": "yellow", "hs": 3, "as": 0, "done": true },
+        { "id": "fb_t_3rd", "level": "ม.ต้น", "title": "ชิงอันดับ 3", "stage": "third", "home": "yellow", "away": "blue", "hs": 1, "as": 2, "done": true },
+        { "id": "fb_t_fin", "level": "ม.ต้น", "title": "นัดชิงชนะเลิศ", "stage": "final", "home": "red", "away": "green", "hs": 2, "as": 1, "done": true },
+        { "id": "fb_p_g1", "level": "ม.ปลาย", "title": "คู่ที่ 1", "stage": "group", "home": "red", "away": "blue", "hs": 0, "as": 2, "done": true },
+        { "id": "fb_p_g2", "level": "ม.ปลาย", "title": "คู่ที่ 2", "stage": "group", "home": "green", "away": "yellow", "hs": 1, "as": 1, "done": true },
+        { "id": "fb_p_3rd", "level": "ม.ปลาย", "title": "ชิงอันดับ 3", "stage": "third", "home": "red", "away": "yellow", "hs": 2, "as": 0, "done": true },
+        { "id": "fb_p_fin", "level": "ม.ปลาย", "title": "นัดชิงชนะเลิศ", "stage": "final", "home": "blue", "away": "green", "hs": 3, "as": 1, "done": true }
+      ]
+    },
+    {
+      "key": "basketball", "name": "บาสเกตบอล", "icon": "🏀",
+      "points": { "win": 2, "draw": 1, "loss": 0 },
+      "matches": [
+        { "id": "bb_t_3rd", "level": "ม.ต้น", "title": "ชิงอันดับ 3", "stage": "third", "home": "blue", "away": "green", "hs": 30, "as": 28, "done": true },
+        { "id": "bb_t_fin", "level": "ม.ต้น", "title": "นัดชิงชนะเลิศ", "stage": "final", "home": "red", "away": "yellow", "hs": 45, "as": 40, "done": true }
+      ]
+    },
+    {
+      "key": "sprint", "name": "วิ่งเปรี้ยว", "icon": "🏃",
+      "points": { "win": 3, "draw": 1, "loss": 0 },
+      "matches": [
+        { "id": "sp_p_3rd", "level": "ม.ปลาย", "title": "ชิงอันดับ 3", "stage": "third", "home": "blue", "away": "yellow", "hs": 3, "as": 1, "done": true },
+        { "id": "sp_p_fin", "level": "ม.ปลาย", "title": "นัดชิงชนะเลิศ", "stage": "final", "home": "green", "away": "red", "hs": 3, "as": 2, "done": true }
+      ]
+    },
+    {
+      "key": "tugofwar", "name": "ชักเย่อ", "icon": "🪢",
+      "points": { "win": 3, "draw": 1, "loss": 0 },
+      "matches": [
+        { "id": "tw_t_3rd", "level": "ม.ต้น", "title": "ชิงอันดับ 3", "stage": "third", "home": "green", "away": "yellow", "hs": 2, "as": 0, "done": true },
+        { "id": "tw_t_fin", "level": "ม.ต้น", "title": "นัดชิงชนะเลิศ", "stage": "final", "home": "blue", "away": "red", "hs": 2, "as": 1, "done": true }
+      ]
+    }
+  ]
 }

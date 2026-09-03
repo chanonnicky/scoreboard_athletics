@@ -75,6 +75,13 @@
   function schedSig(state, eid) {
     return (eid || "") + "||" + eventsSig(state) + "||" + ((state.settings || {}).meetTitle || "");
   }
+  // กีฬา: re-render เมื่อข้อมูลกีฬา/ชื่อ-โลโก้คณะ เปลี่ยน
+  function sportSig(state, sportKey) {
+    var s = state.settings || {};
+    return (sportKey || "") + "||" + JSON.stringify(state.sports || []) +
+      "||" + JSON.stringify(s.houseNames || {}) + "||" + JSON.stringify(s.houseLogos || {});
+  }
+  function isSport(t) { return t === "sportMatches" || t === "sportTable" || t === "sportBracket"; }
 
   function animMs(state) {
     return (state.settings && state.settings.animMs) || 450;
@@ -90,6 +97,9 @@
       case "top3":     return ev ? T.top3(state, ev, (state.results || {})[ev.id] || []) : null;
       case "results":  return T.results(state);
       case "schedule": return T.schedule(state, conf.eventId);
+      case "sportMatches": return T.sportMatches(state, conf.sport);
+      case "sportTable":   return T.sportTable(state, conf.sport);
+      case "sportBracket": return T.sportBracket(state, conf.sport);
       default:         return null;
     }
   }
@@ -105,6 +115,7 @@
     var sig = html == null ? null
       : isPaged ? pagedSig(state)
       : conf.template === "schedule" ? schedSig(state, conf.eventId)
+      : isSport(conf.template) ? sportSig(state, conf.sport)
       : null;
 
     // ไม่มีอะไรจะแสดง -> เอาออก

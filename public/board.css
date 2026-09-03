@@ -1,0 +1,49 @@
+/* board.css — หน้าจอประชาสัมพันธ์ (เปิดค้างที่จอโรงเรียน)
+   วนแสดง "ผลการแข่งขัน" ทีละหน้าไปเรื่อย ๆ อัปเดตสด
+   ต่างจาก /overlay ตรงที่พื้นหลังทึบ + ย่อ/ขยายให้พอดีจอ TV ทุกความละเอียด
+   โหลดต่อจาก overlay.css เพื่อใช้สไตล์การ์ดผล/สีคณะ/แอนิเมชันเปลี่ยนหน้าเดิม */
+
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  background:
+    radial-gradient(1200px 800px at 50% 0%, #14233f 0%, #0a0f1a 58%, #05070c 100%);
+  background-color: #05070c;
+}
+
+body.board {
+  font-family: "LINE Seed Sans TH", "Kanit", "Leelawadee UI", "Tahoma", sans-serif;
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* เวที 1920×1080 วางกลางจอ แล้ว board.js ย่อ/ขยายด้วย transform ให้พอดี viewport */
+#stage {
+  position: fixed; left: 50%; top: 50%;
+  width: 1920px; height: 1080px;
+  transform-origin: center center;
+}
+
+#board {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* การ์ดผลให้กว้างเต็มตาสำหรับจอใหญ่ */
+body.board .tpl-results-card { min-width: 1680px; max-width: 1680px; }
+body.board .tpl-results-card .card-body { min-height: 890px; }
+
+.board-empty {
+  font-size: 44px; font-weight: 600; opacity: .55;
+  letter-spacing: 1px;
+}
+
+/* การ์ดบอลบนจอใหญ่ */
+body.board .tpl-fb-card { min-width: 1560px; max-width: 1560px; }
+
+/* fade-in ตอนสลับการ์ด (rotator) */
+#board .cg { animation: boardIn .55s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes boardIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}

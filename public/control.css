@@ -189,3 +189,12 @@ table.tbl .hcell { width: 150px; }
   font-weight: 700; font-size: 14px;
 }
 .res-line select { flex: 1; max-width: 260px; }
+
+/* แท็บกีฬา — ตารางแมตช์ (หลายคอลัมน์ ให้กรอกง่าย) */
+.fb-tbl td { padding: 5px 6px; }
+table.fb-tbl input.fb-lvl { width: 92px; }
+table.fb-tbl input.fb-ttl { width: 130px; }
+table.fb-tbl input.fb-num { width: 50px; text-align: center; }
+.fb-tbl .fb-colon { width: 8px; text-align: center; opacity: .55; padding: 0; }
+.fb-tbl .fb-done { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; white-space: nowrap; color: var(--ink-dim); }
+.fb-tbl select { max-width: 132px; }

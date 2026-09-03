@@ -35,9 +35,13 @@
   var sel = { eventId: localStorage.getItem("cg_sel_event") || "" };
   var editing = null; // draft ของ event ที่กำลังแก้
   var resDraft = { eid: null, rows: [] }; // ผลอันดับที่กำลังแก้ (array ของ house key เรียงตามอันดับ)
+  var sportSel = null;      // key กีฬาที่กำลังแก้ในแท็บกีฬา
+  var sportDraft = null;    // ก้อนกีฬาที่กำลังแก้ (null = โหลดจาก state ใหม่)
+  var sportSaveTimer = null; // debounce บันทึกกีฬา
 
   var TPL_NAMES = {
     top3: "อันดับ 1–3", results: "ผลการแข่งขัน", schedule: "ตารางการแข่งขัน",
+    sportMatches: "กีฬา · ผลแมตช์", sportTable: "กีฬา · ตารางคะแนน", sportBracket: "กีฬา · สายน็อกเอาต์",
   };
 
   // ---- token ------------------------------------------------------- //
@@ -140,7 +144,7 @@
     var a = document.activeElement;
     // กำลังกรอกผลการแข่งขัน (ยังมีการบันทึกอัตโนมัติค้างอยู่) —
     // ไม่ rebuild ทั้งหน้า พรีวิว overlay จะได้ไม่โหลดใหม่ระหว่างแตะ
-    if (resSaveTimer) return;
+    if (resSaveTimer || sportSaveTimer) return;
     if (panel.contains(a) && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) {
       pendingRender = true;
       var b = document.getElementById("dirtyBadge");
@@ -171,6 +175,7 @@
     activeTab = b.dataset.tab;
     [].forEach.call(tabsEl.children, function (c) { c.classList.toggle("active", c === b); });
     editing = null;
+    sportDraft = null; // เข้าแท็บกีฬาใหม่ = โหลดข้อมูลล่าสุด
     render();
   });
 
@@ -185,6 +190,11 @@
   function houseColor(h) {
     var c = state.settings && state.settings.houses;
     return (c && c[h]) || "#888";
+  }
+  function houseLogo(h) {
+    var m = state.settings && state.settings.houseLogos;
+    if (m && Object.prototype.hasOwnProperty.call(m, h)) return m[h];
+    return "/pictures/house-" + (h || "").replace(/[^a-z]/gi, "") + ".png";
   }
   function eventSelect(id, selected, extra) {
     var opts = (state.events || []).map(function (e) {
@@ -210,7 +220,7 @@
     if (!state) { panel.innerHTML = '<p class="muted">กำลังโหลด…</p>'; return; }
     if (!sel.eventId && state.events && state.events[0]) sel.eventId = state.events[0].id;
     if (MODE === "score") { renderScore(); return; }
-    ({ live: renderLive, events: renderEvents, import: renderImport, settings: renderSettings }[activeTab] || renderLive)();
+    ({ live: renderLive, events: renderEvents, sports: renderSports, import: renderImport, settings: renderSettings }[activeTab] || renderLive)();
   }
 
   // ========================================================= //
@@ -449,6 +459,170 @@
   }
 
   // ========================================================= //
+  //  SPORTS (โมดูลกีฬา — บอล/บาส/วิ่งเปรี้ยว/ชักเย่อ ใช้โครงเดียวกัน)
+  // ========================================================= //
+  var SPORT_STAGES = [
+    ["group", "รอบแบ่งกลุ่ม"], ["final", "รอบชิงชนะเลิศ"], ["third", "ชิงอันดับ 3"],
+  ];
+
+  function sportsList() { return state.sports || []; }
+  function curSportKey() {
+    var list = sportsList();
+    if (sportSel && list.some(function (s) { return s.key === sportSel; })) return sportSel;
+    return list[0] ? list[0].key : null;
+  }
+  function sportEnsureDraft() {
+    var key = curSportKey();
+    if (sportDraft && sportDraft.key === key) return;
+    var src = null, list = sportsList();
+    for (var i = 0; i < list.length; i++) if (list[i].key === key) { src = list[i]; break; }
+    src = src || { key: key, name: "", icon: "", points: {}, matches: [] };
+    var p = src.points || {};
+    sportDraft = {
+      key: src.key, name: src.name || "", icon: src.icon || "",
+      points: { win: p.win != null ? p.win : 3, draw: p.draw != null ? p.draw : 1, loss: p.loss != null ? p.loss : 0 },
+      matches: (src.matches || []).map(function (m) {
+        return { id: m.id, level: m.level || "", title: m.title || "", stage: m.stage || "group",
+                 home: m.home, away: m.away, hs: m.hs, as: m.as, done: !!m.done };
+      }),
+    };
+    sportSel = key;
+  }
+
+  function sportHouseSelect(key, val) {
+    return '<select data-' + key + ">" + houseKeys().map(function (h) {
+      return '<option value="' + h + '"' + (h === val ? " selected" : "") + ">" + esc(houseName(h)) + "</option>";
+    }).join("") + "</select>";
+  }
+  function newMatchId() { return "m_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+  function sportCollectFromDom() {
+    if (!sportDraft) return;
+    var nm = document.querySelector("[data-spname]"); if (nm) sportDraft.name = nm.value.trim();
+    var ic = document.querySelector("[data-spicon]"); if (ic) sportDraft.icon = ic.value.trim();
+    ["win", "draw", "loss"].forEach(function (k) {
+      var el = document.querySelector('[data-sppts="' + k + '"]');
+      if (el) sportDraft.points[k] = el.value === "" ? 0 : Number(el.value);
+    });
+    var out = [];
+    [].forEach.call(panel.querySelectorAll(".fb-tbl tbody tr[data-i]"), function (tr, i) {
+      var g = function (s) { return tr.querySelector(s); };
+      var hs = g("[data-hs]").value, as = g("[data-as]").value;
+      out.push({
+        id: (sportDraft.matches[i] && sportDraft.matches[i].id) || newMatchId(),
+        level: g("[data-level]").value.trim(),
+        title: g("[data-title]").value.trim(),
+        stage: g("[data-stage]").value,
+        home: g("[data-home]").value,
+        away: g("[data-away]").value,
+        hs: hs === "" ? 0 : Number(hs),
+        as: as === "" ? 0 : Number(as),
+        done: g("[data-done]").checked,
+      });
+    });
+    sportDraft.matches = out;
+  }
+  function sportBuild() {
+    return { key: sportDraft.key, name: sportDraft.name, icon: sportDraft.icon,
+             points: sportDraft.points, matches: sportDraft.matches };
+  }
+  function saveSportNow() {
+    sportCollectFromDom();
+    if (sportSaveTimer) { clearTimeout(sportSaveTimer); sportSaveTimer = null; }
+    return cmd({ action: "setSport", sport: sportBuild() });
+  }
+  function scheduleSportSave() {
+    sportCollectFromDom();
+    if (sportSaveTimer) clearTimeout(sportSaveTimer);
+    sportSaveTimer = setTimeout(function () {
+      sportSaveTimer = null;
+      cmd({ action: "setSport", sport: sportBuild() });
+    }, 500);
+  }
+
+  // ตัวเลือกระดับชั้น (จากรายการกรีฑา + กีฬาที่มี) ช่วยพิมพ์ให้ตรงกัน
+  function levelOptions() {
+    var set = {}, out = [];
+    function add(l) { if (l && !set[l]) { set[l] = 1; out.push(l); } }
+    (state.events || []).forEach(function (e) { add(e.level || e.ageGroup); });
+    sportsList().forEach(function (sp) { (sp.matches || []).forEach(function (m) { add(m.level); }); });
+    return out;
+  }
+
+  function renderSports() {
+    var list = sportsList();
+    if (!list.length) {
+      panel.innerHTML = '<div class="card"><h2>กีฬา</h2><p class="muted">ยังไม่มีกีฬา — รีเซ็ตข้อมูลเพื่อสร้างชุดเริ่มต้น (บอล/บาส/วิ่งเปรี้ยว/ชักเย่อ)</p></div>';
+      return;
+    }
+    sportEnsureDraft();
+    var key = sportDraft.key;
+    var fo = (state.onair || {}).full || {};
+    function onBtn(tpl, label) {
+      var on = fo.visible && fo.template === tpl && fo.sport === key;
+      return '<button class="btn ' + (on ? "ok" : "") + '" data-act="sp-show" data-tpl="' + tpl + '">' +
+        (on ? "▶ " : "") + esc(label) + "</button>";
+    }
+    var picker = list.map(function (sp) {
+      return '<button class="btn ' + (sp.key === key ? "ok" : "") + '" data-act="sp-pick" data-key="' + esc(sp.key) + '">' +
+        esc((sp.icon ? sp.icon + " " : "") + (sp.name || sp.key)) + "</button>";
+    }).join("");
+    var dl = '<datalist id="lvlList">' + levelOptions().map(function (l) {
+      return '<option value="' + esc(l) + '"></option>';
+    }).join("") + "</datalist>";
+
+    var rows = sportDraft.matches.map(function (m, i) {
+      return '<tr data-i="' + i + '">' +
+        '<td><input class="fb-lvl" data-level list="lvlList" value="' + esc(m.level || "") + '" placeholder="ม.ต้น"></td>' +
+        '<td><input class="fb-ttl" data-title value="' + esc(m.title || "") + '" placeholder="คู่ที่ 1"></td>' +
+        '<td><select data-stage>' + SPORT_STAGES.map(function (s) {
+          return '<option value="' + s[0] + '"' + (s[0] === m.stage ? " selected" : "") + ">" + s[1] + "</option>";
+        }).join("") + "</select></td>" +
+        "<td>" + sportHouseSelect("home", m.home) + "</td>" +
+        '<td><input class="fb-num" data-hs type="number" min="0" inputmode="numeric" value="' + (m.hs == null ? "" : esc(m.hs)) + '"></td>' +
+        '<td class="fb-colon">:</td>' +
+        '<td><input class="fb-num" data-as type="number" min="0" inputmode="numeric" value="' + (m.as == null ? "" : esc(m.as)) + '"></td>' +
+        "<td>" + sportHouseSelect("away", m.away) + "</td>" +
+        '<td><label class="fb-done"><input type="checkbox" data-done' + (m.done ? " checked" : "") + "> จบ</label></td>" +
+        '<td><button class="btn danger sm" data-act="sp-del" data-i="' + i + '">✕</button></td>' +
+      "</tr>";
+    }).join("");
+
+    panel.innerHTML = dl +
+      '<div class="card"><h2>เลือกกีฬา</h2><div class="row">' + picker + "</div></div>" +
+
+      '<div class="card"><h2>' + esc((sportDraft.icon ? sportDraft.icon + " " : "") + (sportDraft.name || key)) + " — ขึ้นจอ (ช่องเต็มจอ)</h2>" +
+        '<div class="row">' +
+          onBtn("sportMatches", "ผลแมตช์") +
+          onBtn("sportTable", "ตารางคะแนน") +
+          onBtn("sportBracket", "สายน็อกเอาต์") +
+          '<button class="btn" data-act="sp-hide">ลง (ซ่อน)</button>' +
+        "</div>" +
+        '<p class="muted" style="margin-top:8px">แก้สกอร์แล้วจอที่ออกอากาศเปลี่ยนตามทันที · จอวนรวมทุกอย่าง: <code>/board?view=all</code></p>' +
+      "</div>" +
+
+      '<div class="card"><h2>ตั้งค่ากีฬานี้</h2><div class="row">' +
+        '<label class="field" style="max-width:110px">ไอคอน<input type="text" data-spicon value="' + esc(sportDraft.icon) + '" placeholder="⚽"></label>' +
+        '<label class="field" style="max-width:240px">ชื่อกีฬา<input type="text" data-spname value="' + esc(sportDraft.name) + '" placeholder="ฟุตบอล"></label>' +
+        '<label class="field" style="max-width:90px">ชนะ<input type="number" min="0" data-sppts="win" value="' + sportDraft.points.win + '"></label>' +
+        '<label class="field" style="max-width:90px">เสมอ<input type="number" min="0" data-sppts="draw" value="' + sportDraft.points.draw + '"></label>' +
+        '<label class="field" style="max-width:90px">แพ้<input type="number" min="0" data-sppts="loss" value="' + sportDraft.points.loss + '"></label>' +
+      "</div></div>" +
+
+      '<div class="card"><h2>แมตช์การแข่งขัน</h2>' +
+        '<table class="tbl fb-tbl" style="margin-top:4px"><thead><tr>' +
+          "<th>ระดับชั้น</th><th>ชื่อรายการ</th><th>รอบ</th><th>เจ้าบ้าน</th><th>สกอร์</th><th></th><th></th><th>ทีมเยือน</th><th>สถานะ</th><th></th>" +
+        "</tr></thead><tbody>" +
+          (rows || '<tr><td colspan="10" class="muted">ยังไม่มีแมตช์ — กด “เพิ่มแมตช์”</td></tr>') +
+        "</tbody></table>" +
+        '<div class="row" style="margin-top:12px">' +
+          '<button class="btn" data-act="sp-add">+ เพิ่มแมตช์</button>' +
+          '<span class="muted">แบ่งกลุ่ม: ชนะ ' + sportDraft.points.win + " · เสมอ " + sportDraft.points.draw + " · แพ้ " + sportDraft.points.loss + " แต้ม · ตาราง/สายแยกตามระดับชั้น</span>" +
+        "</div>" +
+      "</div>";
+  }
+
+  // ========================================================= //
   //  SETTINGS
   // ========================================================= //
   function renderSettings() {
@@ -464,12 +638,14 @@
           '<label class="field">ความเร็ว animation (ms)<input type="number" id="setAnim" min="0" step="50" value="' + (s.animMs || 450) + '"></label>' +
         "</div>" +
         '<h3>สีและชื่อคณะ</h3>' +
-        '<table class="tbl"><thead><tr><th>คีย์</th><th>สี</th><th>ชื่อที่แสดง</th></tr></thead><tbody>' +
+        '<table class="tbl"><thead><tr><th>คีย์</th><th>สี</th><th>ชื่อที่แสดง</th><th>โลโก้ (พาธ — เว้นว่าง = ปิด)</th></tr></thead><tbody>' +
         houseKeys().map(function (h) {
           return "<tr><td>" + h + "</td>" +
             '<td><input type="color" data-hcolor="' + h + '" value="' + toHex(houseColor(h)) + '"></td>' +
-            '<td><input type="text" data-hname="' + h + '" value="' + esc(houseName(h)) + '"></td></tr>';
+            '<td><input type="text" data-hname="' + h + '" value="' + esc(houseName(h)) + '"></td>' +
+            '<td><input type="text" data-hlogo="' + h + '" value="' + esc(houseLogo(h)) + '" placeholder="/pictures/house-' + h + '.png"></td></tr>';
         }).join("") + "</tbody></table>" +
+        '<p class="muted" style="margin-top:4px">วางไฟล์โลโก้คณะที่ <code>public/pictures/house-&lt;คีย์&gt;.png</code> — จะขึ้นคู่กับสีตอนโชว์ TOP 3</p>' +
         '<div class="row" style="margin-top:14px">' +
           '<button class="btn ok" data-act="set-save">บันทึกการตั้งค่า</button>' +
           '<span id="dirtyBadge" class="dirty-badge"></span>' +
@@ -486,6 +662,19 @@
           '<a href="/overlay?transport=poll" target="_blank">/overlay?transport=poll &nbsp;— ถ้าเน็ตบล็อก SSE</a>' +
         "</div>" +
         '<p class="muted" style="margin-top:10px">ตั้งขนาด Browser Source / Web Input เป็น 1920×1080</p>' +
+      "</div>" +
+
+      '<div class="card"><h2>จอประชาสัมพันธ์ (เปิดค้างที่จอโรงเรียน)</h2>' +
+        '<div class="urlbox"><input type="text" id="bdUrl" readonly value="' + origin + '/board">' +
+          '<button class="btn" data-act="board-copy">คัดลอก</button></div>' +
+        '<div class="linklist">' +
+          '<a href="/board?view=all" target="_blank">/board?view=all &nbsp;— วนรวมทุกอย่าง: กรีฑา → ทุกกีฬา ⭐</a>' +
+          '<a href="/board" target="_blank">/board &nbsp;— เฉพาะผลการแข่งขันกรีฑา</a>' +
+          '<a href="/board?view=football" target="_blank">/board?view=football &nbsp;— เฉพาะกีฬาหนึ่ง (football/basketball/sprint/tugofwar)</a>' +
+          '<a href="/board?page=6" target="_blank">/board?page=6 &nbsp;— เปลี่ยนหน้าเร็วขึ้น (วินาที/หน้า)</a>' +
+          '<a href="/board?transport=poll" target="_blank">/board?transport=poll &nbsp;— ถ้าเน็ตบล็อก SSE</a>' +
+        "</div>" +
+        '<p class="muted" style="margin-top:10px">เปิดแบบเต็มจอ (กด F11) บนคอมที่ต่อจอโรงเรียน — ย่อ/ขยายพอดีจอทุกความละเอียดอัตโนมัติ</p>' +
       "</div>" +
 
       '<div class="card"><h2>รีเซ็ต</h2>' +
@@ -567,16 +756,17 @@
     },
 
     "set-save": function () {
-      var houses = {}, houseNames = {};
+      var houses = {}, houseNames = {}, houseLogos = {};
       [].forEach.call(panel.querySelectorAll("[data-hcolor]"), function (i) { houses[i.dataset.hcolor] = i.value; });
       [].forEach.call(panel.querySelectorAll("[data-hname]"), function (i) { houseNames[i.dataset.hname] = i.value.trim(); });
+      [].forEach.call(panel.querySelectorAll("[data-hlogo]"), function (i) { houseLogos[i.dataset.hlogo] = i.value.trim(); });
       cmd({
         action: "setSettings",
         settings: {
           meetTitle: document.getElementById("setMeet").value.trim(),
           logo: document.getElementById("setLogo").value.trim(),
           animMs: Number(document.getElementById("setAnim").value) || 450,
-          houses: houses, houseNames: houseNames,
+          houses: houses, houseNames: houseNames, houseLogos: houseLogos,
         },
       }).then(function (ok) { if (ok) toast("บันทึกการตั้งค่าแล้ว"); });
     },
@@ -588,6 +778,42 @@
       u.select();
       navigator.clipboard && navigator.clipboard.writeText(u.value);
       toast("คัดลอกลิงก์แล้ว");
+    },
+    "board-copy": function () {
+      var u = document.getElementById("bdUrl");
+      u.select();
+      navigator.clipboard && navigator.clipboard.writeText(u.value);
+      toast("คัดลอกลิงก์แล้ว");
+    },
+
+    "sp-pick": function (b) {
+      saveSportNow();          // เซฟกีฬาที่กำลังแก้อยู่ก่อนสลับ
+      sportSel = b.dataset.key;
+      sportDraft = null;
+      renderSports();
+    },
+    "sp-show": function (b) {
+      saveSportNow().then(function () {
+        cmd({ action: "show", slot: "full", template: b.dataset.tpl, eventId: null, sport: sportDraft.key });
+      });
+    },
+    "sp-hide": function () { cmd({ action: "hide", slot: "full" }); },
+    "sp-add": function () {
+      sportCollectFromDom();
+      var k = houseKeys();
+      var last = sportDraft.matches[sportDraft.matches.length - 1];
+      sportDraft.matches.push({
+        id: newMatchId(), level: (last && last.level) || "", title: "", stage: "group",
+        home: k[0], away: k[1] || k[0], hs: 0, as: 0, done: false,
+      });
+      renderSports();
+      scheduleSportSave();
+    },
+    "sp-del": function (b) {
+      sportCollectFromDom();
+      sportDraft.matches.splice(Number(b.dataset.i), 1);
+      renderSports();
+      scheduleSportSave();
     },
   };
 
@@ -613,6 +839,10 @@
       scheduleResSave();
       return;
     }
+    if (activeTab === "sports" && isSportField(t)) {
+      scheduleSportSave();
+      return;
+    }
     if (t.id === "eventsFile") {
       var f = t.files && t.files[0];
       if (!f) return;
@@ -621,5 +851,15 @@
         toast("โหลดไฟล์แล้ว — กดปุ่มนำเข้า");
       });
     }
+  });
+
+  // ฟิลด์ในแท็บกีฬา (แมตช์ / ตั้งค่ากีฬา) -> บันทึกอัตโนมัติ (debounce)
+  function isSportField(t) {
+    if (!t || !t.closest) return false;
+    if (t.closest(".fb-tbl")) return true;
+    return !!(t.hasAttribute && (t.hasAttribute("data-spname") || t.hasAttribute("data-spicon") || t.hasAttribute("data-sppts")));
+  }
+  panel.addEventListener("input", function (e) {
+    if (activeTab === "sports" && isSportField(e.target)) scheduleSportSave();
   });
 })();

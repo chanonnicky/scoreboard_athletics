@@ -6,4 +6,5 @@ data/state.json.tmp
 public/pictures/*
 !public/pictures/README.txt
 !public/pictures/logo.png
+!public/pictures/house-*.png
 /Picture/

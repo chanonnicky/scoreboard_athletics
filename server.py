@@ -62,6 +62,23 @@ def load_state():
     path = STATE_PATH if os.path.exists(STATE_PATH) else DEFAULT_STATE_PATH
     with open(path, encoding="utf-8") as f:
         STATE = json.load(f)
+    # ล้าง id รายการที่ซ้ำกัน (เช่นข้อมูลเก่าที่ import มาก่อนแก้ _new_id)
+    # ถ้ามีการแก้ ให้เขียนไฟล์กลับทันที เพื่อไม่ให้ id ซ้ำวนกลับมาอีก
+    changed = dedupe_event_ids(STATE)
+    if changed:
+        print("  [migrate] แก้ id รายการที่ซ้ำ %d รายการ" % changed)
+    # ย้ายโครงเก่า football เดี่ยว -> รายการ sports (โมดูลกีฬาแบบใหม่)
+    if "football" in STATE and "sports" not in STATE:
+        fb = STATE.pop("football") or {}
+        STATE["sports"] = [{
+            "key": "football", "name": "ฟุตบอล", "icon": "⚽",
+            "points": fb.get("points", {"win": 3, "draw": 1, "loss": 0}),
+            "matches": fb.get("matches", []),
+        }]
+        print("  [migrate] ย้าย football -> sports")
+        changed = True
+    if changed:
+        _save_now()
 
 
 def _save_now():
@@ -101,8 +118,45 @@ def broadcast():
 # --------------------------------------------------------------------------- #
 #  commands (mutations)
 # --------------------------------------------------------------------------- #
+_id_lock = threading.Lock()
+_id_last = 0
+_id_seq = 0
+
+
 def _new_id(prefix="e"):
-    return "%s_%d" % (prefix, int(time.time() * 1000))
+    # ใช้ timestamp(ms) + ตัวนับกันชน เพื่อให้ไม่ซ้ำแม้ถูกเรียกรัว ๆ ในมิลลิวินาทีเดียว
+    # (เช่นตอน import CSV หลายสิบรายการในลูปเดียว)
+    global _id_last, _id_seq
+    with _id_lock:
+        now = int(time.time() * 1000)
+        if now == _id_last:
+            _id_seq += 1
+        else:
+            _id_last = now
+            _id_seq = 0
+        return "%s_%d_%d" % (prefix, now, _id_seq)
+
+
+def dedupe_event_ids(state):
+    """ล้าง id รายการที่ซ้ำ/ว่าง ให้ไม่ซ้ำกัน (self-heal ตอนโหลด)
+    เก็บ id แรกไว้เหมือนเดิม (results/onair ที่ชี้อยู่จึงยังใช้ได้) เปลี่ยนเฉพาะตัวที่ซ้ำ
+    คืนค่าจำนวน id ที่ถูกแก้ — >0 = ควรบันทึกไฟล์กลับเพื่อไม่ให้กลับมาซ้ำอีก"""
+    events = state.get("events") or []
+    seen = set()
+    changed = 0
+    for ev in events:
+        eid = ev.get("id")
+        if eid and eid not in seen:
+            seen.add(eid)
+            continue
+        # id ซ้ำ หรือว่าง -> สร้างใหม่ให้ไม่ชนกับที่มีอยู่ทั้งหมด
+        new = _new_id("e")
+        while new in seen:
+            new = _new_id("e")
+        ev["id"] = new
+        seen.add(new)
+        changed += 1
+    return changed
 
 
 def apply_command(cmd):
@@ -115,6 +169,7 @@ def apply_command(cmd):
             onair[slot] = {
                 "template": cmd.get("template"),
                 "eventId": cmd.get("eventId"),
+                "sport": cmd.get("sport"),
                 "visible": True,
             }
             # แสดงได้ทีละช่องเท่านั้น — ซ่อนช่องอื่น
@@ -170,6 +225,21 @@ def apply_command(cmd):
 
         elif action == "setSettings":
             STATE.setdefault("settings", {}).update(cmd["settings"])
+
+        elif action == "setSport":
+            # โมดูลกีฬา: control ส่งก้อนกีฬา 1 ชนิด (key เดียว) มา upsert เข้า list
+            sp = cmd["sport"]
+            sports = STATE.setdefault("sports", [])
+            for i, s in enumerate(sports):
+                if s.get("key") == sp.get("key"):
+                    sports[i] = sp
+                    break
+            else:
+                sports.append(sp)
+
+        elif action == "deleteSport":
+            key = cmd["key"]
+            STATE["sports"] = [s for s in STATE.get("sports", []) if s.get("key") != key]
 
         elif action == "replaceState":
             STATE.clear()
@@ -269,6 +339,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._serve_path(os.path.join(PUBLIC, "control.html"))
         if path == "/overlay":
             return self._serve_path(os.path.join(PUBLIC, "overlay.html"))
+        if path == "/board":
+            return self._serve_path(os.path.join(PUBLIC, "board.html"))
         if path == "/api/state":
             with _state_lock:
                 body = json.dumps(STATE, ensure_ascii=False)
@@ -382,6 +454,7 @@ def main():
     print("  Control :  http://%s:%d/control" % (ip, args.port))
     print("  Score   :  http://%s:%d/score        (หน้าจดคะแนน)" % (ip, args.port))
     print("  Overlay :  http://%s:%d/overlay      << ใส่ใน OBS / vMix" % (ip, args.port))
+    print("  Board   :  http://%s:%d/board        (จอประชาสัมพันธ์ วนผลการแข่ง)" % (ip, args.port))
     print("  Local   :  http://127.0.0.1:%d/control" % args.port)
     if TOKEN:
         print("  Token   :  %s" % TOKEN)
