@@ -70,6 +70,50 @@ function State-Json { return $script:JS.Serialize($script:State) }
 # chokes on ("circular reference ... PSParameterizedProperty").
 function New-Dict { return @{} }
 
+# unique id: timestamp(ms) + counter, so a burst of calls in the same ms
+# (e.g. importing many CSV rows) never collides.
+$script:IdLast = [long]0
+$script:IdSeq  = 0
+function New-Id([string]$prefix = "e") {
+  $now = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+  if ($now -eq $script:IdLast) { $script:IdSeq++ } else { $script:IdLast = $now; $script:IdSeq = 0 }
+  return "${prefix}_${now}_$($script:IdSeq)"
+}
+
+# self-heal duplicate/empty event ids on load (keeps the first, renames the rest)
+function Dedupe-EventIds {
+  $seen = @{}
+  $changed = 0
+  foreach ($ev in @($script:State["events"])) {
+    $id = [string]$ev["id"]
+    if ($id -and -not $seen.ContainsKey($id)) { $seen[$id] = $true; continue }
+    $new = New-Id "e"
+    while ($seen.ContainsKey($new)) { $new = New-Id "e" }
+    $ev["id"] = $new
+    $seen[$new] = $true
+    $changed++
+  }
+  return $changed
+}
+
+# migrate on load: dedupe ids + move legacy single "football" -> "sports" list
+function Migrate-State {
+  $changed = 0
+  if ($script:State["events"]) { $changed += (Dedupe-EventIds) }
+  if ($script:State.ContainsKey("football") -and -not $script:State.ContainsKey("sports")) {
+    $fb = $script:State["football"]
+    $sp = New-Dict
+    $sp["key"] = "football"; $sp["name"] = "Football"; $sp["icon"] = ""
+    $sp["points"]  = if ($fb -and $fb["points"])  { $fb["points"] }  else { @{ win = 3; draw = 1; loss = 0 } }
+    $sp["matches"] = if ($fb -and $fb["matches"]) { $fb["matches"] } else { @() }
+    $script:State["sports"] = @($sp)
+    [void]$script:State.Remove("football")
+    Write-Host "  [migrate] football -> sports"
+    $changed++
+  }
+  if ($changed -gt 0) { Save-State }
+}
+
 # --------------------------------------------------------------------------- #
 #  commands
 # --------------------------------------------------------------------------- #
@@ -81,7 +125,7 @@ function Apply-Command($cmd) {
     "show" {
       $slot = [string]$cmd["slot"]
       $d = New-Dict
-      $d["template"] = $cmd["template"]; $d["eventId"] = $cmd["eventId"]; $d["visible"] = $true
+      $d["template"] = $cmd["template"]; $d["eventId"] = $cmd["eventId"]; $d["sport"] = $cmd["sport"]; $d["visible"] = $true
       $onair[$slot] = $d
       # only one slot visible at a time -- hide the others
       foreach ($k in @($onair.Keys)) {
@@ -100,7 +144,7 @@ function Apply-Command($cmd) {
     }
     "upsertEvent" {
       $ev = $cmd["event"]
-      if (-not $ev["id"]) { $ev["id"] = "e_" + [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
+      if (-not $ev["id"]) { $ev["id"] = New-Id "e" }
       $events = [System.Collections.ArrayList]@($script:State["events"])
       $idx = -1
       for ($i = 0; $i -lt $events.Count; $i++) {
@@ -135,6 +179,20 @@ function Apply-Command($cmd) {
       $s = $script:State["settings"]
       foreach ($p in $cmd["settings"].Keys) { $s[$p] = $cmd["settings"][$p] }
     }
+    "setSport" {
+      $sp = $cmd["sport"]
+      $sports = [System.Collections.ArrayList]@($script:State["sports"])
+      $idx = -1
+      for ($i = 0; $i -lt $sports.Count; $i++) {
+        if ([string]$sports[$i]["key"] -eq [string]$sp["key"]) { $idx = $i; break }
+      }
+      if ($idx -ge 0) { $sports[$idx] = $sp } else { [void]$sports.Add($sp) }
+      $script:State["sports"] = $sports.ToArray()
+    }
+    "deleteSport" {
+      $key = [string]$cmd["key"]
+      $script:State["sports"] = @($script:State["sports"] | Where-Object { [string]$_["key"] -ne $key })
+    }
     "resetState" { $script:State = Read-JsonFile $DefaultPath }
     "replaceState" { $script:State = $cmd["state"] }
     default { throw "unknown action: $action" }
@@ -165,7 +223,7 @@ function Import-CsvText($kind, $text) {
         $found["level"] = $lvl
       } else {
         $d = New-Dict
-        $d["id"] = "e_" + [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() + "_" + $events.Count
+        $d["id"] = New-Id "e"
         $d["title"] = $title; $d["level"] = $lvl
         [void]$events.Add($d)
       }
@@ -231,6 +289,7 @@ function Handle-Request($ctx) {
   if ($path -eq "/control") { Serve-File $ctx (Join-Path $Public "control.html"); return }
   if ($path -eq "/score")   { Serve-File $ctx (Join-Path $Public "control.html"); return }
   if ($path -eq "/overlay") { Serve-File $ctx (Join-Path $Public "overlay.html"); return }
+  if ($path -eq "/board")   { Serve-File $ctx (Join-Path $Public "board.html"); return }
 
   if ($path -eq "/api/state" -and $method -eq "GET") {
     Send-Text $ctx 200 (State-Json) "application/json; charset=utf-8"; return
@@ -309,6 +368,7 @@ function New-StartedListener([string]$bindHost, [int]$port) {
 if (-not (Test-Path $DataDir)) { New-Item -ItemType Directory -Path $DataDir | Out-Null }
 $script:State = Load-State
 $script:Version = 0
+Migrate-State
 if (-not (Test-Path $StatePath)) { Save-State }
 
 $listener = New-StartedListener $ListenHost $Port
@@ -320,6 +380,7 @@ Write-Host $bar
 Write-Host "  Control :  http://${ip}:$Port/control"
 Write-Host "  Score   :  http://${ip}:$Port/score        (score-recording page)"
 Write-Host "  Overlay :  http://${ip}:$Port/overlay      <<  put this in OBS / vMix"
+Write-Host "  Board   :  http://${ip}:$Port/board        (rotating results display)"
 Write-Host "  Local   :  http://127.0.0.1:$Port/control"
 if ($Token) { Write-Host "  Token   :  $Token" }
 Write-Host $bar
