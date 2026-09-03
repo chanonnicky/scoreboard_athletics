@@ -94,7 +94,6 @@
       showCard((cardIdx + 1) % cards.length);
     }, pages * INTERVAL);
   }
-  function startRotator() { showCard(0); }
 
   // ---- render / live update -------------------------------------- //
   var lastSig = null;
@@ -131,13 +130,16 @@
       return;
     }
 
+    var prevCount = cards.length;
     cards = buildCards(state).filter(function (h) { return h != null; });
     if (!cards.length) {
       stopRotator(); stopPager();
       board.innerHTML = '<div class="board-empty">ยังไม่มีข้อมูล</div>';
       return;
     }
-    startRotator();
+    // จำนวนการ์ดเท่าเดิม = แค่เนื้อหา/สกอร์อัปเดต -> re-render การ์ดที่แสดงอยู่
+    // ไม่กระโดดกลับหน้าแรก (เดิม startRotator รีเซ็ตไป card 0 ทุกครั้งที่สกอร์เปลี่ยน)
+    showCard(prevCount === cards.length ? Math.min(cardIdx, cards.length - 1) : 0);
   }
 
   // ---- connection (SSE + poll fallback) -------------------------- //
@@ -170,7 +172,7 @@
         .catch(function () { setOffline(true); });
     }
     tick();
-    setInterval(tick, 1000);
+    setInterval(tick, 300);   // เร็วขึ้น (เดิม 1000) ให้สกอร์สดดูเรียลไทม์แม้ตกมาใช้ poll
   }
 
   if (transport === "poll") startPolling();

@@ -348,7 +348,7 @@
       "</div>" +
 
       '<div class="preview-wrap"><div class="preview-label">พรีวิว overlay (โปร่งใส = ลายตาราง)</div>' +
-        '<div class="preview"><iframe src="/overlay" title="preview"></iframe></div>' +
+        '<div class="preview"><iframe src="/live?transport=poll" title="preview"></iframe></div>' +
         '<div class="preview-label">มุมมองนี้อัปเดตสดเหมือนที่ออกใน OBS/vMix</div>' +
       "</div>" +
 
