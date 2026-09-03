@@ -333,8 +333,8 @@ class Handler(BaseHTTPRequestHandler):
         u = urlparse(self.path)
         path, qs = u.path, parse_qs(u.query)
 
-        if path == "/":
-            return self._send(302, b"", extra={"Location": "/control"})
+        if path == "/" or path == "/home":
+            return self._serve_path(os.path.join(PUBLIC, "home.html"))
         # หน้าคุม + จดคะแนน (รวมจดคะแนนแยกกีฬา /score/<sport>)
         if path == "/control" or path == "/score" or path.startswith("/score/"):
             return self._serve_path(os.path.join(PUBLIC, "control.html"))

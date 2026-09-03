@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CG Live — เมนู</title>
+  <link rel="stylesheet" href="/control.css">
+  <style>
+    body { padding: 24px; max-width: 900px; margin: 0 auto; }
+    .home-h { display: flex; align-items: baseline; gap: 12px; margin: 8px 0 20px; }
+    .home-h h1 { font-size: 26px; }
+    .home-h span { color: var(--ink-dim); font-size: 15px; }
+    .home-grid { display: grid; gap: 16px; }
+    .home-card h2 { font-size: 18px; margin-bottom: 4px; }
+    .home-card p { color: var(--ink-dim); font-size: 13px; margin-bottom: 12px; }
+    .home-links { display: flex; flex-wrap: wrap; gap: 10px; }
+    a.tile {
+      display: inline-flex; flex-direction: column; gap: 2px;
+      padding: 12px 18px; border-radius: 12px; text-decoration: none;
+      background: var(--bg-2); border: 1px solid var(--stroke); color: var(--ink);
+      min-width: 150px;
+    }
+    a.tile:hover { border-color: var(--accent, #4c8dff); }
+    a.tile b { font-size: 16px; }
+    a.tile small { color: var(--ink-dim); font-size: 12px; }
+    a.tile.primary { background: #1f6feb22; border-color: #4c8dff; }
+    .live-dot-i { color: #ff5252; }
+  </style>
+</head>
+<body>
+  <div class="home-h"><h1>🏟️ CG Live</h1><span id="meet">เมนูระบบ กีฬาสี</span></div>
+  <div class="home-grid" id="grid">
+    <div class="card home-card">
+      <h2>ควบคุม (ผู้กำกับ)</h2>
+      <p>สั่งกราฟิกขึ้น/ลงบนจอ Live</p>
+      <div class="home-links">
+        <a class="tile primary" href="/control"><b>คอนโทรล</b><small>/control</small></a>
+      </div>
+    </div>
+
+    <div class="card home-card">
+      <h2>จอแสดงผล</h2>
+      <p>ใส่ /live ใน OBS · เปิด /scoreboard เต็มจอ (F11) ที่จอในงาน</p>
+      <div class="home-links" id="displayLinks">
+        <a class="tile" href="/live" target="_blank"><b>Live (OBS)</b><small>/live</small></a>
+        <a class="tile" href="/scoreboard?view=all" target="_blank"><b>Scoreboard วนผล</b><small>/scoreboard?view=all</small></a>
+      </div>
+    </div>
+
+    <div class="card home-card">
+      <h2>จดคะแนน (แยกคน/แยกกีฬา)</h2>
+      <p>เปิดคนละเครื่อง/แท็บได้ ข้อมูลซิงก์กันอัตโนมัติ</p>
+      <div class="home-links" id="scoreLinks">
+        <a class="tile" href="/score" target="_blank"><b>กรีฑา</b><small>/score</small></a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // เติมลิงก์ต่อกีฬา (สกอร์สด + จดคะแนน) ตามกีฬาที่มีจริง
+    fetch("/api/state", { cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(function (s) {
+        var meet = (s.settings && s.settings.meetTitle) || "กีฬาสี";
+        document.getElementById("meet").textContent = meet;
+        document.title = "CG Live — " + meet;
+        var sports = s.sports || [];
+        var disp = document.getElementById("displayLinks");
+        var score = document.getElementById("scoreLinks");
+        sports.forEach(function (sp) {
+          var nm = (sp.icon ? sp.icon + " " : "") + (sp.name || sp.key);
+          disp.insertAdjacentHTML("beforeend",
+            '<a class="tile" href="/scoreboard/' + sp.key + '" target="_blank">' +
+            '<b><span class="live-dot-i">●</span> สด ' + nm + '</b><small>/scoreboard/' + sp.key + '</small></a>');
+          score.insertAdjacentHTML("beforeend",
+            '<a class="tile" href="/score/' + sp.key + '" target="_blank">' +
+            '<b>' + nm + '</b><small>/score/' + sp.key + '</small></a>');
+        });
+      })
+      .catch(function () {});
+  </script>
+</body>
+</html>

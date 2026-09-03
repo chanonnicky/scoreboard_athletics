@@ -284,7 +284,7 @@ function Handle-Request($ctx) {
   $path = $req.Url.AbsolutePath
   $method = $req.HttpMethod
 
-  if ($path -eq "/") { $ctx.Response.Redirect("/control"); $ctx.Response.Close(); return }
+  if ($path -eq "/" -or $path -eq "/home") { Serve-File $ctx (Join-Path $Public "home.html"); return }
   if ($path -eq "/healthz") { Send-Text $ctx 200 "ok"; return }
   # control + score (incl. per-sport score /score/<sport>)
   if ($path -eq "/control" -or $path -eq "/score" -or $path.StartsWith("/score/")) { Serve-File $ctx (Join-Path $Public "control.html"); return }
