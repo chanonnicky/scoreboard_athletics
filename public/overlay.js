@@ -81,7 +81,7 @@
     return (sportKey || "") + "||" + JSON.stringify(state.sports || []) +
       "||" + JSON.stringify(s.houseNames || {}) + "||" + JSON.stringify(s.houseLogos || {});
   }
-  function isSport(t) { return t === "sportMatches" || t === "sportTable" || t === "sportBracket"; }
+  function isSport(t) { return t === "sportMatches"; }
 
   function animMs(state) {
     return (state.settings && state.settings.animMs) || 450;
@@ -98,8 +98,6 @@
       case "results":  return T.results(state);
       case "schedule": return T.schedule(state, conf.eventId);
       case "sportMatches": return T.sportMatches(state, conf.sport);
-      case "sportTable":   return T.sportTable(state, conf.sport);
-      case "sportBracket": return T.sportBracket(state, conf.sport);
       default:         return null;
     }
   }

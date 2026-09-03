@@ -175,19 +175,19 @@ window.T = (function () {
 
 
   /* ================= โมดูลกีฬาทัวร์นาเมนต์ (generic) ==================
-     รองรับหลายกีฬา: บอล / บาส / วิ่งเปรี้ยว / ชักเย่อ … ใช้โครงเดียวกัน
+     รองรับหลายกีฬา (บอล / บาส …) ใช้โครงเดียวกัน
      state.sports = [ {
        key, name, icon,
-       points:{win,draw,loss},
-       matches:[ { id, level, title, stage:"group"|"final"|"third",
-                   home, away, hs, as, done } ]
+       matches:[ { id, level, title, home, away, hs, as, done } ]
      } ]
-     - sportMatches : รายการแมตช์ แยกตามระดับชั้น -> รอบ (สีไหนเจอสีไหน + สกอร์)
-     - sportTable   : ตารางคะแนนรอบแบ่งกลุ่ม แยกตามระดับชั้น (อันดับ)
-     - sportBracket : รอบชิงชนะเลิศ + ชิงอันดับ 3 + แชมป์ แยกตามระดับชั้น        */
+     - sportMatches : รายการแมตช์ แยกตามระดับชั้น (สีไหนเจอสีไหน + สกอร์)       */
 
-  var STAGE_LABEL = { group: "รอบแบ่งกลุ่ม", final: "รอบชิงชนะเลิศ", third: "ชิงอันดับ 3" };
-  var STAGE_ORDER = ["group", "final", "third"];
+  // ลำดับระดับชั้นมาตรฐาน ป.1–ม.6 (ใช้เรียงหัวข้อให้ถูกลำดับเสมอ)
+  var GRADE_ORDER = ["ป.1", "ป.2", "ป.3", "ป.4", "ป.5", "ป.6", "ม.1", "ม.2", "ม.3", "ม.4", "ม.5", "ม.6"];
+  function gradeRank(l) {
+    var i = GRADE_ORDER.indexOf(l);
+    return i < 0 ? 999 : i;
+  }
 
   function getSport(state, key) {
     var list = state.sports || [];
@@ -195,54 +195,19 @@ window.T = (function () {
     return null;
   }
   function sportLevels(sport) {
-    var seen = [], set = {};
+    var seen = [], set = {}, order = 0;
     (sport.matches || []).forEach(function (m) {
       var lv = m.level || "ทั่วไป";
-      if (!set[lv]) { set[lv] = 1; seen.push(lv); }
+      if (!set[lv]) { set[lv] = 1; seen.push({ lv: lv, o: order++ }); }
     });
-    return seen;
+    // เรียงตามลำดับชั้น ป.1→ม.6 ก่อน แล้วชั้นอื่น ๆ ตามลำดับที่พบ
+    seen.sort(function (a, b) { return (gradeRank(a.lv) - gradeRank(b.lv)) || (a.o - b.o); });
+    return seen.map(function (x) { return x.lv; });
   }
-  function matchesIn(sport, level, stage) {
+  function matchesIn(sport, level) {
     return (sport.matches || []).filter(function (m) {
-      return (m.level || "ทั่วไป") === level && (!stage || m.stage === stage);
+      return (m.level || "ทั่วไป") === level;
     });
-  }
-  function winnerOf(m) {
-    if (!m || !m.done) return null;
-    var hs = Number(m.hs) || 0, as = Number(m.as) || 0;
-    if (hs === as) return null;
-    return hs > as ? m.home : m.away;
-  }
-
-  /* ตารางคะแนน: รอบแบ่งกลุ่มของระดับชั้นนั้น ๆ ที่จบแล้ว */
-  function standings(state, sport, level) {
-    var pts = sport.points || { win: 3, draw: 1, loss: 0 };
-    var table = {};
-    function row(h) {
-      if (!table[h]) table[h] = { house: h, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0 };
-      return table[h];
-    }
-    (sport.matches || []).forEach(function (m) {
-      if (m.stage !== "group" || !m.done) return;
-      if ((m.level || "ทั่วไป") !== level) return;
-      var hs = Number(m.hs) || 0, as = Number(m.as) || 0;
-      var H = row(m.home), A = row(m.away);
-      H.p++; A.p++; H.gf += hs; H.ga += as; A.gf += as; A.ga += hs;
-      if (hs > as) { H.w++; A.l++; }
-      else if (hs < as) { A.w++; H.l++; }
-      else { H.d++; A.d++; }
-    });
-    var arr = Object.keys(table).map(function (h) {
-      var t = table[h];
-      t.gd = t.gf - t.ga;
-      t.pts = t.w * (pts.win || 0) + t.d * (pts.draw || 0) + t.l * (pts.loss || 0);
-      return t;
-    });
-    arr.sort(function (a, b) {
-      return (b.pts - a.pts) || (b.gd - a.gd) || (b.gf - a.gf) ||
-        houseName(state, a.house).localeCompare(houseName(state, b.house));
-    });
-    return arr;
   }
 
   function sportHead(state, sport, kicker) {
@@ -277,26 +242,14 @@ window.T = (function () {
     );
   }
 
-  var FBT_HEAD =
-    '<div class="fbt-row fbt-head">' +
-      '<div class="fbt-rank">#</div><div class="fbt-team">คณะ</div>' +
-      '<div class="fbt-n">แข่ง</div><div class="fbt-n">ชนะ</div><div class="fbt-n">เสมอ</div>' +
-      '<div class="fbt-n">แพ้</div><div class="fbt-n">ได้-เสีย</div><div class="fbt-n">+/-</div>' +
-      '<div class="fbt-pts">แต้ม</div>' +
-    "</div>";
-
-  /* ---- รายการแมตช์ แยกตามระดับชั้น -> รอบ ---- */
+  /* ---- รายการแมตช์ แยกตามระดับชั้น (ป.1–ม.6) ---- */
   function sportMatches(state, key) {
     var sport = getSport(state, key);
     if (!sport || !(sport.matches || []).length) return null;
     var body = sportLevels(sport).map(function (lv) {
-      var stages = STAGE_ORDER.map(function (st) {
-        var list = matchesIn(sport, lv, st);
-        if (!list.length) return "";
-        return '<div class="fbsub">' + esc(STAGE_LABEL[st]) + "</div>" +
-          list.map(function (m) { return matchRow(state, m); }).join("");
-      }).join("");
-      return '<div class="fblv"><div class="fblv-h">' + esc(lv) + "</div>" + stages + "</div>";
+      var list = matchesIn(sport, lv);
+      return '<div class="fblv"><div class="fblv-h">' + esc(lv) + "</div>" +
+        list.map(function (m) { return matchRow(state, m); }).join("") + "</div>";
     }).join("");
     return '<div class="card tpl-fb-card">' +
       sportHead(state, sport, "ผลการแข่งขัน") +
@@ -304,70 +257,9 @@ window.T = (function () {
     "</div>";
   }
 
-  /* ---- ตารางคะแนน แยกตามระดับชั้น ---- */
-  function sportTable(state, key) {
-    var sport = getSport(state, key);
-    if (!sport) return null;
-    var secs = sportLevels(sport).map(function (lv) {
-      var rows = standings(state, sport, lv);
-      if (!rows.length) return "";
-      var body = rows.map(function (t, i) {
-        return (
-          '<div class="fbt-row ' + hClass(t.house) + (i === 0 ? " lead" : "") + '">' +
-            '<div class="fbt-rank">' + (i + 1) + "</div>" +
-            '<div class="fbt-team">' + houseLogoImg(state, t.house, "fbt-logo") +
-              "<span>" + esc(houseName(state, t.house)) + "</span></div>" +
-            '<div class="fbt-n">' + t.p + "</div>" +
-            '<div class="fbt-n">' + t.w + "</div>" +
-            '<div class="fbt-n">' + t.d + "</div>" +
-            '<div class="fbt-n">' + t.l + "</div>" +
-            '<div class="fbt-n">' + t.gf + "-" + t.ga + "</div>" +
-            '<div class="fbt-n">' + (t.gd > 0 ? "+" : "") + t.gd + "</div>" +
-            '<div class="fbt-pts">' + t.pts + "</div>" +
-          "</div>"
-        );
-      }).join("");
-      return '<div class="fblv"><div class="fblv-h">' + esc(lv) + "</div>" +
-        '<div class="fbt">' + FBT_HEAD + body + "</div></div>";
-    }).filter(Boolean).join("");
-    if (!secs) return null;
-    return '<div class="card tpl-fb-card">' +
-      sportHead(state, sport, "ตารางคะแนน · รอบแบ่งกลุ่ม") +
-      '<div class="card-body"><div class="fblist">' + secs + "</div></div>" +
-    "</div>";
-  }
-
-  /* ---- รอบชิงชนะเลิศ + ชิงอันดับ 3 + แชมป์ แยกตามระดับชั้น ---- */
-  function sportBracket(state, key) {
-    var sport = getSport(state, key);
-    if (!sport) return null;
-    var secs = sportLevels(sport).map(function (lv) {
-      var fin = matchesIn(sport, lv, "final")[0];
-      var third = matchesIn(sport, lv, "third")[0];
-      if (!fin && !third) return "";
-      var champ = winnerOf(fin);
-      return '<div class="fblv fbbr-lv">' +
-        '<div class="fblv-h">' + esc(lv) + "</div>" +
-        (fin ? '<div class="fbsub">' + esc(STAGE_LABEL.final) + "</div>" + matchRow(state, fin) : "") +
-        (champ ? '<div class="fbbr-champ ' + hClass(champ) + '">' +
-                   houseLogoImg(state, champ, "fbbr-champ-logo") +
-                   '<div><div class="fbbr-champ-k">🏆 ชนะเลิศ</div>' +
-                   '<div class="fbbr-champ-n">' + esc(houseName(state, champ)) + "</div></div>" +
-                 "</div>" : "") +
-        (third ? '<div class="fbbr-third"><div class="fbsub">' + esc(STAGE_LABEL.third) + "</div>" +
-                   matchRow(state, third) + "</div>" : "") +
-      "</div>";
-    }).filter(Boolean).join("");
-    if (!secs) return null;
-    return '<div class="card tpl-fb-card">' +
-      sportHead(state, sport, "สายการแข่งขัน") +
-      '<div class="card-body"><div class="fbbr">' + secs + "</div></div>" +
-    "</div>";
-  }
-
   return {
     top3: top3, results: results, schedule: schedule,
-    sportMatches: sportMatches, sportTable: sportTable, sportBracket: sportBracket,
+    sportMatches: sportMatches,
     esc: esc,
   };
 })();

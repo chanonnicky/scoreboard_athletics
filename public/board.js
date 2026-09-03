@@ -27,7 +27,7 @@
 
   // ---- สร้างชุดการ์ดตาม view -------------------------------------- //
   function sportCards(T, state, key) {
-    return [T.sportMatches(state, key), T.sportTable(state, key), T.sportBracket(state, key)];
+    return [T.sportMatches(state, key)];
   }
   function buildCards(state) {
     var T = window.T;

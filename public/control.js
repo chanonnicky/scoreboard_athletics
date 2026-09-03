@@ -41,7 +41,7 @@
 
   var TPL_NAMES = {
     top3: "อันดับ 1–3", results: "ผลการแข่งขัน", schedule: "ตารางการแข่งขัน",
-    sportMatches: "กีฬา · ผลแมตช์", sportTable: "กีฬา · ตารางคะแนน", sportBracket: "กีฬา · สายน็อกเอาต์",
+    sportMatches: "กีฬา · ผลแมตช์",
   };
 
   // ---- token ------------------------------------------------------- //
@@ -461,10 +461,6 @@
   // ========================================================= //
   //  SPORTS (โมดูลกีฬา — บอล/บาส/วิ่งเปรี้ยว/ชักเย่อ ใช้โครงเดียวกัน)
   // ========================================================= //
-  var SPORT_STAGES = [
-    ["group", "รอบแบ่งกลุ่ม"], ["final", "รอบชิงชนะเลิศ"], ["third", "ชิงอันดับ 3"],
-  ];
-
   function sportsList() { return state.sports || []; }
   function curSportKey() {
     var list = sportsList();
@@ -476,13 +472,11 @@
     if (sportDraft && sportDraft.key === key) return;
     var src = null, list = sportsList();
     for (var i = 0; i < list.length; i++) if (list[i].key === key) { src = list[i]; break; }
-    src = src || { key: key, name: "", icon: "", points: {}, matches: [] };
-    var p = src.points || {};
+    src = src || { key: key, name: "", icon: "", matches: [] };
     sportDraft = {
       key: src.key, name: src.name || "", icon: src.icon || "",
-      points: { win: p.win != null ? p.win : 3, draw: p.draw != null ? p.draw : 1, loss: p.loss != null ? p.loss : 0 },
       matches: (src.matches || []).map(function (m) {
-        return { id: m.id, level: m.level || "", title: m.title || "", stage: m.stage || "group",
+        return { id: m.id, level: m.level || "", title: m.title || "",
                  home: m.home, away: m.away, hs: m.hs, as: m.as, done: !!m.done };
       }),
     };
@@ -500,10 +494,6 @@
     if (!sportDraft) return;
     var nm = document.querySelector("[data-spname]"); if (nm) sportDraft.name = nm.value.trim();
     var ic = document.querySelector("[data-spicon]"); if (ic) sportDraft.icon = ic.value.trim();
-    ["win", "draw", "loss"].forEach(function (k) {
-      var el = document.querySelector('[data-sppts="' + k + '"]');
-      if (el) sportDraft.points[k] = el.value === "" ? 0 : Number(el.value);
-    });
     var out = [];
     [].forEach.call(panel.querySelectorAll(".fb-tbl tbody tr[data-i]"), function (tr, i) {
       var g = function (s) { return tr.querySelector(s); };
@@ -512,7 +502,6 @@
         id: (sportDraft.matches[i] && sportDraft.matches[i].id) || newMatchId(),
         level: g("[data-level]").value.trim(),
         title: g("[data-title]").value.trim(),
-        stage: g("[data-stage]").value,
         home: g("[data-home]").value,
         away: g("[data-away]").value,
         hs: hs === "" ? 0 : Number(hs),
@@ -523,8 +512,7 @@
     sportDraft.matches = out;
   }
   function sportBuild() {
-    return { key: sportDraft.key, name: sportDraft.name, icon: sportDraft.icon,
-             points: sportDraft.points, matches: sportDraft.matches };
+    return { key: sportDraft.key, name: sportDraft.name, icon: sportDraft.icon, matches: sportDraft.matches };
   }
   function saveSportNow() {
     sportCollectFromDom();
@@ -540,11 +528,12 @@
     }, 500);
   }
 
-  // ตัวเลือกระดับชั้น (จากรายการกรีฑา + กีฬาที่มี) ช่วยพิมพ์ให้ตรงกัน
+  // ตัวเลือกระดับชั้น: ป.1–ม.6 ก่อน แล้วต่อด้วยชั้นอื่น ๆ ที่มีอยู่ในข้อมูล
+  var GRADE_LEVELS = ["ป.1", "ป.2", "ป.3", "ป.4", "ป.5", "ป.6", "ม.1", "ม.2", "ม.3", "ม.4", "ม.5", "ม.6"];
   function levelOptions() {
     var set = {}, out = [];
     function add(l) { if (l && !set[l]) { set[l] = 1; out.push(l); } }
-    (state.events || []).forEach(function (e) { add(e.level || e.ageGroup); });
+    GRADE_LEVELS.forEach(add);
     sportsList().forEach(function (sp) { (sp.matches || []).forEach(function (m) { add(m.level); }); });
     return out;
   }
@@ -552,17 +541,13 @@
   function renderSports() {
     var list = sportsList();
     if (!list.length) {
-      panel.innerHTML = '<div class="card"><h2>กีฬา</h2><p class="muted">ยังไม่มีกีฬา — รีเซ็ตข้อมูลเพื่อสร้างชุดเริ่มต้น (บอล/บาส/วิ่งเปรี้ยว/ชักเย่อ)</p></div>';
+      panel.innerHTML = '<div class="card"><h2>กีฬา</h2><p class="muted">ยังไม่มีกีฬา — รีเซ็ตข้อมูลเพื่อสร้างชุดเริ่มต้น (บอล/บาส)</p></div>';
       return;
     }
     sportEnsureDraft();
     var key = sportDraft.key;
     var fo = (state.onair || {}).full || {};
-    function onBtn(tpl, label) {
-      var on = fo.visible && fo.template === tpl && fo.sport === key;
-      return '<button class="btn ' + (on ? "ok" : "") + '" data-act="sp-show" data-tpl="' + tpl + '">' +
-        (on ? "▶ " : "") + esc(label) + "</button>";
-    }
+    var showing = fo.visible && fo.template === "sportMatches" && fo.sport === key;
     var picker = list.map(function (sp) {
       return '<button class="btn ' + (sp.key === key ? "ok" : "") + '" data-act="sp-pick" data-key="' + esc(sp.key) + '">' +
         esc((sp.icon ? sp.icon + " " : "") + (sp.name || sp.key)) + "</button>";
@@ -573,11 +558,8 @@
 
     var rows = sportDraft.matches.map(function (m, i) {
       return '<tr data-i="' + i + '">' +
-        '<td><input class="fb-lvl" data-level list="lvlList" value="' + esc(m.level || "") + '" placeholder="ม.ต้น"></td>' +
-        '<td><input class="fb-ttl" data-title value="' + esc(m.title || "") + '" placeholder="คู่ที่ 1"></td>' +
-        '<td><select data-stage>' + SPORT_STAGES.map(function (s) {
-          return '<option value="' + s[0] + '"' + (s[0] === m.stage ? " selected" : "") + ">" + s[1] + "</option>";
-        }).join("") + "</select></td>" +
+        '<td><input class="fb-lvl" data-level list="lvlList" value="' + esc(m.level || "") + '" placeholder="ป.1"></td>' +
+        '<td><input class="fb-ttl" data-title value="' + esc(m.title || "") + '" placeholder="ชาย / คู่ที่ 1"></td>' +
         "<td>" + sportHouseSelect("home", m.home) + "</td>" +
         '<td><input class="fb-num" data-hs type="number" min="0" inputmode="numeric" value="' + (m.hs == null ? "" : esc(m.hs)) + '"></td>' +
         '<td class="fb-colon">:</td>' +
@@ -593,31 +575,24 @@
 
       '<div class="card"><h2>' + esc((sportDraft.icon ? sportDraft.icon + " " : "") + (sportDraft.name || key)) + " — ขึ้นจอ (ช่องเต็มจอ)</h2>" +
         '<div class="row">' +
-          onBtn("sportMatches", "ผลแมตช์") +
-          onBtn("sportTable", "ตารางคะแนน") +
-          onBtn("sportBracket", "สายน็อกเอาต์") +
+          '<button class="btn ' + (showing ? "ok" : "") + '" data-act="sp-show" data-tpl="sportMatches">' +
+            (showing ? "▶ " : "") + "ผลแมตช์</button>" +
           '<button class="btn" data-act="sp-hide">ลง (ซ่อน)</button>' +
+          '<label class="field" style="max-width:100px;margin-left:8px">ไอคอน<input type="text" data-spicon value="' + esc(sportDraft.icon) + '" placeholder="⚽"></label>' +
+          '<label class="field" style="max-width:220px">ชื่อกีฬา<input type="text" data-spname value="' + esc(sportDraft.name) + '" placeholder="ฟุตบอล"></label>' +
         "</div>" +
         '<p class="muted" style="margin-top:8px">แก้สกอร์แล้วจอที่ออกอากาศเปลี่ยนตามทันที · จอวนรวมทุกอย่าง: <code>/board?view=all</code></p>' +
       "</div>" +
 
-      '<div class="card"><h2>ตั้งค่ากีฬานี้</h2><div class="row">' +
-        '<label class="field" style="max-width:110px">ไอคอน<input type="text" data-spicon value="' + esc(sportDraft.icon) + '" placeholder="⚽"></label>' +
-        '<label class="field" style="max-width:240px">ชื่อกีฬา<input type="text" data-spname value="' + esc(sportDraft.name) + '" placeholder="ฟุตบอล"></label>' +
-        '<label class="field" style="max-width:90px">ชนะ<input type="number" min="0" data-sppts="win" value="' + sportDraft.points.win + '"></label>' +
-        '<label class="field" style="max-width:90px">เสมอ<input type="number" min="0" data-sppts="draw" value="' + sportDraft.points.draw + '"></label>' +
-        '<label class="field" style="max-width:90px">แพ้<input type="number" min="0" data-sppts="loss" value="' + sportDraft.points.loss + '"></label>' +
-      "</div></div>" +
-
       '<div class="card"><h2>แมตช์การแข่งขัน</h2>' +
         '<table class="tbl fb-tbl" style="margin-top:4px"><thead><tr>' +
-          "<th>ระดับชั้น</th><th>ชื่อรายการ</th><th>รอบ</th><th>เจ้าบ้าน</th><th>สกอร์</th><th></th><th></th><th>ทีมเยือน</th><th>สถานะ</th><th></th>" +
+          "<th>ระดับชั้น</th><th>ชื่อรายการ</th><th>เจ้าบ้าน</th><th>สกอร์</th><th></th><th></th><th>ทีมเยือน</th><th>สถานะ</th><th></th>" +
         "</tr></thead><tbody>" +
-          (rows || '<tr><td colspan="10" class="muted">ยังไม่มีแมตช์ — กด “เพิ่มแมตช์”</td></tr>') +
+          (rows || '<tr><td colspan="9" class="muted">ยังไม่มีแมตช์ — กด “เพิ่มแมตช์”</td></tr>') +
         "</tbody></table>" +
         '<div class="row" style="margin-top:12px">' +
           '<button class="btn" data-act="sp-add">+ เพิ่มแมตช์</button>' +
-          '<span class="muted">แบ่งกลุ่ม: ชนะ ' + sportDraft.points.win + " · เสมอ " + sportDraft.points.draw + " · แพ้ " + sportDraft.points.loss + " แต้ม · ตาราง/สายแยกตามระดับชั้น</span>" +
+          '<span class="muted">แต่ละคู่เลือกระดับชั้น (ป.1–ม.6) · จอจะจัดกลุ่มตามชั้นให้อัตโนมัติ</span>' +
         "</div>" +
       "</div>";
   }
@@ -670,7 +645,7 @@
         '<div class="linklist">' +
           '<a href="/board?view=all" target="_blank">/board?view=all &nbsp;— วนรวมทุกอย่าง: กรีฑา → ทุกกีฬา ⭐</a>' +
           '<a href="/board" target="_blank">/board &nbsp;— เฉพาะผลการแข่งขันกรีฑา</a>' +
-          '<a href="/board?view=football" target="_blank">/board?view=football &nbsp;— เฉพาะกีฬาหนึ่ง (football/basketball/sprint/tugofwar)</a>' +
+          '<a href="/board?view=football" target="_blank">/board?view=football &nbsp;— เฉพาะกีฬาหนึ่ง (football / basketball)</a>' +
           '<a href="/board?page=6" target="_blank">/board?page=6 &nbsp;— เปลี่ยนหน้าเร็วขึ้น (วินาที/หน้า)</a>' +
           '<a href="/board?transport=poll" target="_blank">/board?transport=poll &nbsp;— ถ้าเน็ตบล็อก SSE</a>' +
         "</div>" +
@@ -803,7 +778,7 @@
       var k = houseKeys();
       var last = sportDraft.matches[sportDraft.matches.length - 1];
       sportDraft.matches.push({
-        id: newMatchId(), level: (last && last.level) || "", title: "", stage: "group",
+        id: newMatchId(), level: (last && last.level) || "ป.1", title: "",
         home: k[0], away: k[1] || k[0], hs: 0, as: 0, done: false,
       });
       renderSports();
