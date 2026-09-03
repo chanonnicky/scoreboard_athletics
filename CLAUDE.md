@@ -24,6 +24,16 @@ On macOS `start.sh` deliberately uses **system Python** (`/usr/bin/python3`); co
 Python is unsigned and macOS firewall blocks LAN connections to it (localhost works, LAN IP
 doesn't). Windows deployment runs `server.ps1` (via `start.bat`) instead — no Python needed.
 
+**Rule: `start.bat` and `start.sh` must give the operator the same experience.** They launch
+different servers (`server.ps1` vs `server.py`) but the observable behaviour must match: same
+routes and CG output, concurrent handling of many polling screens, the same args
+(`--port N` / `--port=N` / `--host` / `--token` — `start.bat` forwards `%*` and `server.ps1`
+parses the `--` forms itself, on top of native `-Port` etc.), and equivalent messages on
+startup and on a busy port (wording is platform-idiomatic — `./start.sh` vs `start.bat`,
+`kill` vs close-the-window — but the same information). The one sanctioned gap is transport:
+`server.ps1` has no SSE, so Windows clients poll (see below). Any other divergence is a bug to
+fix in both, not to document.
+
 There is **no test suite and no build step**. The frontend is plain ES5 served statically.
 
 ### Verifying changes without a browser
@@ -54,6 +64,16 @@ and macOS deployments diverge. They are currently in parity (routes incl. `/boar
 differences: `server.ps1` has no SSE (`/api/events` 404s → clients poll), and it must stay
 **ASCII-only** (PS 5.1 reads BOM-less scripts as ANSI), so its migration names the legacy sport
 `"Football"` rather than the Thai name `server.py` uses.
+
+Both serve requests **concurrently** (`server.py` via `ThreadingHTTPServer`; `server.ps1` accepts
+on the main thread and dispatches each request to a 16-slot **runspace pool**). In `server.ps1`
+all mutable state lives in one `[hashtable]::Synchronized` container `$G` (shared by reference
+into every worker), and every read/mutation of `$G.State` is guarded by `[Monitor]` on `$G.Lock`
+(re-entrant, so `New-Id` nested inside `Apply-Command` is fine). The request-handling functions
+live in the `$Lib` scriptblock; a scriptblock passed across runspaces stays bound to its origin
+session state, so workers get `$Lib.ToString()` and rebuild it with `[scriptblock]::Create`
+before dot-sourcing. `$script:JS` (JavaScriptSerializer, not thread-safe) is created per runspace
+inside `$Lib`.
 
 Clients auto-detect transport: overlay/board try SSE first and fall back to polling `/api/state`
 every ~0.25–1s (`?transport=poll` forces it). So the Python SSE path is an optimization, not a
