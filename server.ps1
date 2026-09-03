@@ -286,10 +286,12 @@ function Handle-Request($ctx) {
 
   if ($path -eq "/") { $ctx.Response.Redirect("/control"); $ctx.Response.Close(); return }
   if ($path -eq "/healthz") { Send-Text $ctx 200 "ok"; return }
-  if ($path -eq "/control") { Serve-File $ctx (Join-Path $Public "control.html"); return }
-  if ($path -eq "/score")   { Serve-File $ctx (Join-Path $Public "control.html"); return }
-  if ($path -eq "/overlay") { Serve-File $ctx (Join-Path $Public "overlay.html"); return }
-  if ($path -eq "/board")   { Serve-File $ctx (Join-Path $Public "board.html"); return }
+  # control + score (incl. per-sport score /score/<sport>)
+  if ($path -eq "/control" -or $path -eq "/score" -or $path.StartsWith("/score/")) { Serve-File $ctx (Join-Path $Public "control.html"); return }
+  # Live overlay (/live is the new name for /overlay)
+  if ($path -eq "/overlay" -or $path -eq "/live") { Serve-File $ctx (Join-Path $Public "overlay.html"); return }
+  # Scoreboard (/scoreboard rotate, /scoreboard/<sport> live)
+  if ($path -eq "/board" -or $path -eq "/scoreboard" -or $path.StartsWith("/scoreboard/")) { Serve-File $ctx (Join-Path $Public "board.html"); return }
 
   if ($path -eq "/api/state" -and $method -eq "GET") {
     Send-Text $ctx 200 (State-Json) "application/json; charset=utf-8"; return
@@ -377,11 +379,14 @@ $bar = "=" * 60
 Write-Host $bar
 Write-Host " CG Live  -  scoreboard_athletics  (PowerShell)"
 Write-Host $bar
-Write-Host "  Control :  http://${ip}:$Port/control"
-Write-Host "  Score   :  http://${ip}:$Port/score        (score-recording page)"
-Write-Host "  Overlay :  http://${ip}:$Port/overlay      <<  put this in OBS / vMix"
-Write-Host "  Board   :  http://${ip}:$Port/board        (rotating results display)"
-Write-Host "  Local   :  http://127.0.0.1:$Port/control"
+Write-Host "  Control   : http://${ip}:$Port/control              (Live control)"
+Write-Host "  Score     : http://${ip}:$Port/score                (score: athletics)"
+Write-Host "  Score/foot: http://${ip}:$Port/score/football       (score: football)"
+Write-Host "  Score/bask: http://${ip}:$Port/score/basketball     (score: basketball)"
+Write-Host "  Live      : http://${ip}:$Port/live                 <<  put this in OBS / vMix"
+Write-Host "  Scoreboard: http://${ip}:$Port/scoreboard           (rotating display)"
+Write-Host "  SB/live   : http://${ip}:$Port/scoreboard/football  (live match score)"
+Write-Host "  Local     : http://127.0.0.1:$Port/control"
 if ($Token) { Write-Host "  Token   :  $Token" }
 Write-Host $bar
 Write-Host "  Ctrl+C to stop"

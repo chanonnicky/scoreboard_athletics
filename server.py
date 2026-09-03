@@ -335,11 +335,14 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/":
             return self._send(302, b"", extra={"Location": "/control"})
-        if path in ("/control", "/score"):
+        # หน้าคุม + จดคะแนน (รวมจดคะแนนแยกกีฬา /score/<sport>)
+        if path == "/control" or path == "/score" or path.startswith("/score/"):
             return self._serve_path(os.path.join(PUBLIC, "control.html"))
-        if path == "/overlay":
+        # จอ Live (OBS) — /live เป็นชื่อใหม่ของ /overlay
+        if path in ("/overlay", "/live"):
             return self._serve_path(os.path.join(PUBLIC, "overlay.html"))
-        if path == "/board":
+        # จอ Scoreboard — /scoreboard (วน) และ /scoreboard/<sport> (สด)
+        if path == "/board" or path == "/scoreboard" or path.startswith("/scoreboard/"):
             return self._serve_path(os.path.join(PUBLIC, "board.html"))
         if path == "/api/state":
             with _state_lock:
@@ -451,11 +454,15 @@ def main():
     print(line)
     print(" CG Live  —  scoreboard_athletics")
     print(line)
-    print("  Control :  http://%s:%d/control" % (ip, args.port))
-    print("  Score   :  http://%s:%d/score        (หน้าจดคะแนน)" % (ip, args.port))
-    print("  Overlay :  http://%s:%d/overlay      << ใส่ใน OBS / vMix" % (ip, args.port))
-    print("  Board   :  http://%s:%d/board        (จอประชาสัมพันธ์ วนผลการแข่ง)" % (ip, args.port))
-    print("  Local   :  http://127.0.0.1:%d/control" % args.port)
+    print("  Control  :  http://%s:%d/control            (คุม Live)" % (ip, args.port))
+    print("  Score    :  http://%s:%d/score              (จดคะแนน กรีฑา)" % (ip, args.port))
+    print("     บอล   :  http://%s:%d/score/football     (จดคะแนน บอล)" % (ip, args.port))
+    print("     บาส   :  http://%s:%d/score/basketball   (จดคะแนน บาส)" % (ip, args.port))
+    print("  Live     :  http://%s:%d/live               << ใส่ใน OBS / vMix" % (ip, args.port))
+    print("  Scoreboard: http://%s:%d/scoreboard         (จอวนผลทั้งหมด)" % (ip, args.port))
+    print("     สด บอล: http://%s:%d/scoreboard/football (สกอร์สด บอล)" % (ip, args.port))
+    print("     สด บาส: http://%s:%d/scoreboard/basketball (สกอร์สด บาส)" % (ip, args.port))
+    print("  Local    :  http://127.0.0.1:%d/control" % args.port)
     if TOKEN:
         print("  Token   :  %s" % TOKEN)
     print(line)

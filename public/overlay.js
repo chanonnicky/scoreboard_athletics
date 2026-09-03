@@ -20,7 +20,7 @@
 
   // ---- เทมเพลตแบบแบ่งหน้า (results): สลับ .apage อัตโนมัติทุก 10 วิ ---- //
   var PAGE_INTERVAL = 10000;
-  var PAGED_TEMPLATES = { results: 1 };
+  var PAGED_TEMPLATES = { results: 1, sportMatches: 1 };
   var pagerTimers = {};
 
   function stopPager(slot) {
@@ -111,9 +111,9 @@
     var html = conf.visible ? buildTemplate(conf, state) : null;
     var isPaged = html != null && PAGED_TEMPLATES[conf.template];
     var sig = html == null ? null
+      : isSport(conf.template) ? sportSig(state, conf.sport)
       : isPaged ? pagedSig(state)
       : conf.template === "schedule" ? schedSig(state, conf.eventId)
-      : isSport(conf.template) ? sportSig(state, conf.sport)
       : null;
 
     // ไม่มีอะไรจะแสดง -> เอาออก

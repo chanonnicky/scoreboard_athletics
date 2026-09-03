@@ -1,8 +1,11 @@
-/* board.js — จอประชาสัมพันธ์ (เปิดค้างที่จอโรงเรียน) อัปเดตสดจาก server
+/* board.js — จอ Scoreboard (เปิดค้างที่จอในงาน) อัปเดตสดจาก server
+   2 โหมด ตาม URL:
+     /scoreboard  หรือ /board            → วนผลทั้งหมด (ใช้ ?view=all|results|<กีฬา>)
+     /scoreboard/<กีฬา>                  → สกอร์บอร์ดสดของคู่ที่กำลังแข่ง (football/basketball)
    query params:
-     ?view=all          วนรวมทุกอย่าง: กรีฑา → ทุกกีฬา (แมตช์/ตาราง/สาย)
-         =results       (ดีฟอลต์) วนผลการแข่งขันกรีฑาทีละหน้า
-         =<กีฬา>        วน 3 การ์ดของกีฬานั้น เช่น football, basketball, sprint, tugofwar
+     ?view=all          วนรวมทุกอย่าง: กรีฑา → ทุกกีฬา
+         =results       (ดีฟอลต์) วนผลการแข่งขันกรีฑา
+         =<กีฬา>        วนการ์ดของกีฬานั้น
      ?page=9            วินาทีต่อหน้า/ต่อการ์ด (ดีฟอลต์ 9)
      ?transport=poll    ใช้ polling แทน SSE
 */
@@ -13,6 +16,10 @@
   var transport = params.get("transport") || "sse";
   var VIEW = (params.get("view") || "results").toLowerCase();
   var INTERVAL = (parseFloat(params.get("page") || "9") || 9) * 1000;
+
+  // โหมดสด: /scoreboard/<sport> หรือ /board/<sport>
+  var seg = location.pathname.replace(/\/+$/, "").split("/").filter(Boolean);
+  var LIVE_SPORT = (seg.length >= 2 && (seg[0] === "scoreboard" || seg[0] === "board")) ? seg[1] : null;
 
   var stage = document.getElementById("stage");
   var board = document.getElementById("board");
@@ -45,10 +52,8 @@
 
   // ---- pager ภายในการ์ด results (.apage) -------------------------- //
   var pageTimer = null, pageIdx = 0;
-  function apages() {
-    var cg = board.querySelector(".tpl-results-card");
-    return (cg && cg.querySelectorAll(".apage")) || [];
-  }
+  // หน้าย่อยของการ์ดที่กำลังแสดง (results หรือ sportMatches ที่แบ่งหน้า)
+  function apages() { return board.querySelectorAll(".apage"); }
   function stopPager() { if (pageTimer) { clearInterval(pageTimer); pageTimer = null; } }
   function startPager() {
     stopPager();
@@ -71,23 +76,25 @@
     }, INTERVAL);
   }
 
-  // ---- rotator ระหว่างการ์ด (football = หลายใบ) ------------------- //
+  // ---- rotator ระหว่างการ์ด ---------------------------------------- //
+  // ค้างแต่ละการ์ดนานตามจำนวนหน้าในตัว (results หลายหน้า = ต้องวนครบก่อน
+  // ค่อยไปการ์ดถัดไป) ใช้ setTimeout ต่อกันแทน setInterval คงที่
   var cards = [], cardIdx = 0, rotTimer = null;
-  function stopRotator() { if (rotTimer) { clearInterval(rotTimer); rotTimer = null; } }
+  function stopRotator() { if (rotTimer) { clearTimeout(rotTimer); rotTimer = null; } }
   function showCard(i) {
+    stopRotator();
     cardIdx = i;
     var html = cards[i];
     board.innerHTML = html ? '<div class="cg">' + html + "</div>" : '<div class="board-empty">ยังไม่มีข้อมูล</div>';
-    startPager(); // มีผลเฉพาะการ์ด results ที่มี .apage
-  }
-  function startRotator() {
-    stopRotator();
-    showCard(0);
-    if (cards.length < 2) return;
-    rotTimer = setInterval(function () {
+    startPager(); // วน .apage ในการ์ด results (ถ้ามี) ทุก INTERVAL
+    if (cards.length < 2) return; // การ์ดเดียว ไม่ต้องสลับ
+    // ค้างการ์ดนี้ = (จำนวนหน้า) × INTERVAL เพื่อให้โชว์ครบทุกหน้าก่อนสลับ
+    var pages = apages().length || 1;
+    rotTimer = setTimeout(function () {
       showCard((cardIdx + 1) % cards.length);
-    }, INTERVAL);
+    }, pages * INTERVAL);
   }
+  function startRotator() { showCard(0); }
 
   // ---- render / live update -------------------------------------- //
   var lastSig = null;
@@ -99,7 +106,7 @@
     var rs = Object.keys(r).sort().map(function (k) {
       return k + ":" + (r[k] || []).map(function (x) { return x.rank + "" + x.house; }).join(",");
     }).join("|");
-    return VIEW + "||" + evs + "||" + rs + "||" + (s.meetTitle || "") +
+    return (LIVE_SPORT || VIEW) + "||" + evs + "||" + rs + "||" + (s.meetTitle || "") +
       "||" + JSON.stringify(s.houseNames || {}) +
       "||" + JSON.stringify(s.houseLogos || {}) +
       "||" + (s.logo || "") +
@@ -115,6 +122,14 @@
     var sig = sigOf(state);
     if (sig === lastSig) return; // ไม่เปลี่ยน -> ปล่อยหมุนต่อ
     lastSig = sig;
+
+    // โหมดสด: การ์ดเดียว อัปเดตในที่ (ไม่ fade/ไม่วน) เพื่อสกอร์เปลี่ยนแล้วไม่กระพริบ
+    if (LIVE_SPORT) {
+      stopRotator(); stopPager();
+      var html = window.T.sportLive(state, LIVE_SPORT);
+      board.innerHTML = html || '<div class="board-empty">ไม่พบกีฬา "' + LIVE_SPORT + '"</div>';
+      return;
+    }
 
     cards = buildCards(state).filter(function (h) { return h != null; });
     if (!cards.length) {

@@ -242,24 +242,96 @@ window.T = (function () {
     );
   }
 
-  /* ---- รายการแมตช์ แยกตามระดับชั้น (ป.1–ม.6) ---- */
+  /* ---- รายการแมตช์ แยกตามระดับชั้น (ป.1–ม.6) — แบ่งหน้าอัตโนมัติ ----
+     คิดเป็น "พื้นที่": หัวระดับชั้น ~0.6 + แต่ละแมตช์ 1 หน่วย ต่อหน้าไม่เกิน ~4.6
+     (แถวบอลสูงเพราะมีโลโก้ใหญ่) ไม่หั่นระดับชั้นข้ามหน้า
+     board.js/overlay.js สลับ .apage เหมือนหน้าผลกรีฑา                        */
+  var SPORT_PAGE_UNITS = 4.6, LEVEL_HEAD_UNITS = 0.6;
   function sportMatches(state, key) {
     var sport = getSport(state, key);
     if (!sport || !(sport.matches || []).length) return null;
-    var body = sportLevels(sport).map(function (lv) {
+
+    var blocks = sportLevels(sport).map(function (lv) {
       var list = matchesIn(sport, lv);
-      return '<div class="fblv"><div class="fblv-h">' + esc(lv) + "</div>" +
-        list.map(function (m) { return matchRow(state, m); }).join("") + "</div>";
+      return {
+        units: LEVEL_HEAD_UNITS + list.length,
+        html: '<div class="fblv"><div class="fblv-h">' + esc(lv) + "</div>" +
+          list.map(function (m) { return matchRow(state, m); }).join("") + "</div>",
+      };
+    });
+
+    var pages = [], cur = [], curUnits = 0;
+    blocks.forEach(function (b) {
+      if (cur.length && curUnits + b.units > SPORT_PAGE_UNITS) { pages.push(cur); cur = []; curUnits = 0; }
+      cur.push(b.html); curUnits += b.units;
+    });
+    if (cur.length) pages.push(cur);
+
+    var kicker = "ผลการแข่งขัน";
+    if (pages.length > 1) kicker += " &nbsp;·&nbsp; " + pages.length + " หน้า";
+    var pagesHtml = pages.map(function (p) {
+      return '<div class="apage"><div class="fblist">' + p.join("") + "</div></div>";
     }).join("");
-    return '<div class="card tpl-fb-card">' +
-      sportHead(state, sport, "ผลการแข่งขัน") +
-      '<div class="card-body"><div class="fblist">' + body + "</div></div>" +
+
+    return '<div class="card tpl-fb-card tpl-fb-paged">' +
+      sportHead(state, sport, kicker) +
+      '<div class="card-body">' + pagesHtml + "</div>" +
+    "</div>";
+  }
+
+  /* คู่ที่กำลังแข่งของกีฬานั้น (จาก sport.currentId) */
+  function currentMatch(sport) {
+    if (!sport || !sport.currentId) return null;
+    var ms = sport.matches || [];
+    for (var i = 0; i < ms.length; i++) if (ms[i].id === sport.currentId) return ms[i];
+    return null;
+  }
+
+  /* ---- สกอร์บอร์ดสด: คู่ที่กำลังแข่ง (ทีม + สกอร์ใหญ่กลางจอ) ---- */
+  function sportLive(state, key) {
+    var sport = getSport(state, key);
+    if (!sport) return null;
+    var title = (sport.icon ? sport.icon + " " : "") + (sport.name || "กีฬา");
+    var m = currentMatch(sport);
+    if (!m) {
+      return '<div class="card tpl-live-card">' +
+        '<div class="card-head"><div class="card-kicker">' + esc(title) + " · สกอร์สด</div>" +
+          '<div class="card-title">&nbsp;</div>' + logoImg(state) + "</div>" +
+        '<div class="card-body"><div class="live-wait">— ยังไม่มีคู่ที่กำลังแข่ง —</div></div>' +
+      "</div>";
+    }
+    var hs = Number(m.hs) || 0, as = Number(m.as) || 0;
+    var hw = m.done && hs > as, aw = m.done && as > hs;
+    var sub = [m.level, m.title].filter(Boolean).join(" · ");
+    var status = m.done
+      ? '<div class="live-status done">จบการแข่งขัน</div>'
+      : '<div class="live-status"><span class="live-dot"></span>กำลังแข่ง</div>';
+    return '<div class="card tpl-live-card">' +
+      '<div class="card-head">' +
+        '<div class="card-kicker">' + esc(title) + " · สกอร์สด</div>" +
+        '<div class="card-title">' + esc(sub || " ") + "</div>" +
+        logoImg(state) +
+      "</div>" +
+      '<div class="card-body"><div class="live">' +
+        '<div class="live-team live-home ' + hClass(m.home) + (hw ? " win" : "") + '">' +
+          houseLogoImg(state, m.home, "live-logo") +
+          '<div class="live-name">' + esc(houseName(state, m.home)) + "</div>" +
+        "</div>" +
+        '<div class="live-mid">' +
+          '<div class="live-score"><span>' + esc(hs) + "</span><i>:</i><span>" + esc(as) + "</span></div>" +
+          status +
+        "</div>" +
+        '<div class="live-team live-away ' + hClass(m.away) + (aw ? " win" : "") + '">' +
+          houseLogoImg(state, m.away, "live-logo") +
+          '<div class="live-name">' + esc(houseName(state, m.away)) + "</div>" +
+        "</div>" +
+      "</div></div>" +
     "</div>";
   }
 
   return {
     top3: top3, results: results, schedule: schedule,
-    sportMatches: sportMatches,
+    sportMatches: sportMatches, sportLive: sportLive,
     esc: esc,
   };
 })();

@@ -57,6 +57,7 @@ body {
 
 /* ---- tabs ---- */
 .tabs { display: flex; gap: 4px; padding: 10px 18px 0; background: var(--bg-2); border-bottom: 1px solid var(--stroke); }
+.tabs[hidden] { display: none; }  /* โหมดจดคะแนนซ่อนแท็บ (attribute hidden ต้องชนะ .tabs) */
 .tabs button {
   background: transparent; border: 1px solid transparent; border-bottom: none;
   color: var(--ink-dim); padding: 9px 18px; border-radius: 8px 8px 0 0;
@@ -198,3 +199,25 @@ table.fb-tbl input.fb-num { width: 50px; text-align: center; }
 .fb-tbl .fb-colon { width: 8px; text-align: center; opacity: .55; padding: 0; }
 .fb-tbl .fb-done { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; white-space: nowrap; color: var(--ink-dim); }
 .fb-tbl select { max-width: 132px; }
+
+/* หน้าจดคะแนนกีฬา — แผงคู่ที่กำลังแข่ง (สด) */
+.sp-live-row {
+  display: flex; align-items: center; justify-content: center; gap: 18px;
+  flex-wrap: wrap; padding: 10px 0 4px;
+}
+.sp-live-team {
+  min-width: 150px; text-align: center;
+  font-size: 22px; font-weight: 800; line-height: 1.1;
+  padding: 10px 16px; border-radius: 12px;
+  color: #fff; background: var(--hc, #666);
+}
+.sp-live-ctl { display: flex; align-items: center; gap: 10px; }
+.sp-live-ctl .btn.lg { min-width: 56px; font-size: 26px; font-weight: 800; padding: 6px 16px; }
+.sp-live-n {
+  min-width: 72px; text-align: center;
+  font-size: 56px; font-weight: 800; font-variant-numeric: tabular-nums;
+}
+.sp-live-vs { font-size: 40px; font-weight: 800; opacity: .4; }
+/* แถวคู่ที่ตั้งเป็น "สด" ในตาราง */
+.fb-tbl tr.cur { background: rgba(255,213,74,.12); }
+.fb-tbl tr.cur td { box-shadow: inset 0 -1px 0 rgba(255,213,74,.4); }

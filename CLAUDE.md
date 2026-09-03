@@ -80,23 +80,36 @@ cause every matching row to light up together. IDs are generated in `_new_id()` 
 a per-ms counter so a burst of CSV imports doesn't collide). `load_state()` runs
 `dedupe_event_ids()` as a self-healing migration on startup and rewrites the file if it changed.
 
-### Frontend: one template module, three consumers
+### Two output channels (Live / Scoreboard) + per-role URLs
 
-`public/templates.js` (`window.T`) renders every CG as an HTML string and is shared by:
-- `overlay.html`/`overlay.js` — the OBS/vMix transparent overlay, driven by `state.onair`
-  (`lower` slot = top3 lower-third, `full` slot = results or schedule). Showing one slot hides
-  the other. `overlay.js` owns the show/hide animations and the auto-pager that cycles `.apage`
-  pages of the results template.
-- `control.html`/`control.js` — operator UI (`/control`) and score-entry UI (`/score`) are the
-  **same HTML page**; the tab set differs. It renders a live preview using the same `T.*`
-  functions, so template changes show up in the preview automatically.
-- `board.html`/`board.js` — `/board`, a standalone opaque full-screen signage page for a school
-  hallway TV that continuously cycles the results pages and scales the 1920×1080 stage to fit any
-  screen. Not driven by `onair` — it always shows results.
+The system is organized into independent channels, separated by URL, all driven from one shared
+state and one operator control:
 
-`overlay.css` holds the shared card/house/animation styles; `board.css` only overrides background
-and sizing. House colors are CSS variables (`--red`/`--green`/`--yellow`/`--blue`) pushed from
-`settings.houses` at runtime; `.h-red`/`.h-green`/… map them to `--house`/`--ink`.
+| URL | file | role |
+|---|---|---|
+| `/control` | control.html | **Live control** — operator shows/hides overlay graphics anytime |
+| `/score` | control.html | score-entry: athletics events (rank houses) |
+| `/score/<sport>` | control.html | score-entry per sport (football/basketball): edit matches, set the **current match**, live +/- and number entry |
+| `/live` (alias `/overlay`) | overlay.html | **Live** — transparent OBS/vMix overlay, driven by `state.onair` |
+| `/scoreboard` (alias `/board`) | board.html | **Scoreboard type 1** — opaque venue screen, auto-rotates all results (`?view=all\|results\|<sport>`) |
+| `/scoreboard/<sport>` | board.html | **Scoreboard type 2** — live single-match scoreboard of that sport's `currentId` |
+
+`control.js` picks its mode from `location.pathname`: `/control` → Live control (tabs), `/score` →
+athletics scoring, `/score/<sport>` → per-sport scoring (`SCORE_SPORT`). `board.js` picks its mode
+from the path: `/scoreboard/<sport>` → live mode (renders `T.sportLive`, no rotation, in-place score
+updates); otherwise the rotate-all mode.
+
+### Frontend: one template module, shared by every consumer
+
+`public/templates.js` (`window.T`) renders every CG as an HTML string. Templates: `top3`, `results`,
+`schedule` (athletics); `sportMatches` (per-sport match list grouped by grade level); `sportLive`
+(single current-match scoreboard). Consumers: `overlay.js` (Live, `state.onair` slots),
+`control.js` (control + score pages, with live preview via the same `T.*`), `board.js` (Scoreboard).
+
+`overlay.css` holds the shared card/house/animation styles (loaded by both overlay and board);
+`board.css` only overrides background and sizing. House colors are CSS variables
+(`--red`/`--green`/`--yellow`/`--blue`) pushed from `settings.houses` at runtime; `.h-red`/`.h-green`/…
+map them to `--house`/`--ink`.
 
 ### Logos
 
@@ -109,21 +122,18 @@ and sizing. House colors are CSS variables (`--red`/`--green`/`--yellow`/`--blue
 House key → color/name mapping: red = Red Falcon, green = Green Dragon, yellow = Yellow/Gold Lion,
 blue = Blue Shark (editable in the settings tab).
 
-### Sports tournament module (generic, multi-sport)
+### Sports module (generic, multi-sport)
 
-Separate from the athletics results. `state.sports` is an ordered list; each sport is
-`{ key, name, icon, points:{win,draw,loss}, matches:[{id, level, title, stage, home, away, hs, as, done}] }`.
-`stage` is only `group` | `final` | `third` (no semifinals). Everything divides by `level` (grade,
-free text) — each level has its own standings and its own final/third/champion. Any number of sports
-(football/basketball/วิ่งเปรี้ยว/ชักเย่อ/…); all share this one structure, so add a sport by adding a
-list entry, not new code.
+Separate from athletics results. `state.sports` is an ordered list; each sport is
+`{ key, name, icon, currentId, matches:[{id, level, title, home, away, hs, as, done}] }`.
+Matches divide by `level` (grade — the picker offers ป.1–ม.6, free text). `currentId` points to the
+match "playing now". There is **no standings/bracket** (removed by request) — only the match list and
+the live scoreboard. Add a sport by adding a list entry, not new code.
 
-The control "กีฬา" tab (`renderSports`, tab key `sports`) has a sport picker, per-sport settings
-(name/icon/points), and a match editor (level/title/stage/home/score/away/done). It upserts one sport
-at a time via the `setSport` command (debounced; `deleteSport` also exists). Three generic templates
-take a sport key: `sportMatches` (fixtures by level→stage), `sportTable` (per-level group standings via
-`standings(state, sport, level)` — pts, GD, GF), `sportBracket` (per-level final + third + champion).
-They render from `state.sports` with no `eventId`; the sport key travels in `onair[slot].sport` (added
-to the `show` command) and in `sportSig`. Signage: `/board?view=all` rotates athletics results plus
-every sport's three cards; `?view=<sportkey>` rotates just that sport. `load_state` migrates a legacy
-`state.football` object into `state.sports[0]`.
+Templates: `sportMatches(state, key)` (match list grouped by grade level, sorted ป.1→ม.6 via
+`gradeRank`) and `sportLive(state, key)` (big scoreboard of `currentId` — two teams + score + live
+status). Editing happens on the **per-sport score page** `/score/<sport>` (`renderSportScore` in
+control.js): match CRUD, "ตั้งสด" to set `currentId`, and +/- / number score entry. Everything saves
+via the `setSport` command (whole-sport upsert; debounced or immediate for +/-). Live/Scoreboard read
+it: `onair[slot].sport` carries the key on Live's `show`; `/scoreboard/<sport>` renders `sportLive`.
+`load_state` migrates a legacy `state.football` object into `state.sports[0]`.
