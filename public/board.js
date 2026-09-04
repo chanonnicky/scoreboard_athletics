@@ -23,6 +23,7 @@
 
   var stage = document.getElementById("stage");
   var board = document.getElementById("board");
+  var nowPlayingEl = document.getElementById("nowPlaying");
 
   // ---- ย่อ/ขยายเวที 1920×1080 ให้พอดีจอ ---------------------------- //
   function fit() {
@@ -133,6 +134,7 @@
       "||" + JSON.stringify(s.houseNames || {}) +
       "||" + JSON.stringify(s.houseLogos || {}) +
       "||" + (s.logo || "") +
+      "||" + (s.selEventId || "") +     // แถบ "กำลังแข่ง" ใช้รายการที่เลือกอยู่ — ต้องรู้เมื่อเปลี่ยน
       "||" + JSON.stringify(state.sports || []);
   }
 
@@ -181,6 +183,12 @@
       return;
     }
     stopClockTick();
+    // แถบ "กำลังแข่ง" อยู่นอกการ์ดที่วน -> อัปเดตสดทุกครั้ง ไม่ต้องรอรอบวน
+    // (เว้นที่ด้านบนให้การ์ดตอนมีแถบ กันซ้อนทับ)
+    if (nowPlayingEl) {
+      nowPlayingEl.innerHTML = window.T.nowPlaying(state);
+      stage.classList.toggle("has-now-playing", !!nowPlayingEl.innerHTML);
+    }
 
     var prevCount = cards.length;
     var next = buildCards(state).filter(function (h) { return h != null; });

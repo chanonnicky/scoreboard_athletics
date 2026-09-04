@@ -114,6 +114,15 @@ state and one operator control:
 | `/scoreboard` (alias `/board`) | board.html | **Scoreboard type 1** — opaque venue screen, auto-rotates all results (`?view=all\|results\|<sport>`) |
 | `/scoreboard/<sport>` | board.html | **Scoreboard type 2** — live single-match scoreboard of that sport's `currentId` |
 
+The rotate-all screen only re-renders the visible card when it must (card count changes, or a
+single-card view); on a plain data change it updates `cards[]` silently and lets the rotator pick
+up the new content on its next tick — so it never flashes/resets mid-cycle. A separate
+`#nowPlaying` bar (`T.nowPlaying`, `board.js`) floats above the rotating card and updates on every
+change regardless: the in-progress athletics event (`settings.selEventId`) plus every sport's
+current match that isn't `done`. `sigOf()` must include every field `nowPlaying`/the cards read,
+including `selEventId` — a plain equality/JSON check, not a deep diff, so a field left out silently
+stops updating.
+
 `control.js` picks its mode from `location.pathname`: `/control` → Live control, `/score` →
 athletics scoring, `/score/<sport>` → per-sport scoring (`SCORE_SPORT`). All three share one
 **app shell** (`control.html`): a left `.sidebar` (nav to control / per-sport score / manage /

@@ -358,9 +358,41 @@ window.T = (function () {
     "</div>";
   }
 
+  /* ---- แถบ "กำลังแข่งอยู่" — สรุปทุกอย่างที่ยังไม่จบตอนนี้ (กรีฑา + ทุกกีฬา) ----
+     ใช้กับจอ Scoreboard (แสดงคู่กับการ์ดที่วนอยู่ ไม่ขึ้นกับว่าการ์ดไหนกำลังโชว์)
+     กรีฑา: รายการที่เลือกอยู่ตอนนี้ (settings.selEventId ที่หน้าคุมตั้งไว้ — แชร์ทั้งงาน)
+     กีฬา: currentId ของแต่ละกีฬาที่ยังไม่ done                                        */
+  function nowPlaying(state) {
+    var bits = [];
+
+    var sel = state.settings && state.settings.selEventId;
+    if (sel) {
+      var ev = (state.events || []).find(function (e) { return e.id === sel; });
+      if (ev) {
+        var lv = eventLevel(ev);
+        bits.push('<span class="np-item">🏃 ' + esc(ev.title || "") +
+          (lv ? ' <b class="np-lv">' + esc(lv) + "</b>" : "") + "</span>");
+      }
+    }
+
+    (state.sports || []).forEach(function (sp) {
+      var m = currentMatch(sp);
+      if (!m || m.done) return;
+      var hs = Number(m.hs) || 0, as = Number(m.as) || 0;
+      bits.push('<span class="np-item">' + (sp.icon ? esc(sp.icon) + " " : "") +
+        '<span class="np-team ' + hClass(m.home) + '">' + esc(houseName(state, m.home)) + "</span>" +
+        ' <b class="np-score">' + esc(hs) + "–" + esc(as) + "</b> " +
+        '<span class="np-team ' + hClass(m.away) + '">' + esc(houseName(state, m.away)) + "</span></span>");
+    });
+
+    if (!bits.length) return "";
+    return '<div class="now-playing"><span class="np-label">● กำลังแข่ง</span>' +
+      bits.join('<span class="np-sep">•</span>') + "</div>";
+  }
+
   return {
     top3: top3, results: results, schedule: schedule,
-    sportMatches: sportMatches, sportLive: sportLive,
+    sportMatches: sportMatches, sportLive: sportLive, nowPlaying: nowPlaying,
     esc: esc, clockValue: clockValue, fmtClock: fmtClock,
   };
 })();

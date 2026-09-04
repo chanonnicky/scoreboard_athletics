@@ -38,6 +38,24 @@ body.board .tpl-results-card .card-body { min-height: 890px; }
   letter-spacing: 1px;
 }
 
+/* แถบ "กำลังแข่ง" — ลอยอยู่บนสุด นอกการ์ดที่วน อัปเดตสดตลอด ไม่ขึ้นกับรอบวน */
+#nowPlaying:empty { display: none; }
+.now-playing {
+  position: absolute; top: 34px; left: 50%; transform: translateX(-50%);
+  z-index: 5; max-width: 1800px;
+  display: flex; align-items: center; gap: 26px;
+  background: rgba(10, 14, 22, .74); border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 999px; padding: 14px 36px;
+  font-size: 27px; font-weight: 600; white-space: nowrap;
+}
+.np-label { color: #ff6a6a; font-weight: 800; letter-spacing: .5px; font-size: 22px; }
+.np-lv { opacity: .68; font-weight: 500; }
+.np-team { font-weight: 700; color: var(--house, #fff); }
+.np-score { font-variant-numeric: tabular-nums; margin: 0 4px; }
+.np-sep { opacity: .32; margin: 0 8px; }
+/* เว้นที่ด้านบนให้การ์ดตอนมีแถบ กันซ้อนทับ */
+#stage.has-now-playing #board { padding-top: 96px; box-sizing: border-box; }
+
 /* การ์ดบอลบนจอใหญ่ */
 body.board .tpl-fb-card { min-width: 1560px; max-width: 1560px; }
 
