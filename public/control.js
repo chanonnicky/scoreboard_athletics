@@ -409,13 +409,16 @@
         (on ? "● " : "▶ ") + label + (on ? " · ออกอยู่" : "") + "</button>";
     }
     // แต่ละกีฬาได้ 2 ปุ่ม: รายการแมตช์ทั้งหมด (sportMatches) + สกอร์บอร์ดคู่สด (sportLive)
+    // จับคู่ไว้ในกล่องเดียวกันให้เห็นชัดว่าเป็นของกีฬาเดียวกัน (ไม่ปนกับปุ่มอื่นตอนขึ้นบรรทัดใหม่)
     var sportBtns = (state.sports || []).map(function (sp) {
       var nm = esc((sp.icon ? sp.icon + " " : "") + (sp.name || sp.key));
       var dataSport = ' data-sport="' + esc(sp.key) + '"';
       var onList = fu.visible && fu.template === "sportMatches" && fu.sport === sp.key;
       var onLive = fu.visible && fu.template === "sportLive" && fu.sport === sp.key;
-      return cmdBtn("show-full-sport", onList, nm, dataSport) +
-        cmdBtn("show-full-sportlive", onLive, "สด " + nm, dataSport);
+      return '<div class="sport-pair">' +
+        cmdBtn("show-full-sport", onList, nm, dataSport) +
+        cmdBtn("show-full-sportlive", onLive, "สด " + nm, dataSport) +
+      "</div>";
     }).join("");
 
     panel.innerHTML =
@@ -461,7 +464,9 @@
             cmdBtn("show-full-schedule", schedOn, "ตารางแข่ง") +
             cmdBtn("show-full-results", resOn, "ผลการแข่งขัน") +
             sportBtns +
-            '<button class="btn" data-act="hide-full"' + (schedOn || resOn || sportOn || sportLiveOn ? "" : " disabled") + ">ซ่อนเต็มจอ</button>" +
+          "</div>" +
+          '<div class="row" style="margin-top:10px">' +
+            '<button class="btn" data-act="hide-full"' + (schedOn || resOn || sportOn || sportLiveOn ? "" : " disabled") + ">■ ซ่อนเต็มจอ</button>" +
           "</div>" +
         "</div>" +
 

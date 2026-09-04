@@ -162,8 +162,15 @@ button.btn:disabled { opacity: .45; cursor: not-allowed; }
 .oa-badge { color: var(--ok); font-size: 12px; font-weight: 700; white-space: nowrap; }
 
 /* ---- live: สั่งขึ้นจอ ---- */
-.cmd-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }
+.cmd-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; align-items: stretch; }
 .cmd-grid .btn { flex: 1 1 auto; min-width: 150px; }
+/* จับคู่ปุ่ม "รายการแมตช์" + "สด" ของกีฬาเดียวกันไว้ในกรอบเดียว ให้เห็นชัดว่าเป็นชุดเดียวกัน
+   ไม่ปนกับปุ่มอื่นตอนขึ้นบรรทัดใหม่ (flex-wrap) */
+.sport-pair {
+  display: flex; gap: 6px; flex: 1 1 300px;
+  background: var(--bg-3); border: 1px solid var(--stroke); border-radius: 10px; padding: 6px;
+}
+.sport-pair .btn { flex: 1 1 130px; min-width: 0; }
 .btn.is-live {
   background: var(--ok); border-color: var(--ok); color: #06240f; font-weight: 700;
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--ok) 55%, transparent);
