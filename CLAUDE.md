@@ -163,7 +163,7 @@ map them to `--house`/`--ink`.
   the served PNGs are trimmed exports at `public/pictures/house-*.png`. Those PNGs are force-added
   past the `public/pictures/*` gitignore rule via a `!public/pictures/house-*.png` exception.
 
-House key → color/name mapping: red = Red Falcon, green = Green Dragon, yellow = Yellow/Gold Lion,
+House key → color/name mapping: red = Red Falcon, green = Green Dragon, yellow = Gold Lion,
 blue = Blue Shark (editable in the settings tab).
 
 ### Sports module (generic, multi-sport)
