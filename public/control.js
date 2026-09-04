@@ -38,7 +38,7 @@
 
   var TPL_NAMES = {
     top3: "อันดับ 1–3", results: "ผลการแข่งขัน", schedule: "ตารางการแข่งขัน",
-    sportMatches: "กีฬา · ผลแมตช์",
+    sportMatches: "กีฬา · ผลแมตช์", sportLive: "กีฬา · สกอร์สด",
   };
 
   // ---- token ------------------------------------------------------- //
@@ -379,7 +379,7 @@
       inner = '<div class="oa-empty">— จอว่าง —</div>';
     } else {
       var label = TPL_NAMES[s.template] || s.template;
-      if (s.template === "sportMatches" && s.sport) {
+      if ((s.template === "sportMatches" || s.template === "sportLive") && s.sport) {
         var sp = (state.sports || []).find(function (x) { return x.key === s.sport; });
         if (sp) label += " · " + (sp.name || s.sport);
       }
@@ -401,16 +401,21 @@
     var schedOn = !!(fu.visible && fu.template === "schedule");
     var resOn = !!(fu.visible && fu.template === "results");
     var sportOn = !!(fu.visible && fu.template === "sportMatches");
+    var sportLiveOn = !!(fu.visible && fu.template === "sportLive");
     var collapsed = localStorage.getItem("cg_preview_collapsed") === "1";
 
     function cmdBtn(act, on, label, extra) {
       return '<button class="btn primary' + (on ? " is-live" : "") + '" data-act="' + act + '"' + (extra || "") + ">" +
         (on ? "● " : "▶ ") + label + (on ? " · ออกอยู่" : "") + "</button>";
     }
+    // แต่ละกีฬาได้ 2 ปุ่ม: รายการแมตช์ทั้งหมด (sportMatches) + สกอร์บอร์ดคู่สด (sportLive)
     var sportBtns = (state.sports || []).map(function (sp) {
-      var on = fu.visible && fu.template === "sportMatches" && fu.sport === sp.key;
-      return cmdBtn("show-full-sport", on, esc((sp.icon ? sp.icon + " " : "") + (sp.name || sp.key)),
-        ' data-sport="' + esc(sp.key) + '"');
+      var nm = esc((sp.icon ? sp.icon + " " : "") + (sp.name || sp.key));
+      var dataSport = ' data-sport="' + esc(sp.key) + '"';
+      var onList = fu.visible && fu.template === "sportMatches" && fu.sport === sp.key;
+      var onLive = fu.visible && fu.template === "sportLive" && fu.sport === sp.key;
+      return cmdBtn("show-full-sport", onList, nm, dataSport) +
+        cmdBtn("show-full-sportlive", onLive, "สด " + nm, dataSport);
     }).join("");
 
     panel.innerHTML =
@@ -456,7 +461,7 @@
             cmdBtn("show-full-schedule", schedOn, "ตารางแข่ง") +
             cmdBtn("show-full-results", resOn, "ผลการแข่งขัน") +
             sportBtns +
-            '<button class="btn" data-act="hide-full"' + (schedOn || resOn || sportOn ? "" : " disabled") + ">ซ่อนเต็มจอ</button>" +
+            '<button class="btn" data-act="hide-full"' + (schedOn || resOn || sportOn || sportLiveOn ? "" : " disabled") + ">ซ่อนเต็มจอ</button>" +
           "</div>" +
         "</div>" +
 
@@ -920,6 +925,9 @@
     },
     "show-full-sport": function (b) {
       cmd({ action: "show", slot: "full", template: "sportMatches", eventId: null, sport: b.dataset.sport });
+    },
+    "show-full-sportlive": function (b) {
+      cmd({ action: "show", slot: "full", template: "sportLive", eventId: null, sport: b.dataset.sport });
     },
     "show-full-schedule": function () {
       cmd({ action: "show", slot: "full", template: "schedule", eventId: selectedEventId() });

@@ -187,5 +187,15 @@ Templates: `sportMatches(state, key)` (match list grouped by grade level, sorted
 status). Editing happens on the **per-sport score page** `/score/<sport>` (`renderSportScore` in
 control.js): match CRUD, "ตั้งสด" to set `currentId`, and +/- / number score entry. Everything saves
 via the `setSport` command (whole-sport upsert; debounced or immediate for +/-). Live/Scoreboard read
-it: `onair[slot].sport` carries the key on Live's `show`; `/scoreboard/<sport>` renders `sportLive`.
-`load_state` migrates a legacy `state.football` object into `state.sports[0]`.
+it: `onair[slot].sport` carries the key on Live's `show`; both `sportMatches` and `sportLive` are
+pushable to `/live`'s full slot (`renderLive()`'s per-sport button pair, `show-full-sport` /
+`show-full-sportlive`) and `/scoreboard/<sport>` always renders `sportLive`. `load_state` migrates
+a legacy `state.football` object into `state.sports[0]`.
+
+`overlay.js` mirrors `board.js`'s `sportLive` handling since it's a third consumer of the same
+template: `isSport()` covers both `sportMatches`/`sportLive` (for `sportSig` + the `sameShell`
+same-sport check — needed because unlike `top3`/`schedule`, `conf.eventId` is always `null` for
+sport templates, so without comparing `conf.sport` too, switching from one sport's card to
+another's would wrongly read as "unchanged"), and it runs its own clock ticker
+(`startClockTick`/`tickClock`) plus score-bump/`.just-final` diffing (`bumpLiveScore`) per slot,
+independently of `board.js`'s copies — both must stay in sync if that logic changes.

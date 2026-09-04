@@ -81,7 +81,58 @@
     return (sportKey || "") + "||" + JSON.stringify(state.sports || []) +
       "||" + JSON.stringify(s.houseNames || {}) + "||" + JSON.stringify(s.houseLogos || {});
   }
-  function isSport(t) { return t === "sportMatches"; }
+  function isSport(t) { return t === "sportMatches" || t === "sportLive"; }
+
+  // ---- นาฬิกาแมตช์ (สตอปวอตช์) + สกอร์เด้ง สำหรับ sportLive บนจอ Live ---- //
+  var clockTimers = {};  // slot -> interval id
+  var liveScores = {};   // slot -> {id,hs,as,done} ของคู่สดล่าสุด (เทียบหาว่าฝั่งไหนสกอร์เปลี่ยน)
+
+  function stopClockTick(slot) {
+    if (clockTimers[slot]) { clearInterval(clockTimers[slot]); delete clockTimers[slot]; }
+  }
+  function tickClock(slot) {
+    var host = document.getElementById("slot-" + slot);
+    var el = host && host.querySelector(".cg:not(.out) .live-clock");
+    if (!el || el.getAttribute("data-run") !== "1") { stopClockTick(slot); return; }
+    var base = parseFloat(el.getAttribute("data-el")) || 0;
+    var since = parseFloat(el.getAttribute("data-since")) || 0;
+    el.textContent = T.fmtClock(base + Math.max(0, (Date.now() - since) / 1000));
+  }
+  function startClockTick(slot) {
+    stopClockTick(slot);
+    var host = document.getElementById("slot-" + slot);
+    var el = host && host.querySelector('.cg:not(.out) .live-clock[data-run="1"]');
+    if (el) { tickClock(slot); clockTimers[slot] = setInterval(function () { tickClock(slot); }, 500); }
+  }
+
+  function sportCurrentMatch(state, key) {
+    var sp = (state.sports || []).find(function (s) { return s.key === key; });
+    if (!sp || !sp.currentId) return null;
+    return (sp.matches || []).find(function (m) { return m.id === sp.currentId; }) || null;
+  }
+  function bumpEl(root, sel) {
+    var el = root.querySelector(sel);
+    if (!el) return;
+    el.classList.remove("bump");
+    void el.offsetWidth;
+    el.classList.add("bump");
+  }
+  // root = โหนด .cg ที่กำลังแสดงคู่สดอยู่ (sameShell = โหนดเดิม, entrance ใหม่ = โหนดที่เพิ่งสร้าง)
+  // silent = จริงตอนโผล่ครั้งแรก แค่บันทึกสกอร์ตั้งต้น ไม่ต้องเด้ง
+  function bumpLiveScore(slot, root, state, sportKey, silent) {
+    var lm = sportCurrentMatch(state, sportKey);
+    var prevScore = liveScores[slot];
+    if (!silent && lm && prevScore && prevScore.id === lm.id) {
+      var nhs = Number(lm.hs) || 0, nas = Number(lm.as) || 0;
+      if (nhs !== prevScore.hs) bumpEl(root, ".ls-h");
+      if (nas !== prevScore.as) bumpEl(root, ".ls-a");
+      if (lm.done && !prevScore.done) {
+        var card = root.querySelector(".tpl-live-card");
+        if (card) card.classList.add("just-final");
+      }
+    }
+    liveScores[slot] = lm ? { id: lm.id, hs: Number(lm.hs) || 0, as: Number(lm.as) || 0, done: !!lm.done } : null;
+  }
 
   function animMs(state) {
     return (state.settings && state.settings.animMs) || 450;
@@ -98,6 +149,7 @@
       case "results":  return T.results(state);
       case "schedule": return T.schedule(state, conf.eventId);
       case "sportMatches": return T.sportMatches(state, conf.sport);
+      case "sportLive": return T.sportLive(state, conf.sport);
       default:         return null;
     }
   }
@@ -119,13 +171,14 @@
     // ไม่มีอะไรจะแสดง -> เอาออก
     if (html == null) {
       stopPager(slot);
+      stopClockTick(slot);
       if (cur) {
         cur.classList.remove("in");
         cur.classList.add("out");
         var d = cur;
         setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, ms + 60);
       }
-      last[slot] = { template: conf.template, eventId: conf.eventId, visible: false };
+      last[slot] = { template: conf.template, eventId: conf.eventId, sport: conf.sport, visible: false };
       return;
     }
 
@@ -133,12 +186,15 @@
     var cont = cur && prev.visible && prev.template === conf.template;
     if (cont && sig != null && prev.sig === sig) return;
 
+    // เทมเพลตผูกกับกีฬา (sportMatches/sportLive) ต้องเช็ก "กีฬาเดียวกัน" ด้วย ไม่งั้นสลับบอล<->บาส
+    // จะเข้าใจผิดว่าเป็นการ์ดเดิม (eventId ว่างเท่ากันทั้งคู่)
     var sameShell = (cont && isPaged) || (cur && prev.visible && prev.template === conf.template &&
-      (prev.eventId === conf.eventId || conf.template === "schedule"));
+      (isSport(conf.template) ? prev.sport === conf.sport : (prev.eventId === conf.eventId || conf.template === "schedule")));
 
     if (sameShell) {
       // อัปเดตข้อมูลสด ไม่ต้อง re-animate
       cur.innerHTML = html;
+      if (conf.template === "sportLive") bumpLiveScore(slot, cur, state, conf.sport, false);
     } else {
       if (cur) {
         cur.classList.remove("in");
@@ -155,6 +211,7 @@
       requestAnimationFrame(function () {
         requestAnimationFrame(function () { wrap.classList.add("in"); });
       });
+      if (conf.template === "sportLive") bumpLiveScore(slot, wrap, state, conf.sport, true);
     }
 
     if (isPaged) startPager(slot);
@@ -172,7 +229,11 @@
       }
     }
 
-    last[slot] = { template: conf.template, eventId: conf.eventId, visible: true, sig: sig };
+    // สกอร์บอร์ดคู่สด: เดินนาฬิกาเอง (state ไม่เปลี่ยนระหว่างที่นาฬิกาวิ่งอยู่)
+    if (conf.template === "sportLive") startClockTick(slot);
+    else stopClockTick(slot);
+
+    last[slot] = { template: conf.template, eventId: conf.eventId, sport: conf.sport, visible: true, sig: sig };
   }
 
   function apply(state) {
