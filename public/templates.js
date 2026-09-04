@@ -334,7 +334,9 @@ window.T = (function () {
       "</div>";
     }
     var hs = Number(m.hs) || 0, as = Number(m.as) || 0;
-    var hw = m.done && hs > as, aw = m.done && as > hs;
+    // ทีมที่นำอยู่ตอนนี้ — ไม่ต้องรอจบแมตช์ (เท่ากัน/0-0 ยังไม่มีใครนำ ไม่ไฮไลต์ฝั่งไหน)
+    var tied = hs === as;
+    var hw = !tied && hs > as, aw = !tied && as > hs;
     var sub = [m.level, m.title].filter(Boolean).join(" · ");
     var status = m.done
       ? '<div class="live-status done">จบการแข่งขัน</div>'
@@ -355,7 +357,7 @@ window.T = (function () {
         logoImg(state) +
       "</div>" +
       '<div class="card-body"><div class="live">' +
-        '<div class="live-team live-home ' + hClass(m.home) + (hw ? " win" : "") + '">' +
+        '<div class="live-team live-home ' + hClass(m.home) + (hw ? " win" : aw ? " trail" : "") + '">' +
           houseLogoImg(state, m.home, "live-logo") +
           '<div class="live-name">' + esc(houseName(state, m.home)) + "</div>" +
         "</div>" +
@@ -364,7 +366,7 @@ window.T = (function () {
           clockHtml +
           status +
         "</div>" +
-        '<div class="live-team live-away ' + hClass(m.away) + (aw ? " win" : "") + '">' +
+        '<div class="live-team live-away ' + hClass(m.away) + (aw ? " win" : hw ? " trail" : "") + '">' +
           houseLogoImg(state, m.away, "live-logo") +
           '<div class="live-name">' + esc(houseName(state, m.away)) + "</div>" +
         "</div>" +
