@@ -27,16 +27,6 @@ window.T = (function () {
 
   function eventLevel(ev) { return ev.level || ev.ageGroup || ""; }
 
-  /* แถวสถานะ "กำลังแข่ง: …" — ใช้สไตล์แถว .srow.cur เดียวกับตารางการแข่งขัน
-     ติดหัวการ์ด results / sportMatches (ก่อน card-body) บอกว่ารายการ/คู่ไหนกำลังแข่งอยู่ตอนนี้ */
-  function nowRow(titleText, level) {
-    return '<div class="now-row"><div class="srow cur">' +
-      '<div class="smark">▶</div>' +
-      '<div class="stitle">กำลังแข่ง: ' + esc(titleText) + "</div>" +
-      '<div class="slevel">' + esc(level || "") + "</div>" +
-    "</div></div>";
-  }
-
   /* ---- นาฬิกาจับเวลาแมตช์ (สตอปวอตช์ นับขึ้น) ----
      clock = { running:bool, elapsed:วินาทีที่สะสมไว้, since:unix ms ตอนเริ่มเดินรอบนี้ }
      ไม่มี clock / undefined = ถือว่าหยุดที่ 0 · ผู้บริโภค (board/control) tick เองทุกวินาที */
@@ -113,13 +103,20 @@ window.T = (function () {
     var doneCount = 0;
     evs.forEach(function (e) { var r = resById[e.id]; if (r && r.length) doneCount++; });
 
+    // รายการที่กำลังแข่งอยู่ตอนนี้ (settings.selEventId ที่หน้าคุมตั้งไว้ — แชร์ทั้งงาน)
+    // ไฮไลต์ตรงแถวของรายการนั้นเลย แทนที่จะขึ้นแยกเป็นแถวสรุปต่างหาก
+    var sel = state.settings && state.settings.selEventId;
+
     var pagesHtml = pages.map(function (grp, pi) {
       var base = pi * RESULTS_PER_PAGE;
       var rows = grp.map(function (e, k) {
+        var isCur = !!sel && e.id === sel;
         var top3rows = sortResults(resById[e.id] || []).filter(function (r) {
           var rk = Number(r.rank); return rk >= 1 && rk <= 3;
         });
-        var right = top3rows.length
+        var right = isCur
+          ? '<div class="rres rlive"><span class="live-dot"></span>กำลังแข่ง</div>'
+          : top3rows.length
           ? '<div class="rres">' + top3rows.map(function (r) {
               return '<span class="rchip ' + hClass(r.house) + '"><b>' + esc(r.rank) + "</b>" +
                      houseLogoImg(state, r.house, "rchip-logo") +
@@ -128,8 +125,8 @@ window.T = (function () {
           : '<div class="rres rwait">— รอผล —</div>';
         var lv = eventLevel(e);
         return (
-          '<div class="rrow2">' +
-            '<div class="rno">' + (base + k + 1) + "</div>" +
+          '<div class="rrow2' + (isCur ? " cur" : "") + '">' +
+            '<div class="rno">' + (isCur ? "▶" : (base + k + 1)) + "</div>" +
             '<div class="rtitle">' + esc(e.title || "") +
               (lv ? ' <span class="rlevel">' + esc(lv) + "</span>" : "") +
             "</div>" +
@@ -143,11 +140,6 @@ window.T = (function () {
     var kicker = "ผลการแข่งขัน &nbsp;·&nbsp; " + doneCount + " / " + evs.length + " รายการ";
     if (pages.length > 1) kicker += " &nbsp;·&nbsp; " + pages.length + " หน้า";
 
-    // รายการที่กำลังแข่งอยู่ตอนนี้ (settings.selEventId ที่หน้าคุมตั้งไว้ — แชร์ทั้งงาน)
-    var sel = state.settings && state.settings.selEventId;
-    var curEv = sel && evs.find(function (e) { return e.id === sel; });
-    var curRow = curEv ? nowRow(curEv.title || "", eventLevel(curEv)) : "";
-
     return (
       '<div class="card tpl-results-card">' +
         '<div class="card-head">' +
@@ -155,7 +147,6 @@ window.T = (function () {
           '<div class="card-title">' + esc((state.settings && state.settings.meetTitle) || "กีฬาสี") + "</div>" +
           logoImg(state) +
         "</div>" +
-        curRow +
         '<div class="card-body">' + pagesHtml + "</div>" +
       "</div>"
     );
@@ -251,13 +242,16 @@ window.T = (function () {
   }
 
   /* แถวหนึ่งแมตช์: [เจ้าบ้าน]  (ชื่อรายการ / สกอร์)  [ทีมเยือน]
-     idx = ลำดับในหน้า (ใช้หน่วงแอนิเมชันไล่แถวเข้า — ตั้งเป็น CSS var --fbi) */
-  function matchRow(state, m, idx) {
+     idx = ลำดับในหน้า (ใช้หน่วงแอนิเมชันไล่แถวเข้า — ตั้งเป็น CSS var --fbi)
+     isLive = คู่นี้คือ currentId ของกีฬาที่ยังไม่จบ -> ไฮไลต์แถวแทนที่จะขึ้น VS เฉย ๆ */
+  function matchRow(state, m, idx, isLive) {
     var hs = Number(m.hs) || 0, as = Number(m.as) || 0;
     var hw = m.done && hs > as, aw = m.done && as > hs;
-    var mid = m.done ? (esc(m.hs) + "<i>:</i>" + esc(m.as)) : '<span class="fbm-vs">VS</span>';
+    var mid = m.done ? (esc(m.hs) + "<i>:</i>" + esc(m.as))
+      : isLive ? '<span class="fbm-live"><span class="live-dot"></span>สด</span>'
+      : '<span class="fbm-vs">VS</span>';
     return (
-      '<div class="fbm" style="--fbi:' + (idx || 0) + '">' +
+      '<div class="fbm' + (isLive ? " cur" : "") + '" style="--fbi:' + (idx || 0) + '">' +
         '<div class="fbm-team fbm-home ' + hClass(m.home) + (hw ? " win" : "") + '">' +
           '<span class="fbm-name">' + esc(houseName(state, m.home)) + "</span>" +
           houseLogoImg(state, m.home, "fbm-logo") +
@@ -298,28 +292,22 @@ window.T = (function () {
     var kicker = "ผลการแข่งขัน";
     if (pages.length > 1) kicker += " · " + pages.length + " หน้า";   // sportHead ใช้ esc() -> ห้ามใส่ &nbsp;
     // render แต่ละหน้า พร้อมนับ index ต่อเนื่อง (หัวระดับชั้น + แถวแมตช์) เพื่อไล่แอนิเมชันเข้าทีละแถว
+    // ไฮไลต์แถวของคู่ที่กำลังแข่งอยู่ตอนนี้ (sport.currentId ที่ยังไม่ done) ตรงในรายการเลย
+    var liveId = sport.currentId;
     var pagesHtml = pages.map(function (blks) {
       var i = 0;
       var inner = blks.map(function (b) {
         var head = '<div class="fblv-h" style="--fbi:' + (i++) + '">' + esc(b.lv) + "</div>";
-        var rows = b.list.map(function (m) { return matchRow(state, m, i++); }).join("");
+        var rows = b.list.map(function (m) {
+          return matchRow(state, m, i++, m.id === liveId && !m.done);
+        }).join("");
         return '<div class="fblv">' + head + rows + "</div>";
       }).join("");
       return '<div class="apage"><div class="fblist">' + inner + "</div></div>";
     }).join("");
 
-    // คู่ที่กำลังแข่งอยู่ตอนนี้ (sport.currentId ที่ยังไม่ done)
-    var liveMatch = currentMatch(sport);
-    var curRow = "";
-    if (liveMatch && !liveMatch.done) {
-      var lhs = Number(liveMatch.hs) || 0, las = Number(liveMatch.as) || 0;
-      var label = houseName(state, liveMatch.home) + " " + lhs + "–" + las + " " + houseName(state, liveMatch.away);
-      curRow = nowRow(label, [liveMatch.level, liveMatch.title].filter(Boolean).join(" · "));
-    }
-
     return '<div class="card tpl-fb-card tpl-fb-paged">' +
       sportHead(state, sport, kicker) +
-      curRow +
       '<div class="card-body">' + pagesHtml + "</div>" +
     "</div>";
   }

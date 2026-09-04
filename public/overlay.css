@@ -250,6 +250,11 @@ body.is-offline #offline { opacity: 1; }
 .rrow2 .rtitle .rlevel { font-size: 19px; font-weight: 400; opacity: .5; margin-left: 12px; }
 .rres { display: flex; gap: 9px; flex: none; }
 .rres.rwait { font-size: 22px; opacity: .38; font-weight: 500; }
+/* แถวของรายการที่กำลังแข่งอยู่ตอนนี้ (settings.selEventId) — ไฮไลต์ตรงในรายการ */
+.rrow2.cur { background: rgba(255,213,74,.18); box-shadow: inset 0 0 0 2px rgba(255,213,74,.65); }
+.rrow2.cur .rno { color: #ffd54a; opacity: 1; }
+.rrow2.cur .rtitle { font-weight: 800; }
+.rres.rlive { align-items: center; gap: 8px; font-size: 22px; font-weight: 700; color: #ffd54a; }
 .rchip {
   display: inline-flex; align-items: center; gap: 8px;
   background: var(--house, #666); color: var(--ink, #fff);
@@ -286,11 +291,6 @@ body.is-offline #offline { opacity: 1; }
 .srow.cur .smark { color: #ffd54a; opacity: 1; font-size: 30px; }
 .srow.cur .stitle { font-weight: 800; font-size: 37px; }
 .srow.cur .slevel { opacity: .95; font-size: 27px; }
-
-/* แถวสถานะ "กำลังแข่ง: …" ติดหัวการ์ด results/sportMatches (T.nowRow) — .srow.cur แบบเดียวกับ
-   ตารางการแข่งขัน แต่อยู่นอก .slist จึงไม่โดนกฎ opacity:0/รอ .go ด้านล่าง (โผล่ทันที) */
-.now-row { padding: 14px 40px 0; }
-.now-row .srow.cur { padding: 12px 24px; }
 
 /* schedule: ไล่แถวเข้าจากขวา ตอนโผล่/ตอนเลื่อนหน้าต่าง (overlay.js เติม .go) */
 .slist .srow {
@@ -356,6 +356,12 @@ body.is-offline #offline { opacity: 1; }
 }
 .fbm-score i { font-style: normal; opacity: .45; margin: 0 12px; }
 .fbm-vs { font-size: 22px; font-weight: 700; opacity: .5; letter-spacing: 2px; }
+/* แถวของคู่ที่กำลังแข่งอยู่ตอนนี้ (sport.currentId ที่ยังไม่จบ) — ไฮไลต์ตรงในรายการ */
+.fbm.cur { background: rgba(255,213,74,.16); box-shadow: inset 0 0 0 2px rgba(255,213,74,.6); }
+.fbm-live {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 20px; font-weight: 800; letter-spacing: 1px; color: #ffd54a;
+}
 
 /* -- ตารางคะแนน -- */
 .fbt { display: flex; flex-direction: column; gap: 6px; }

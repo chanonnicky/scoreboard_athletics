@@ -120,13 +120,13 @@ up the new content on its next tick — so it never flashes/resets mid-cycle. `s
 every field any card reads (it covers `settings.selEventId`, see below) — a plain equality/JSON
 check, not a deep diff, so a field left out silently stops updating.
 
-`T.results()` and `T.sportMatches()` each prepend a `T.nowRow(title, level)` status line (reusing
-the schedule template's `.srow.cur` row style — placed outside `.slist` so it renders immediately,
-skipping that template's `opacity:0`-until-`.go` entrance rule) between `card-head` and
-`card-body` when something is currently in progress: `results` reads `settings.selEventId`,
-`sportMatches` reads that sport's `currentId` match (only while `!done`). Shows everywhere those
-two templates render — `/live`, the control-page preview, and both Scoreboard screens — not just
-`?view=all`.
+`T.results()` and `T.sportMatches()` highlight the row of whatever is currently in progress
+*in place*, inside the normal list — not a separate summary line: `results` marks the `.rrow2`
+whose event id matches `settings.selEventId` (`▶` rank marker, gold `.cur` background, "กำลัง
+แข่ง" in place of the rank chips); `sportMatches`' `matchRow(state, m, idx, isLive)` marks the
+`.fbm` whose id is that sport's `currentId` (only while `!done`, "สด" + pulsing dot in place of
+"VS"). Shows everywhere those two templates render — `/live`, the control-page preview, and both
+Scoreboard screens.
 
 `control.js` picks its mode from `location.pathname`: `/control` → Live control, `/score` →
 athletics scoring, `/score/<sport>` → per-sport scoring (`SCORE_SPORT`). All three share one
