@@ -44,7 +44,7 @@
         { "id": "fb_p6_2", "level": "ป.6", "title": "หญิง", "home": "green", "away": "yellow", "hs": 0, "as": 3, "done": true },
         { "id": "fb_m3_1", "level": "ม.3", "title": "ชาย", "home": "red", "away": "green", "hs": 1, "as": 1, "done": true },
         { "id": "fb_m6_1", "level": "ม.6", "title": "ชาย", "home": "blue", "away": "yellow", "hs": 4, "as": 2, "done": true },
-        { "id": "fb_live", "level": "ม.5", "title": "ชาย", "home": "red", "away": "green", "hs": 1, "as": 0, "done": false }
+        { "id": "fb_live", "level": "ม.5", "title": "ชาย", "home": "red", "away": "green", "hs": 1, "as": 0, "done": false, "clock": { "running": false, "elapsed": 0, "since": 0 } }
       ]
     },
     {
@@ -53,7 +53,7 @@
       "matches": [
         { "id": "bb_p6_1", "level": "ป.6", "title": "ชาย", "home": "red", "away": "yellow", "hs": 32, "as": 28, "done": true },
         { "id": "bb_m6_1", "level": "ม.6", "title": "ชาย", "home": "blue", "away": "green", "hs": 45, "as": 41, "done": true },
-        { "id": "bb_live", "level": "ม.5", "title": "ชาย", "home": "blue", "away": "yellow", "hs": 24, "as": 20, "done": false }
+        { "id": "bb_live", "level": "ม.5", "title": "ชาย", "home": "blue", "away": "yellow", "hs": 24, "as": 20, "done": false, "clock": { "running": false, "elapsed": 0, "since": 0 } }
       ]
     }
   ]

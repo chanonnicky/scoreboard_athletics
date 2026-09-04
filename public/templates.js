@@ -27,6 +27,21 @@ window.T = (function () {
 
   function eventLevel(ev) { return ev.level || ev.ageGroup || ""; }
 
+  /* ---- นาฬิกาจับเวลาแมตช์ (สตอปวอตช์ นับขึ้น) ----
+     clock = { running:bool, elapsed:วินาทีที่สะสมไว้, since:unix ms ตอนเริ่มเดินรอบนี้ }
+     ไม่มี clock / undefined = ถือว่าหยุดที่ 0 · ผู้บริโภค (board/control) tick เองทุกวินาที */
+  function clockValue(clock) {
+    if (!clock) return 0;
+    var el = Number(clock.elapsed) || 0;
+    if (!clock.running) return el;
+    return el + Math.max(0, (Date.now() - (Number(clock.since) || 0)) / 1000);
+  }
+  function fmtClock(sec) {
+    sec = Math.max(0, Math.floor(Number(sec) || 0));
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+  }
+
   /* โลโก้โรงเรียน — แสดงบน CG ทุกอัน (พาธตั้งใน settings.logo, เว้นว่าง = ปิด) */
   function logoImg(state) {
     var url = state.settings && state.settings.logo;
@@ -310,6 +325,15 @@ window.T = (function () {
     var status = m.done
       ? '<div class="live-status done">จบการแข่งขัน</div>'
       : '<div class="live-status"><span class="live-dot"></span>กำลังแข่ง</div>';
+
+    // นาฬิกา — จบแล้วถือว่าหยุด (board.js อ่าน data-* แล้ว tick เอง)
+    var ck = m.clock || {};
+    var ckRun = !!ck.running && !m.done;
+    var ckEl = Number(ck.elapsed) || 0;
+    var ckSince = Number(ck.since) || 0;
+    var clockHtml = '<div class="live-clock' + (ckRun ? " run" : " paused") + '" data-run="' + (ckRun ? 1 : 0) +
+      '" data-el="' + ckEl + '" data-since="' + ckSince + '">' +
+      fmtClock(ckRun ? ckEl + Math.max(0, (Date.now() - ckSince) / 1000) : ckEl) + "</div>";
     return '<div class="card tpl-live-card">' +
       '<div class="card-head">' +
         '<div class="card-kicker">' + esc(title) + " · สกอร์สด</div>" +
@@ -323,6 +347,7 @@ window.T = (function () {
         "</div>" +
         '<div class="live-mid">' +
           '<div class="live-score"><span class="ls ls-h">' + esc(hs) + '</span><i>:</i><span class="ls ls-a">' + esc(as) + "</span></div>" +
+          clockHtml +
           status +
         "</div>" +
         '<div class="live-team live-away ' + hClass(m.away) + (aw ? " win" : "") + '">' +
@@ -336,6 +361,6 @@ window.T = (function () {
   return {
     top3: top3, results: results, schedule: schedule,
     sportMatches: sportMatches, sportLive: sportLive,
-    esc: esc,
+    esc: esc, clockValue: clockValue, fmtClock: fmtClock,
   };
 })();

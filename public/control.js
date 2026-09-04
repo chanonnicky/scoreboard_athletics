@@ -621,7 +621,8 @@
       key: src.key, name: src.name || "", icon: src.icon || "", currentId: src.currentId || null,
       matches: (src.matches || []).map(function (m) {
         return { id: m.id, level: m.level || "", title: m.title || "",
-                 home: m.home, away: m.away, hs: m.hs, as: m.as, done: !!m.done };
+                 home: m.home, away: m.away, hs: m.hs, as: m.as, done: !!m.done,
+                 clock: normClock(m.clock) };
       }),
     };
     sportSel = key;
@@ -634,6 +635,39 @@
   }
   function newMatchId() { return "m_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
+  // ---- นาฬิกาแมตช์ (สตอปวอตช์ นับขึ้น) ---- //
+  function normClock(c) {
+    return {
+      running: !!(c && c.running),
+      elapsed: (c && Number(c.elapsed)) || 0,
+      since: (c && Number(c.since)) || 0,
+    };
+  }
+  function clockNow(c) {
+    c = normClock(c);
+    return c.elapsed + (c.running ? Math.max(0, (Date.now() - c.since) / 1000) : 0);
+  }
+  function pauseClock(c) {
+    c = normClock(c);
+    if (c.running) { c.elapsed = clockNow(c); c.running = false; c.since = 0; }
+    return c;
+  }
+  // เดินตัวเลข .sp-clock เองระหว่างที่ state ไม่เปลี่ยน (เรียกท้าย renderSportScore + หลังกดปุ่มนาฬิกา)
+  var spClockTimer = null;
+  function stopSpClockTick() { if (spClockTimer) { clearInterval(spClockTimer); spClockTimer = null; } }
+  function tickSpClock() {
+    var el = document.querySelector(".sp-clock");
+    if (!el || el.getAttribute("data-run") !== "1") { stopSpClockTick(); return; }
+    var base = parseFloat(el.getAttribute("data-el")) || 0;
+    var since = parseFloat(el.getAttribute("data-since")) || 0;
+    el.textContent = T.fmtClock(base + Math.max(0, (Date.now() - since) / 1000));
+  }
+  function restartSpClockTick() {
+    stopSpClockTick();
+    var el = document.querySelector('.sp-clock[data-run="1"]');
+    if (el) { tickSpClock(); spClockTimer = setInterval(tickSpClock, 500); }
+  }
+
   function sportCollectFromDom() {
     if (!sportDraft) return;
     var nm = document.querySelector("[data-spname]"); if (nm) sportDraft.name = nm.value.trim();
@@ -642,15 +676,20 @@
     [].forEach.call(panel.querySelectorAll(".fb-tbl tbody tr[data-i]"), function (tr, i) {
       var g = function (s) { return tr.querySelector(s); };
       var hs = g("[data-hs]").value, as = g("[data-as]").value;
+      var prev = sportDraft.matches[i] || {};
+      var done = g("[data-done]").checked;
+      var clock = normClock(prev.clock);
+      if (done && clock.running) clock = pauseClock(clock);   // จบแมตช์ = หยุดนาฬิกาอัตโนมัติ
       out.push({
-        id: (sportDraft.matches[i] && sportDraft.matches[i].id) || newMatchId(),
+        id: prev.id || newMatchId(),
         level: g("[data-level]").value.trim(),
         title: g("[data-title]").value.trim(),
         home: g("[data-home]").value,
         away: g("[data-away]").value,
         hs: hs === "" ? 0 : Number(hs),
         as: as === "" ? 0 : Number(as),
-        done: g("[data-done]").checked,
+        done: done,
+        clock: clock,
       });
     });
     sportDraft.matches = out;
@@ -716,6 +755,22 @@
           '<button class="btn primary lg" data-act="sp-score" data-side="' + side + '" data-d="1">＋</button>' +
         "</div>";
       }
+      var ck = normClock(cm.clock);
+      var ckRun = ck.running && !cm.done;
+      var ckEl = ck.elapsed, ckSince = ck.since;
+      var clockRow =
+        '<div class="sp-clock-row">' +
+          '<div class="sp-clock' + (ckRun ? " run" : "") + '" data-run="' + (ckRun ? 1 : 0) +
+            '" data-el="' + ckEl + '" data-since="' + ckSince + '">' +
+            T.fmtClock(ckRun ? ckEl + Math.max(0, (Date.now() - ckSince) / 1000) : ckEl) + "</div>" +
+          '<button class="btn primary lg" data-act="clk-toggle">' + (ckRun ? "⏸ หยุด" : "▶ เริ่ม") + "</button>" +
+          '<button class="btn" data-act="clk-add" data-d="60">+1:00</button>' +
+          '<button class="btn" data-act="clk-add" data-d="-60">−1:00</button>' +
+          '<button class="btn" data-act="clk-add" data-d="10">+0:10</button>' +
+          '<button class="btn" data-act="clk-add" data-d="-10">−0:10</button>' +
+          '<button class="btn danger" data-act="clk-reset">↺ รีเซ็ต</button>' +
+        "</div>";
+
       liveCard = '<div class="card"><h2>คู่ที่กำลังแข่ง (สด)' + (sub ? " — " + esc(sub) : "") + "</h2>" +
         '<div class="sp-live-row">' +
           '<div class="sp-live-team" style="--hc:' + houseColor(cm.home) + '">' + esc(houseName(cm.home)) + "</div>" +
@@ -724,6 +779,7 @@
           ctl("away", cm.as) +
           '<div class="sp-live-team" style="--hc:' + houseColor(cm.away) + '">' + esc(houseName(cm.away)) + "</div>" +
         "</div>" +
+        clockRow +
         '<div class="row" style="margin-top:10px">' +
           '<label class="fb-done"><input type="checkbox" data-livedone' + (cm.done ? " checked" : "") + "> จบการแข่งขัน</label>" +
           '<span class="muted">โชว์สดที่จอ: <code>/scoreboard/' + esc(key) + "</code></span>" +
@@ -761,6 +817,8 @@
           '<span class="muted">เลือกระดับชั้น ป.1–ม.6 · กด “ตั้งสด” ให้สกอร์บอร์ดสดโชว์คู่นั้น</span>' +
         "</div>" +
       "</div>";
+
+    restartSpClockTick();
   }
 
   // ========================================================= //
@@ -955,6 +1013,7 @@
       sportDraft.matches.push({
         id: newMatchId(), level: (last && last.level) || "ป.1", title: "",
         home: k[0], away: k[1] || k[0], hs: 0, as: 0, done: false,
+        clock: { running: false, elapsed: 0, since: 0 },
       });
       renderSportScore();
       scheduleSportSave();
@@ -981,6 +1040,42 @@
       else cm.as = Math.max(0, (Number(cm.as) || 0) + d);
       renderSportScore();       // DOM อัปเดตสกอร์ใหม่
       saveSportNow();           // เก็บจาก DOM ที่อัปเดตแล้ว -> ส่งทันที
+    },
+
+    "clk-toggle": function () {
+      sportCollectFromDom();
+      var cm = curDraftMatch();
+      if (!cm) return;
+      var c = normClock(cm.clock);
+      if (c.running) { c = pauseClock(c); }
+      else { c.running = true; c.since = Date.now(); }
+      cm.clock = c;
+      renderSportScore();
+      saveSportNow();
+    },
+    "clk-add": function (b) {
+      sportCollectFromDom();
+      var cm = curDraftMatch();
+      if (!cm) return;
+      var c = normClock(cm.clock);
+      var d = Number(b.dataset.d) || 0;
+      if (c.running) {
+        c.since -= d * 1000;                       // เดินอยู่: เลื่อนจุดเริ่ม -> เวลารวมเปลี่ยน d วินาที
+        if (clockNow(c) < 0) { c.elapsed = 0; c.since = Date.now(); }
+      } else {
+        c.elapsed = Math.max(0, c.elapsed + d);
+      }
+      cm.clock = c;
+      renderSportScore();
+      saveSportNow();
+    },
+    "clk-reset": function () {
+      sportCollectFromDom();
+      var cm = curDraftMatch();
+      if (!cm) return;
+      cm.clock = { running: false, elapsed: 0, since: 0 };
+      renderSportScore();
+      saveSportNow();
     },
   };
 

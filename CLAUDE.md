@@ -155,10 +155,18 @@ blue = Blue Shark (editable in the settings tab).
 ### Sports module (generic, multi-sport)
 
 Separate from athletics results. `state.sports` is an ordered list; each sport is
-`{ key, name, icon, currentId, matches:[{id, level, title, home, away, hs, as, done}] }`.
+`{ key, name, icon, currentId, matches:[{id, level, title, home, away, hs, as, done, clock}] }`.
 Matches divide by `level` (grade — the picker offers ป.1–ม.6, free text). `currentId` points to the
 match "playing now". There is **no standings/bracket** (removed by request) — only the match list and
 the live scoreboard. Add a sport by adding a list entry, not new code.
+
+`match.clock = { running, elapsed, since }` is a **count-up stopwatch** (missing = stopped at 0):
+displayed value = `elapsed + (running ? (Date.now() - since)/1000 : 0)`. `since` is stamped by the
+control client (`Date.now()`) — accepts small control-vs-display clock skew, no server change.
+Helpers `T.clockValue` / `T.fmtClock` (templates.js). Consumers tick it themselves every 0.5s
+(`board.js` `startClockTick`, `control.js` `restartSpClockTick`) since state doesn't change while it
+runs. `sportCollectFromDom` freezes the clock when a match is marked `done`. Controls live on the
+`/score/<sport>` live-match card (`clk-toggle` / `clk-add` ±1:00/±0:10 / `clk-reset`).
 
 Templates: `sportMatches(state, key)` (match list grouped by grade level, sorted ป.1→ม.6 via
 `gradeRank`) and `sportLive(state, key)` (big scoreboard of `currentId` — two teams + score + live

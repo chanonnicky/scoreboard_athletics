@@ -439,6 +439,14 @@ body.is-offline #offline { opacity: 1; }
   text-shadow: 0 6px 16px rgba(0,0,0,.45);
 }
 .live-score i { font-style: normal; opacity: .4; margin: 0 10px; }
+.live-clock {
+  font-size: 54px; font-weight: 800; line-height: 1;
+  font-variant-numeric: tabular-nums; letter-spacing: 1px;
+  padding: 8px 24px; border-radius: 14px;
+  background: rgba(255,255,255,.06); border: 1px solid var(--stroke);
+}
+.live-clock.run { color: #eafff2; border-color: rgba(120,235,170,.4); }
+.live-clock.paused { opacity: .5; }
 .live-status {
   display: inline-flex; align-items: center; gap: 10px;
   font-size: 24px; font-weight: 700; letter-spacing: 1px;

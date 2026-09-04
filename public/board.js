@@ -105,6 +105,22 @@
     void el.offsetWidth;
     el.classList.add("bump");
   }
+
+  // ---- นาฬิกาแมตช์ (สตอปวอตช์) — เดินเองทุกครึ่งวินาทีระหว่างที่ state ไม่เปลี่ยน ---- //
+  var clockTimer = null;
+  function stopClockTick() { if (clockTimer) { clearInterval(clockTimer); clockTimer = null; } }
+  function tickClock() {
+    var el = board.querySelector(".live-clock");
+    if (!el || el.getAttribute("data-run") !== "1") { stopClockTick(); return; }
+    var base = parseFloat(el.getAttribute("data-el")) || 0;
+    var since = parseFloat(el.getAttribute("data-since")) || 0;
+    el.textContent = window.T.fmtClock(base + Math.max(0, (Date.now() - since) / 1000));
+  }
+  function startClockTick() {
+    stopClockTick();
+    var el = board.querySelector('.live-clock[data-run="1"]');
+    if (el) { tickClock(); clockTimer = setInterval(tickClock, 500); }
+  }
   function sigOf(state) {
     var r = state.results || {}, s = state.settings || {};
     var evs = (state.events || []).map(function (e) {
@@ -144,6 +160,7 @@
       if (!lhtml) {
         board.innerHTML = '<div class="board-empty">ไม่พบกีฬา "' + LIVE_SPORT + '"</div>';
         livePrev = null;
+        stopClockTick();
         return;
       }
       // คู่ใหม่/เพิ่งเปิดจอ -> ห่อ .cg ให้ boardIn เล่นเข้า; อัปเดตสกอร์เดิม -> แทนที่ในที่ (ไม่ replay boardIn)
@@ -160,8 +177,10 @@
         }
       }
       livePrev = lm ? { id: lm.id, hs: Number(lm.hs) || 0, as: Number(lm.as) || 0, done: !!lm.done } : null;
+      startClockTick();
       return;
     }
+    stopClockTick();
 
     var prevCount = cards.length;
     cards = buildCards(state).filter(function (h) { return h != null; });
