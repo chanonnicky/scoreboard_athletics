@@ -88,12 +88,24 @@
   // ค่อยไปการ์ดถัดไป) ใช้ setTimeout ต่อกันแทน setInterval คงที่
   var cards = [], cardIdx = 0, rotTimer = null;
   function stopRotator() { if (rotTimer) { clearTimeout(rotTimer); rotTimer = null; } }
+  // การ์ดตารางการแข่งขัน (.slist) เริ่มที่ opacity:0 รอคลาส .go ไล่แถวเข้า (เหมือน overlay.js)
+  // ต้องเติมเองที่นี่ ไม่งั้นแถวไม่โผล่เลย (การ์ดว่างเปล่า)
+  function playSchedule() {
+    var sl = board.querySelector(".slist");
+    if (!sl) return;
+    sl.classList.remove("go");
+    void sl.offsetWidth;
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { sl.classList.add("go"); });
+    });
+  }
   function showCard(i) {
     stopRotator();
     cardIdx = i;
     var html = cards[i];
     board.innerHTML = html ? '<div class="cg">' + html + "</div>" : '<div class="board-empty">ยังไม่มีข้อมูล</div>';
     startPager(); // วน .apage ในการ์ด results (ถ้ามี) ทุก INTERVAL
+    playSchedule();
     if (cards.length < 2) return; // การ์ดเดียว ไม่ต้องสลับ
     // ค้างการ์ดนี้ = (จำนวนหน้า) × INTERVAL เพื่อให้โชว์ครบทุกหน้าก่อนสลับ
     var pages = apages().length || 1;
@@ -217,6 +229,7 @@
     if (!cg) { showCard(cardIdx); return; }
     cg.innerHTML = cards[cardIdx] || "";
     startPager();
+    playSchedule();
   }
 
   // ---- connection (SSE + poll fallback) -------------------------- //
