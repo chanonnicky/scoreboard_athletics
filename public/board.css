@@ -41,6 +41,19 @@ body.board .tpl-results-card .card-body { min-height: 890px; }
 /* การ์ดบอลบนจอใหญ่ */
 body.board .tpl-fb-card { min-width: 1560px; max-width: 1560px; }
 
+/* สกอร์บอร์ดคู่สด (/scoreboard/<กีฬา>) บนจอใหญ่ — จอนี้มีแค่การ์ดเดียว เต็มที่ได้เลย */
+body.board .tpl-live-card { min-width: 1800px; max-width: 1800px; }
+body.board .tpl-live-card .card-body { padding: 54px 64px 68px; }
+body.board .live { gap: 32px; }
+body.board .live-team { padding: 30px; gap: 22px; }
+body.board .live-logo { width: 240px; height: 240px; }
+body.board .live-name { font-size: 58px; }
+body.board .live-mid { min-width: 400px; gap: 22px; }
+body.board .live-score { font-size: 200px; gap: 10px; }
+body.board .live-clock { font-size: 70px; padding: 10px 32px; }
+body.board .live-status { font-size: 30px; padding: 10px 26px; gap: 12px; }
+body.board .live-dot { width: 18px; height: 18px; }
+
 /* fade-in ตอนสลับการ์ด (rotator) */
 #board .cg { animation: boardIn .55s cubic-bezier(.2,.7,.2,1) both; }
 @keyframes boardIn {
