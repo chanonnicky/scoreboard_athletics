@@ -23,7 +23,6 @@
 
   var stage = document.getElementById("stage");
   var board = document.getElementById("board");
-  var nowPlayingEl = document.getElementById("nowPlaying");
 
   // ---- ย่อ/ขยายเวที 1920×1080 ให้พอดีจอ ---------------------------- //
   function fit() {
@@ -41,7 +40,14 @@
     var T = window.T;
     var sports = state.sports || [];
     if (VIEW === "all") {
-      var cards = [T.results(state)];
+      var cards = [];
+      // รายการที่กำลังแข่งอยู่ (settings.selEventId ที่หน้าคุมตั้งไว้ — แชร์ทั้งงาน) ->
+      // โชว์การ์ด "ตารางการแข่งขัน" แบบเดียวกับที่ขึ้นบน Live ให้เห็นหน้าต่างรอบ ๆ รายการนั้น
+      var sel = state.settings && state.settings.selEventId;
+      if (sel && (state.events || []).some(function (e) { return e.id === sel; })) {
+        cards.push(T.schedule(state, sel));
+      }
+      cards.push(T.results(state));
       sports.forEach(function (sp) { cards = cards.concat(sportCards(T, state, sp.key)); });
       return cards;
     }
@@ -183,12 +189,6 @@
       return;
     }
     stopClockTick();
-    // แถบ "กำลังแข่ง" อยู่นอกการ์ดที่วน -> อัปเดตสดทุกครั้ง ไม่ต้องรอรอบวน
-    // (เว้นที่ด้านบนให้การ์ดตอนมีแถบ กันซ้อนทับ)
-    if (nowPlayingEl) {
-      nowPlayingEl.innerHTML = window.T.nowPlaying(state);
-      stage.classList.toggle("has-now-playing", !!nowPlayingEl.innerHTML);
-    }
 
     var prevCount = cards.length;
     var next = buildCards(state).filter(function (h) { return h != null; });
