@@ -52,6 +52,9 @@ body {
 .mode-score .hbtn { min-height: 84px; font-size: 19px; }
 .mode-score .res-line select { max-width: none; font-size: 16px; padding: 10px; }
 .mode-score .res-rank { width: 34px; height: 34px; font-size: 15px; }
+/* จดคะแนนกีฬา (/score/<กีฬา>) — ตารางแมตช์หลายคอลัมน์ ต้องกว้างกว่า (วางหลัง .mode-score main) */
+.mode-sport main { max-width: 1180px; }
+.fb-tbl-wrap { overflow-x: auto; }
 
 /* ---- app shell + sidebar ---- */
 .app { display: flex; align-items: flex-start; min-height: 100vh; }

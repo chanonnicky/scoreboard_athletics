@@ -16,6 +16,8 @@
   if (MODE === "score") {
     document.title = "CG Live — จดคะแนน" + (SCORE_SPORT ? " " + SCORE_SPORT : "");
     document.body.classList.add("mode-score");
+    // จดคะแนนกีฬา (บอล/บาส) มีตารางแมตช์หลายคอลัมน์ — ต้องกว้างกว่าหน้าจดกรีฑา
+    if (SCORE_SPORT) document.body.classList.add("mode-sport");
     var brand = document.querySelector(".brand");
     if (brand) brand.innerHTML = "🏁 จดคะแนน <span>" + (SCORE_SPORT || "กีฬาสี") + "</span>";
   }
@@ -763,12 +765,12 @@
           '<div class="sp-clock' + (ckRun ? " run" : "") + '" data-run="' + (ckRun ? 1 : 0) +
             '" data-el="' + ckEl + '" data-since="' + ckSince + '">' +
             T.fmtClock(ckRun ? ckEl + Math.max(0, (Date.now() - ckSince) / 1000) : ckEl) + "</div>" +
-          '<button class="btn primary lg" data-act="clk-toggle">' + (ckRun ? "⏸ หยุด" : "▶ เริ่ม") + "</button>" +
+          '<button class="btn primary lg" data-act="clk-toggle">' + (ckRun ? "■ หยุด" : "▶ เริ่ม") + "</button>" +
           '<button class="btn" data-act="clk-add" data-d="60">+1:00</button>' +
           '<button class="btn" data-act="clk-add" data-d="-60">−1:00</button>' +
           '<button class="btn" data-act="clk-add" data-d="10">+0:10</button>' +
           '<button class="btn" data-act="clk-add" data-d="-10">−0:10</button>' +
-          '<button class="btn danger" data-act="clk-reset">↺ รีเซ็ต</button>' +
+          '<button class="btn danger" data-act="clk-reset">รีเซ็ต</button>' +
         "</div>";
 
       liveCard = '<div class="card"><h2>คู่ที่กำลังแข่ง (สด)' + (sub ? " — " + esc(sub) : "") + "</h2>" +
@@ -807,11 +809,11 @@
 
     panel.innerHTML = dl + liveCard +
       '<div class="card"><h2>แมตช์ทั้งหมด</h2>' +
-        '<table class="tbl fb-tbl"><thead><tr>' +
+        '<div class="fb-tbl-wrap"><table class="tbl fb-tbl"><thead><tr>' +
           "<th>สด</th><th>ชั้น</th><th>ชื่อ</th><th>เจ้าบ้าน</th><th>สกอร์</th><th></th><th></th><th>ทีมเยือน</th><th>สถานะ</th><th></th>" +
         "</tr></thead><tbody>" +
           (rows || '<tr><td colspan="10" class="muted">ยังไม่มีแมตช์ — กด “เพิ่มแมตช์”</td></tr>') +
-        "</tbody></table>" +
+        "</tbody></table></div>" +
         '<div class="row" style="margin-top:12px">' +
           '<button class="btn" data-act="sp-add">+ เพิ่มแมตช์</button>' +
           '<span class="muted">เลือกระดับชั้น ป.1–ม.6 · กด “ตั้งสด” ให้สกอร์บอร์ดสดโชว์คู่นั้น</span>' +
