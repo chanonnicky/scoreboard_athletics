@@ -183,15 +183,32 @@
     stopClockTick();
 
     var prevCount = cards.length;
-    cards = buildCards(state).filter(function (h) { return h != null; });
-    if (!cards.length) {
+    var next = buildCards(state).filter(function (h) { return h != null; });
+    if (!next.length) {
       stopRotator(); stopPager();
+      cards = [];
       board.innerHTML = '<div class="board-empty">ยังไม่มีข้อมูล</div>';
       return;
     }
-    // จำนวนการ์ดเท่าเดิม = แค่เนื้อหา/สกอร์อัปเดต -> re-render การ์ดที่แสดงอยู่
-    // ไม่กระโดดกลับหน้าแรก (เดิม startRotator รีเซ็ตไป card 0 ทุกครั้งที่สกอร์เปลี่ยน)
-    showCard(prevCount === cards.length ? Math.min(cardIdx, cards.length - 1) : 0);
+
+    cards = next;   // อัปเดตเนื้อหาเงียบ ๆ — ตัววนจะหยิบไปแสดงเองรอบถัดไป ไม่รีเฟรชจอที่กำลังโชว์
+
+    if (prevCount === 0 || prevCount !== cards.length) {
+      // เพิ่งเริ่ม หรือ จำนวนการ์ดเปลี่ยน (เพิ่ม/ลบกีฬา) -> เรนเดอร์ทันที
+      showCard(Math.min(cardIdx, cards.length - 1));
+    } else if (cards.length === 1) {
+      // การ์ดเดียว ไม่มีการวน -> อัปเดตเนื้อหาในที่ (ไม่ replay boardIn, ไม่รีสตาร์ท rotator)
+      refreshCurrentCard();
+    }
+    // ไม่งั้น: ปล่อยให้วนต่อตามเดิม — ข้อมูลใหม่จะขึ้นตอนวนกลับมาถึงการ์ดนั้น
+  }
+
+  // อัปเดตเนื้อหาการ์ดที่กำลังแสดง โดยไม่สร้าง .cg ใหม่ (จึงไม่มี boardIn) และไม่แตะ rotTimer
+  function refreshCurrentCard() {
+    var cg = board.querySelector(".cg");
+    if (!cg) { showCard(cardIdx); return; }
+    cg.innerHTML = cards[cardIdx] || "";
+    startPager();
   }
 
   // ---- connection (SSE + poll fallback) -------------------------- //

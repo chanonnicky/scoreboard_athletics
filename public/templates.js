@@ -280,7 +280,7 @@ window.T = (function () {
     if (cur.length) pages.push(cur);
 
     var kicker = "ผลการแข่งขัน";
-    if (pages.length > 1) kicker += " &nbsp;·&nbsp; " + pages.length + " หน้า";
+    if (pages.length > 1) kicker += " · " + pages.length + " หน้า";   // sportHead ใช้ esc() -> ห้ามใส่ &nbsp;
     // render แต่ละหน้า พร้อมนับ index ต่อเนื่อง (หัวระดับชั้น + แถวแมตช์) เพื่อไล่แอนิเมชันเข้าทีละแถว
     var pagesHtml = pages.map(function (blks) {
       var i = 0;
