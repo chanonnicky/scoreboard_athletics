@@ -287,6 +287,11 @@ body.is-offline #offline { opacity: 1; }
 .srow.cur .stitle { font-weight: 800; font-size: 37px; }
 .srow.cur .slevel { opacity: .95; font-size: 27px; }
 
+/* แถวสถานะ "กำลังแข่ง: …" ติดหัวการ์ด results/sportMatches (T.nowRow) — .srow.cur แบบเดียวกับ
+   ตารางการแข่งขัน แต่อยู่นอก .slist จึงไม่โดนกฎ opacity:0/รอ .go ด้านล่าง (โผล่ทันที) */
+.now-row { padding: 14px 40px 0; }
+.now-row .srow.cur { padding: 12px 24px; }
+
 /* schedule: ไล่แถวเข้าจากขวา ตอนโผล่/ตอนเลื่อนหน้าต่าง (overlay.js เติม .go) */
 .slist .srow {
   opacity: 0; transform: translateX(46px);

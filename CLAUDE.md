@@ -116,12 +116,17 @@ state and one operator control:
 
 The rotate-all screen only re-renders the visible card when it must (card count changes, or a
 single-card view); on a plain data change it updates `cards[]` silently and lets the rotator pick
-up the new content on its next tick — so it never flashes/resets mid-cycle. `?view=all`'s card set
-leads with `T.schedule(state, settings.selEventId)` (same "ตารางการแข่งขัน" card Live shows,
-window around the in-progress athletics event) when `selEventId` points at a real event, then
-`results`, then each sport's `sportMatches`. `sigOf()` must include every field any card reads
-(it now covers `settings.selEventId`) — a plain equality/JSON check, not a deep diff, so a field
-left out silently stops updating.
+up the new content on its next tick — so it never flashes/resets mid-cycle. `sigOf()` must include
+every field any card reads (it covers `settings.selEventId`, see below) — a plain equality/JSON
+check, not a deep diff, so a field left out silently stops updating.
+
+`T.results()` and `T.sportMatches()` each prepend a `T.nowRow(title, level)` status line (reusing
+the schedule template's `.srow.cur` row style — placed outside `.slist` so it renders immediately,
+skipping that template's `opacity:0`-until-`.go` entrance rule) between `card-head` and
+`card-body` when something is currently in progress: `results` reads `settings.selEventId`,
+`sportMatches` reads that sport's `currentId` match (only while `!done`). Shows everywhere those
+two templates render — `/live`, the control-page preview, and both Scoreboard screens — not just
+`?view=all`.
 
 `control.js` picks its mode from `location.pathname`: `/control` → Live control, `/score` →
 athletics scoring, `/score/<sport>` → per-sport scoring (`SCORE_SPORT`). All three share one

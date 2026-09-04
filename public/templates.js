@@ -27,6 +27,16 @@ window.T = (function () {
 
   function eventLevel(ev) { return ev.level || ev.ageGroup || ""; }
 
+  /* แถวสถานะ "กำลังแข่ง: …" — ใช้สไตล์แถว .srow.cur เดียวกับตารางการแข่งขัน
+     ติดหัวการ์ด results / sportMatches (ก่อน card-body) บอกว่ารายการ/คู่ไหนกำลังแข่งอยู่ตอนนี้ */
+  function nowRow(titleText, level) {
+    return '<div class="now-row"><div class="srow cur">' +
+      '<div class="smark">▶</div>' +
+      '<div class="stitle">กำลังแข่ง: ' + esc(titleText) + "</div>" +
+      '<div class="slevel">' + esc(level || "") + "</div>" +
+    "</div></div>";
+  }
+
   /* ---- นาฬิกาจับเวลาแมตช์ (สตอปวอตช์ นับขึ้น) ----
      clock = { running:bool, elapsed:วินาทีที่สะสมไว้, since:unix ms ตอนเริ่มเดินรอบนี้ }
      ไม่มี clock / undefined = ถือว่าหยุดที่ 0 · ผู้บริโภค (board/control) tick เองทุกวินาที */
@@ -133,6 +143,11 @@ window.T = (function () {
     var kicker = "ผลการแข่งขัน &nbsp;·&nbsp; " + doneCount + " / " + evs.length + " รายการ";
     if (pages.length > 1) kicker += " &nbsp;·&nbsp; " + pages.length + " หน้า";
 
+    // รายการที่กำลังแข่งอยู่ตอนนี้ (settings.selEventId ที่หน้าคุมตั้งไว้ — แชร์ทั้งงาน)
+    var sel = state.settings && state.settings.selEventId;
+    var curEv = sel && evs.find(function (e) { return e.id === sel; });
+    var curRow = curEv ? nowRow(curEv.title || "", eventLevel(curEv)) : "";
+
     return (
       '<div class="card tpl-results-card">' +
         '<div class="card-head">' +
@@ -140,6 +155,7 @@ window.T = (function () {
           '<div class="card-title">' + esc((state.settings && state.settings.meetTitle) || "กีฬาสี") + "</div>" +
           logoImg(state) +
         "</div>" +
+        curRow +
         '<div class="card-body">' + pagesHtml + "</div>" +
       "</div>"
     );
@@ -292,8 +308,18 @@ window.T = (function () {
       return '<div class="apage"><div class="fblist">' + inner + "</div></div>";
     }).join("");
 
+    // คู่ที่กำลังแข่งอยู่ตอนนี้ (sport.currentId ที่ยังไม่ done)
+    var liveMatch = currentMatch(sport);
+    var curRow = "";
+    if (liveMatch && !liveMatch.done) {
+      var lhs = Number(liveMatch.hs) || 0, las = Number(liveMatch.as) || 0;
+      var label = houseName(state, liveMatch.home) + " " + lhs + "–" + las + " " + houseName(state, liveMatch.away);
+      curRow = nowRow(label, [liveMatch.level, liveMatch.title].filter(Boolean).join(" · "));
+    }
+
     return '<div class="card tpl-fb-card tpl-fb-paged">' +
       sportHead(state, sport, kicker) +
+      curRow +
       '<div class="card-body">' + pagesHtml + "</div>" +
     "</div>";
   }
