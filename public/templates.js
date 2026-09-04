@@ -219,13 +219,14 @@ window.T = (function () {
     "</div>";
   }
 
-  /* แถวหนึ่งแมตช์: [เจ้าบ้าน]  (ชื่อรายการ / สกอร์)  [ทีมเยือน] */
-  function matchRow(state, m) {
+  /* แถวหนึ่งแมตช์: [เจ้าบ้าน]  (ชื่อรายการ / สกอร์)  [ทีมเยือน]
+     idx = ลำดับในหน้า (ใช้หน่วงแอนิเมชันไล่แถวเข้า — ตั้งเป็น CSS var --fbi) */
+  function matchRow(state, m, idx) {
     var hs = Number(m.hs) || 0, as = Number(m.as) || 0;
     var hw = m.done && hs > as, aw = m.done && as > hs;
     var mid = m.done ? (esc(m.hs) + "<i>:</i>" + esc(m.as)) : '<span class="fbm-vs">VS</span>';
     return (
-      '<div class="fbm">' +
+      '<div class="fbm" style="--fbi:' + (idx || 0) + '">' +
         '<div class="fbm-team fbm-home ' + hClass(m.home) + (hw ? " win" : "") + '">' +
           '<span class="fbm-name">' + esc(houseName(state, m.home)) + "</span>" +
           houseLogoImg(state, m.home, "fbm-logo") +
@@ -253,24 +254,27 @@ window.T = (function () {
 
     var blocks = sportLevels(sport).map(function (lv) {
       var list = matchesIn(sport, lv);
-      return {
-        units: LEVEL_HEAD_UNITS + list.length,
-        html: '<div class="fblv"><div class="fblv-h">' + esc(lv) + "</div>" +
-          list.map(function (m) { return matchRow(state, m); }).join("") + "</div>",
-      };
+      return { lv: lv, list: list, units: LEVEL_HEAD_UNITS + list.length };
     });
 
     var pages = [], cur = [], curUnits = 0;
     blocks.forEach(function (b) {
       if (cur.length && curUnits + b.units > SPORT_PAGE_UNITS) { pages.push(cur); cur = []; curUnits = 0; }
-      cur.push(b.html); curUnits += b.units;
+      cur.push(b); curUnits += b.units;
     });
     if (cur.length) pages.push(cur);
 
     var kicker = "ผลการแข่งขัน";
     if (pages.length > 1) kicker += " &nbsp;·&nbsp; " + pages.length + " หน้า";
-    var pagesHtml = pages.map(function (p) {
-      return '<div class="apage"><div class="fblist">' + p.join("") + "</div></div>";
+    // render แต่ละหน้า พร้อมนับ index ต่อเนื่อง (หัวระดับชั้น + แถวแมตช์) เพื่อไล่แอนิเมชันเข้าทีละแถว
+    var pagesHtml = pages.map(function (blks) {
+      var i = 0;
+      var inner = blks.map(function (b) {
+        var head = '<div class="fblv-h" style="--fbi:' + (i++) + '">' + esc(b.lv) + "</div>";
+        var rows = b.list.map(function (m) { return matchRow(state, m, i++); }).join("");
+        return '<div class="fblv">' + head + rows + "</div>";
+      }).join("");
+      return '<div class="apage"><div class="fblist">' + inner + "</div></div>";
     }).join("");
 
     return '<div class="card tpl-fb-card tpl-fb-paged">' +
@@ -318,7 +322,7 @@ window.T = (function () {
           '<div class="live-name">' + esc(houseName(state, m.home)) + "</div>" +
         "</div>" +
         '<div class="live-mid">' +
-          '<div class="live-score"><span>' + esc(hs) + "</span><i>:</i><span>" + esc(as) + "</span></div>" +
+          '<div class="live-score"><span class="ls ls-h">' + esc(hs) + '</span><i>:</i><span class="ls ls-a">' + esc(as) + "</span></div>" +
           status +
         "</div>" +
         '<div class="live-team live-away ' + hClass(m.away) + (aw ? " win" : "") + '">' +

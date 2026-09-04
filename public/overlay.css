@@ -399,6 +399,24 @@ body.is-offline #offline { opacity: 1; }
 .tpl-fb-paged .apage.leaving { opacity: 0; z-index: 1; }
 .tpl-fb-paged .fblist { height: 100%; }
 
+/* บอล/บาส: ไล่หัวระดับชั้น + แถวแมตช์เข้าจากขวาทีละอัน (หน่วงตาม --fbi จาก templates.js)
+   เหมือนผลกรีฑา/ตารางแข่ง — เล่นตอนการ์ดโผล่และตอนเปลี่ยนหน้า */
+.tpl-fb-paged .apage .fblv-h,
+.tpl-fb-paged .apage .fbm {
+  opacity: 0; transform: translateX(34px);
+  transition: opacity .42s ease, transform .5s cubic-bezier(.16, .84, .44, 1);
+  transition-delay: calc(var(--fbi, 0) * 45ms);
+  will-change: transform, opacity;
+}
+.tpl-fb-paged .apage.show .fblv-h,
+.tpl-fb-paged .apage.show .fbm { opacity: 1; transform: none; }
+.tpl-fb-paged .apage.leaving .fblv-h,
+.tpl-fb-paged .apage.leaving .fbm {
+  opacity: 0; transform: translateX(-26px);
+  transition: opacity .26s ease, transform .3s ease;
+  transition-delay: 0s !important;
+}
+
 /* ==== สกอร์บอร์ดสด (คู่ที่กำลังแข่ง) ============================= */
 .tpl-live-card { min-width: 1280px; max-width: 1600px; }
 .tpl-live-card .card-body { padding: 40px 48px 52px; }
@@ -438,3 +456,19 @@ body.is-offline #offline { opacity: 1; }
   100% { box-shadow: 0 0 0 0 rgba(255,59,59,0); }
 }
 .live-wait { font-size: 40px; opacity: .5; text-align: center; padding: 80px 0; }
+
+/* สกอร์เปลี่ยน (ได้แต้ม) — เด้ง + วูบเหลืองทองที่ตัวเลขฝั่งที่เปลี่ยน (board.js เติม .bump) */
+.live-score .ls { display: inline-block; }
+.live-score .ls.bump { animation: scoreBump .55s cubic-bezier(.2, .7, .2, 1); }
+@keyframes scoreBump {
+  0%   { transform: scale(1); }
+  26%  { transform: scale(1.34); color: #ffd54a; text-shadow: 0 0 26px rgba(255, 213, 74, .75); }
+  60%  { transform: scale(.97); }
+  100% { transform: scale(1); }
+}
+/* จบการแข่งขัน — วงกระเพื่อมสีทองรอบการ์ดครั้งเดียว (board.js เติม .just-final) */
+.tpl-live-card.just-final { animation: liveFinal 1.1s ease-out; }
+@keyframes liveFinal {
+  0%   { box-shadow: 0 30px 80px rgba(0,0,0,.5), 0 0 0 0 rgba(255,213,74,.55); }
+  100% { box-shadow: 0 30px 80px rgba(0,0,0,.5), 0 0 0 46px rgba(255,213,74,0); }
+}

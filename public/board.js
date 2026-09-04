@@ -97,6 +97,14 @@
 
   // ---- render / live update -------------------------------------- //
   var lastSig = null;
+  var livePrev = null;   // {id,hs,as,done} ของคู่สดล่าสุด — ใช้ตรวจว่าสกอร์เปลี่ยนเพื่อเด้งแอนิเมชัน
+  function bumpLive(sel) {
+    var el = board.querySelector(".live-score " + sel);
+    if (!el) return;
+    el.classList.remove("bump");
+    void el.offsetWidth;
+    el.classList.add("bump");
+  }
   function sigOf(state) {
     var r = state.results || {}, s = state.settings || {};
     var evs = (state.events || []).map(function (e) {
@@ -125,8 +133,33 @@
     // โหมดสด: การ์ดเดียว อัปเดตในที่ (ไม่ fade/ไม่วน) เพื่อสกอร์เปลี่ยนแล้วไม่กระพริบ
     if (LIVE_SPORT) {
       stopRotator(); stopPager();
-      var html = window.T.sportLive(state, LIVE_SPORT);
-      board.innerHTML = html || '<div class="board-empty">ไม่พบกีฬา "' + LIVE_SPORT + '"</div>';
+      var sp = null, sps = state.sports || [];
+      for (var si = 0; si < sps.length; si++) if (sps[si].key === LIVE_SPORT) { sp = sps[si]; break; }
+      var lm = null;
+      if (sp && sp.currentId) {
+        var mms = sp.matches || [];
+        for (var mi = 0; mi < mms.length; mi++) if (mms[mi].id === sp.currentId) { lm = mms[mi]; break; }
+      }
+      var lhtml = window.T.sportLive(state, LIVE_SPORT);
+      if (!lhtml) {
+        board.innerHTML = '<div class="board-empty">ไม่พบกีฬา "' + LIVE_SPORT + '"</div>';
+        livePrev = null;
+        return;
+      }
+      // คู่ใหม่/เพิ่งเปิดจอ -> ห่อ .cg ให้ boardIn เล่นเข้า; อัปเดตสกอร์เดิม -> แทนที่ในที่ (ไม่ replay boardIn)
+      var freshShow = !livePrev || !lm || livePrev.id !== lm.id;
+      if (freshShow) {
+        board.innerHTML = '<div class="cg">' + lhtml + "</div>";
+      } else {
+        board.innerHTML = lhtml;
+        if ((Number(lm.hs) || 0) !== livePrev.hs) bumpLive(".ls-h");
+        if ((Number(lm.as) || 0) !== livePrev.as) bumpLive(".ls-a");
+        if (lm.done && !livePrev.done) {
+          var lc = board.querySelector(".tpl-live-card");
+          if (lc) lc.classList.add("just-final");
+        }
+      }
+      livePrev = lm ? { id: lm.id, hs: Number(lm.hs) || 0, as: Number(lm.as) || 0, done: !!lm.done } : null;
       return;
     }
 
