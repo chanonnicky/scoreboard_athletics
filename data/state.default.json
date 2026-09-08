@@ -1,5 +1,6 @@
 {
   "settings": {
+    "mode": "house",
     "houses": {
       "red": "#e53935",
       "green": "#2e9d54",

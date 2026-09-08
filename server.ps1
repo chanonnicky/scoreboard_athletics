@@ -41,6 +41,8 @@ $Public      = Join-Path $Root "public"
 $DataDir     = Join-Path $Root "data"
 $StatePath   = Join-Path $DataDir "state.json"
 $DefaultPath = Join-Path $DataDir "state.default.json"
+$DefaultSchoolPath = Join-Path $DataDir "state.default.school.json"
+$UploadsDir  = Join-Path $DataDir "uploads"
 
 # --------------------------------------------------------------------------- #
 #  shared, thread-safe state container
@@ -58,7 +60,10 @@ $G.Public      = $Public
 $G.DataDir     = $DataDir
 $G.StatePath   = $StatePath
 $G.DefaultPath = $DefaultPath
+$G.DefaultSchoolPath = $DefaultSchoolPath
+$G.UploadsDir  = $UploadsDir
 $G.Token       = $Token
+$G.ProfileKeys = @("settings", "events", "results", "onair", "sports", "tally")
 $G.CTypes      = @{
   ".html"  = "text/html; charset=utf-8"
   ".css"   = "text/css; charset=utf-8"
@@ -66,7 +71,7 @@ $G.CTypes      = @{
   ".json"  = "application/json; charset=utf-8"
   ".woff2" = "font/woff2"; ".woff" = "font/woff"; ".ttf" = "font/ttf"
   ".png"   = "image/png"; ".jpg" = "image/jpeg"; ".jpeg" = "image/jpeg"
-  ".svg"   = "image/svg+xml"; ".webp" = "image/webp"
+  ".svg"   = "image/svg+xml"; ".webp" = "image/webp"; ".gif" = "image/gif"
   ".ico"   = "image/x-icon"; ".txt" = "text/plain; charset=utf-8"
 }
 
@@ -145,6 +150,9 @@ $Lib = {
   function Migrate-State {
     $changed = 0
     if ($script:G.State["events"]) { $changed += (Dedupe-EventIds) }
+    # default mode (every pre-existing state = house/colour mode)
+    $st = $script:G.State["settings"]
+    if ($st -and -not $st.ContainsKey("mode")) { $st["mode"] = "house"; $changed++ }
     # This file must stay ASCII-only (see CLAUDE.md), so the Thai sport names are
     # built from Unicode code points:  0E1F 0E38 0E15 0E0B 0E2D 0E25 = "futsal" in Thai,
     #                                  0E1F 0E38 0E15 0E1A 0E2D 0E25 = "football" in Thai.
@@ -267,7 +275,55 @@ $Lib = {
           $key = [string]$cmd["key"]
           $script:G.State["sports"] = @($script:G.State["sports"] | Where-Object { [string]$_["key"] -ne $key })
         }
-        "resetState" { $script:G.State = Read-JsonFile $script:G.DefaultPath }
+        "resetState" {
+          # reset only the active profile - keep settings.mode and parked
+          $mode = [string]$script:G.State["settings"]["mode"]; if (-not $mode) { $mode = "house" }
+          $parked = $script:G.State["parked"]
+          $seedPath = if ($mode -eq "school") { $script:G.DefaultSchoolPath } else { $script:G.DefaultPath }
+          $seed = Read-JsonFile $seedPath
+          foreach ($k in $script:G.ProfileKeys) {
+            if ($seed.ContainsKey($k)) { $script:G.State[$k] = $seed[$k] }
+            elseif ($script:G.State.ContainsKey($k)) { [void]$script:G.State.Remove($k) }
+          }
+          $script:G.State["settings"]["mode"] = $mode
+          if ($parked) { $script:G.State["parked"] = $parked }
+          elseif ($script:G.State.ContainsKey("parked")) { [void]$script:G.State.Remove("parked") }
+        }
+        "setMode" {
+          $newMode = [string]$cmd["mode"]
+          if ($newMode -ne "house" -and $newMode -ne "school") { throw "bad mode: $newMode" }
+          $oldMode = [string]$script:G.State["settings"]["mode"]; if (-not $oldMode) { $oldMode = "house" }
+          if ($newMode -ne $oldMode) {
+            if (-not $script:G.State.ContainsKey("parked")) { $script:G.State["parked"] = New-Dict }
+            $parked = $script:G.State["parked"]
+            # snapshot current profile (deep copy via serialize round-trip; drop settings.mode)
+            $snapKeys = @{}
+            foreach ($k in $script:G.ProfileKeys) {
+              if ($script:G.State.ContainsKey($k)) { $snapKeys[$k] = $script:G.State[$k] }
+            }
+            $snap = $script:JS.DeserializeObject($script:JS.Serialize($snapKeys))
+            if ($snap["settings"] -and $snap["settings"].ContainsKey("mode")) { [void]$snap["settings"].Remove("mode") }
+            $parked[$oldMode] = $snap
+            # incoming profile: from parked if present, else seed from the mode default
+            if ($parked.ContainsKey($newMode)) {
+              $incoming = $parked[$newMode]
+              [void]$parked.Remove($newMode)
+            } else {
+              $seedPath = if ($newMode -eq "school") { $script:G.DefaultSchoolPath } else { $script:G.DefaultPath }
+              $seed = Read-JsonFile $seedPath
+              $incoming = @{}
+              foreach ($k in $script:G.ProfileKeys) { if ($seed.ContainsKey($k)) { $incoming[$k] = $seed[$k] } }
+            }
+            foreach ($k in $script:G.ProfileKeys) {
+              if ($incoming.ContainsKey($k)) { $script:G.State[$k] = $incoming[$k] }
+              elseif ($script:G.State.ContainsKey($k)) { [void]$script:G.State.Remove($k) }
+            }
+            $script:G.State["settings"]["mode"] = $newMode
+            # hide every on-air slot so a stale graphic can't linger after a mode switch
+            $oa = $script:G.State["onair"]
+            if ($oa) { foreach ($sk in @($oa.Keys)) { if ($oa[$sk]) { $oa[$sk]["visible"] = $false } } }
+          }
+        }
         "replaceState" { $script:G.State = $cmd["state"] }
         default { throw "unknown action: $action" }
       }
@@ -315,6 +371,31 @@ $Lib = {
     } finally {
       [System.Threading.Monitor]::Exit($script:G.Lock)
     }
+  }
+
+  # accept a base64 image data URL -> write data/uploads/<id>.<ext> -> return /uploads/<file>
+  # (file write only - no state lock; ASCII-only, no Thai on this path)
+  function Save-Upload($dataUrl) {
+    $s = ("" + $dataUrl).Trim()
+    if ($s -notmatch '^data:(image/(png|jpe?g|webp|gif|svg\+xml));base64,(.+)$') { throw "unsupported image type" }
+    $mime = $Matches[1].ToLower()
+    try { $bytes = [Convert]::FromBase64String(($Matches[3] -replace '\s', '')) }
+    catch { throw "bad base64 data" }
+    if ($bytes.Length -gt 2097152) { throw "file too large (max 2MB)" }
+    $ext = switch -regex ($mime) {
+      'png$'    { '.png'; break }
+      'jpe?g$'  { '.jpg'; break }
+      'webp$'   { '.webp'; break }
+      'gif$'    { '.gif'; break }
+      'svg'     { '.svg'; break }
+      default   { '.bin' }
+    }
+    $name = (New-Id "up") + $ext
+    if (-not (Test-Path $script:G.UploadsDir)) { New-Item -ItemType Directory -Path $script:G.UploadsDir -Force | Out-Null }
+    $tmp = Join-Path $script:G.UploadsDir ($name + ".tmp")
+    [System.IO.File]::WriteAllBytes($tmp, $bytes)
+    Move-Item -Force -LiteralPath $tmp -Destination (Join-Path $script:G.UploadsDir $name)
+    return "/uploads/$name"
   }
 
   # ----------------------------------------------------------------------- #
@@ -402,6 +483,25 @@ $Lib = {
         Send-Text $ctx 400 ($script:JS.Serialize(@{ error = ("" + $_.Exception.Message) })) "application/json; charset=utf-8"
       }
       return
+    }
+    if ($path -eq "/api/upload" -and $method -eq "POST") {
+      if (-not (Test-Token $req)) { Send-Text $ctx 401 '{"error":"unauthorized"}' "application/json; charset=utf-8"; return }
+      try {
+        $payload = $script:JS.DeserializeObject((Read-Body $req))
+        $url = Save-Upload ($payload["dataUrl"])
+        Send-Text $ctx 200 ($script:JS.Serialize(@{ ok = $true; url = $url })) "application/json; charset=utf-8"
+      } catch {
+        Send-Text $ctx 400 ($script:JS.Serialize(@{ error = ("" + $_.Exception.Message) })) "application/json; charset=utf-8"
+      }
+      return
+    }
+    # uploaded logos (stored under data/uploads/, outside public/)
+    if ($path.StartsWith("/uploads/")) {
+      $rel  = ($path.Substring(9)).TrimStart('/') -replace '/', '\'
+      $full = [System.IO.Path]::GetFullPath((Join-Path $script:G.UploadsDir $rel))
+      $base = [System.IO.Path]::GetFullPath($script:G.UploadsDir)
+      if (-not $full.StartsWith($base, [StringComparison]::OrdinalIgnoreCase)) { Send-Text $ctx 403 "forbidden"; return }
+      Serve-File $ctx $full; return
     }
 
     Serve-Static $ctx $path

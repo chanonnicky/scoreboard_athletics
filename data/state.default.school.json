@@ -1,0 +1,20 @@
+{
+  "settings": {
+    "mode": "school",
+    "schools": [],
+    "logo": "/pictures/logo.png",
+    "animMs": 450,
+    "meetTitle": "การแข่งขันกีฬา",
+    "selEventId": ""
+  },
+  "events": [],
+  "results": {},
+  "onair": {
+    "lower": { "template": "top3", "eventId": null, "visible": false },
+    "full": { "template": "results", "eventId": null, "visible": false }
+  },
+  "sports": [
+    { "key": "futsal", "name": "ฟุตซอล", "icon": "⚽", "currentId": null, "matches": [] },
+    { "key": "basketball", "name": "บาสเกตบอล", "icon": "🏀", "currentId": null, "matches": [] }
+  ]
+}

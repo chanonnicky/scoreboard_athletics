@@ -10,11 +10,13 @@ CG Live — ระบบ Character Generator สำหรับถ่ายท�
   Overlay : http://<ip>:<port>/overlay     (ใส่ใน OBS Browser Source / vMix Web Browser)
 """
 import argparse
+import base64
 import csv
 import io
 import json
 import os
 import queue
+import re
 import socket
 import threading
 import time
@@ -26,6 +28,25 @@ PUBLIC = os.path.join(ROOT, "public")
 DATA = os.path.join(ROOT, "data")
 STATE_PATH = os.path.join(DATA, "state.json")
 DEFAULT_STATE_PATH = os.path.join(DATA, "state.default.json")
+DEFAULT_SCHOOL_STATE_PATH = os.path.join(DATA, "state.default.school.json")
+UPLOADS = os.path.join(DATA, "uploads")
+
+# state ที่ active อยู่ที่ top-level key เหล่านี้เสมอ; setMode สลับทั้งชุด
+# (โหมดที่ไม่ได้ใช้ถูกเก็บไว้ที่ STATE["parked"][<mode>])
+PROFILE_KEYS = ("settings", "events", "results", "onair", "sports", "tally")
+MODES = ("house", "school")
+MAX_UPLOAD = 2 * 1024 * 1024
+UPLOAD_EXT = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/jpg": ".jpg",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+    "image/svg+xml": ".svg",
+}
+_DATA_URL_RE = re.compile(
+    r"^data:(image/(?:png|jpe?g|webp|gif|svg\+xml));base64,(.+)$", re.I | re.S
+)
 
 TOKEN = ""
 
@@ -48,6 +69,7 @@ CTYPES = {
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
     ".webp": "image/webp",
+    ".gif": "image/gif",
     ".svg": "image/svg+xml",
     ".ico": "image/x-icon",
     ".txt": "text/plain; charset=utf-8",
@@ -57,16 +79,26 @@ CTYPES = {
 # --------------------------------------------------------------------------- #
 #  state load / save
 # --------------------------------------------------------------------------- #
+def _default_path_for_mode(mode):
+    return DEFAULT_SCHOOL_STATE_PATH if mode == "school" else DEFAULT_STATE_PATH
+
+
 def load_state():
     global STATE
     path = STATE_PATH if os.path.exists(STATE_PATH) else DEFAULT_STATE_PATH
     with open(path, encoding="utf-8") as f:
         STATE = json.load(f)
+    # โหมดตั้งต้น (state เดิมทั้งหมด = โหมดสีคณะ)
+    changed = False
+    if "mode" not in STATE.get("settings", {}):
+        STATE.setdefault("settings", {})["mode"] = "house"
+        changed = True
     # ล้าง id รายการที่ซ้ำกัน (เช่นข้อมูลเก่าที่ import มาก่อนแก้ _new_id)
     # ถ้ามีการแก้ ให้เขียนไฟล์กลับทันที เพื่อไม่ให้ id ซ้ำวนกลับมาอีก
-    changed = dedupe_event_ids(STATE)
-    if changed:
-        print("  [migrate] แก้ id รายการที่ซ้ำ %d รายการ" % changed)
+    deduped = dedupe_event_ids(STATE)
+    if deduped:
+        print("  [migrate] แก้ id รายการที่ซ้ำ %d รายการ" % deduped)
+        changed = True
     # ย้ายโครงเก่า football เดี่ยว -> รายการ sports (โมดูลกีฬาแบบใหม่)
     if "football" in STATE and "sports" not in STATE:
         fb = STATE.pop("football") or {}
@@ -260,9 +292,50 @@ def apply_command(cmd):
             STATE.update(cmd["state"])
 
         elif action == "resetState":
-            with open(DEFAULT_STATE_PATH, encoding="utf-8") as f:
-                STATE.clear()
-                STATE.update(json.load(f))
+            # รีเซ็ตเฉพาะโหมดที่ active — คง settings.mode และ parked ไว้
+            mode = STATE.get("settings", {}).get("mode") or "house"
+            parked = STATE.get("parked", {})
+            with open(_default_path_for_mode(mode), encoding="utf-8") as f:
+                seed = json.load(f)
+            for k in PROFILE_KEYS:
+                STATE.pop(k, None)
+            for k in PROFILE_KEYS:
+                if k in seed:
+                    STATE[k] = seed[k]
+            STATE.setdefault("settings", {})["mode"] = mode
+            STATE["parked"] = parked
+
+        elif action == "setMode":
+            new_mode = cmd.get("mode")
+            if new_mode not in MODES:
+                raise ValueError("bad mode: %r" % new_mode)
+            settings = STATE.setdefault("settings", {})
+            old_mode = settings.get("mode") or "house"
+            if new_mode != old_mode:
+                parked = STATE.setdefault("parked", {})
+                # snapshot โหมดปัจจุบัน (deep copy, ตัด settings.mode ออก)
+                snap = json.loads(json.dumps(
+                    {k: STATE[k] for k in PROFILE_KEYS if k in STATE}
+                ))
+                snap.get("settings", {}).pop("mode", None)
+                parked[old_mode] = snap
+                # โหลดโหมดใหม่: จาก parked ถ้ามี ไม่งั้น seed จาก default
+                if new_mode in parked:
+                    incoming = parked.pop(new_mode)
+                else:
+                    with open(_default_path_for_mode(new_mode), encoding="utf-8") as f:
+                        seed = json.load(f)
+                    incoming = {k: seed[k] for k in PROFILE_KEYS if k in seed}
+                for k in PROFILE_KEYS:
+                    STATE.pop(k, None)
+                for k, v in incoming.items():
+                    STATE[k] = v
+                STATE.setdefault("settings", {})["mode"] = new_mode
+                # สลับโหมด: ซ่อนกราฟิกทุก slot กันของเก่าค้างจอ
+                for s in STATE.get("onair", {}).values():
+                    if isinstance(s, dict):
+                        s["visible"] = False
+                _save_now()
 
         else:
             raise ValueError("unknown action: %r" % action)
@@ -296,6 +369,28 @@ def import_csv(kind, text):
             return {"events": seen}
 
         raise ValueError("unknown import kind: %r" % kind)
+
+
+def save_upload(data_url):
+    """รับ data URL รูปภาพ base64 -> เขียนไฟล์ที่ data/uploads/ -> คืน URL /uploads/<file>"""
+    m = _DATA_URL_RE.match((data_url or "").strip())
+    if not m:
+        raise ValueError("unsupported image type")
+    mime = m.group(1).lower()
+    try:
+        raw = base64.b64decode(m.group(2), validate=False)
+    except Exception:
+        raise ValueError("bad base64 data")
+    if len(raw) > MAX_UPLOAD:
+        raise ValueError("file too large (max 2MB)")
+    ext = UPLOAD_EXT.get(mime, ".bin")
+    name = _new_id("up") + ext
+    os.makedirs(UPLOADS, exist_ok=True)
+    tmp = os.path.join(UPLOADS, name + ".tmp")
+    with open(tmp, "wb") as f:
+        f.write(raw)
+    os.replace(tmp, os.path.join(UPLOADS, name))
+    return "/uploads/" + name
 
 
 # --------------------------------------------------------------------------- #
@@ -366,6 +461,13 @@ class Handler(BaseHTTPRequestHandler):
             return self._serve_sse()
         if path == "/healthz":
             return self._send(200, "ok")
+        # โลโก้ที่อัปโหลด (เก็บที่ data/uploads/ นอก public/)
+        if path.startswith("/uploads/"):
+            rel = os.path.normpath(path[len("/uploads/"):].lstrip("/")).replace("\\", "/")
+            full = os.path.join(UPLOADS, rel)
+            if not os.path.abspath(full).startswith(os.path.abspath(UPLOADS)):
+                return self._send(403, "forbidden")
+            return self._serve_path(full)
 
         rel = os.path.normpath(path.lstrip("/")).replace("\\", "/")
         full = os.path.join(PUBLIC, rel)
@@ -415,7 +517,7 @@ class Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0) or 0)
         raw = self.rfile.read(length) if length else b""
 
-        if path in ("/api/command", "/api/import") and not self._authed(qs):
+        if path in ("/api/command", "/api/import", "/api/upload") and not self._authed(qs):
             return self._json(401, {"error": "unauthorized"})
 
         try:
@@ -428,6 +530,9 @@ class Handler(BaseHTTPRequestHandler):
                 save_soon()
                 broadcast()
                 return self._json(200, {"ok": True, "imported": info})
+            if path == "/api/upload":
+                body = json.loads(raw.decode("utf-8"))
+                return self._json(200, {"ok": True, "url": save_upload(body.get("dataUrl"))})
         except Exception as exc:  # noqa: BLE001 - report back to the operator
             return self._json(400, {"error": str(exc)})
 
