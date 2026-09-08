@@ -11,10 +11,16 @@
   var view = params.get("slot") || "both";
   var scale = parseFloat(params.get("scale") || "1") || 1;
   var transport = params.get("transport") || "sse";
-  // ธีมทดลอง "liquid glass" — /live?theme=glass (หรือ ?glass=1); ไม่ใส่ = สไตล์เดิม
-  if (params.get("theme") === "glass" || params.get("glass") === "1") {
-    document.documentElement.classList.add("glass");
+  // ธีม "liquid glass": URL ?theme=glass|default บังคับ; ไม่ใส่ = ตาม settings.theme
+  var themeParam = params.get("theme");
+  function applyTheme(state) {
+    var glass;
+    if (themeParam === "glass" || params.get("glass") === "1") glass = true;
+    else if (themeParam === "default" || themeParam === "classic") glass = false;
+    else glass = !!(state && state.settings && state.settings.theme === "glass");
+    document.documentElement.classList.toggle("glass", glass);
   }
+  applyTheme(null);
 
   var stage = document.getElementById("stage");
   stage.style.transform = "scale(" + scale + ")";
@@ -301,6 +307,7 @@
   function apply(state) {
     if (!state || !state.settings) return;
     window.__state = state;
+    applyTheme(state);
 
     var root = document.documentElement;
     root.style.setProperty("--anim", animMs(state) + "ms");

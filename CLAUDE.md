@@ -194,7 +194,14 @@ slots), `control.js` (control + score pages, with live preview via the same `T.*
 (Scoreboard).
 
 `overlay.css` holds the shared card/house/animation styles (loaded by both overlay and board);
-`board.css` only overrides background and sizing. In **house mode**, colors are CSS variables
+`board.css` only overrides background and sizing. `glass.css` (loaded after both) is an optional
+**"liquid glass"** skin — every rule scoped under `.glass`, applied to `<html>` by `overlay.js` /
+`board.js` when `settings.theme === "glass"` (or URL `?theme=glass`; `?theme=default` forces it
+off). It overrides surfaces only (translucent + `backdrop-filter`), not layout/animation/HTML, so
+`sigOf` doesn't track it — `applyTheme(state)` runs at the top of `apply()` before the sig
+early-return. Default (no setting) = the original opaque look, byte-identical.
+
+In **house mode**, colors are CSS variables
 (`--red`/`--green`/`--yellow`/`--blue`) pushed from `settings.houses` at runtime; `.h-red`/`.h-green`/…
 map them to `--house`/`--ink`. In **school mode** the templates emit an inline
 `style="--house:…;--ink:…"` per competitor element (`.h-*` classes unused; the `:root`

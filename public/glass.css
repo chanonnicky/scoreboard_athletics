@@ -1,9 +1,11 @@
 /* ============================================================================
    glass.css — ธีมทดลอง "liquid glass" (frosted / โปร่งแสง / มีขอบเรืองแสง)
    ----------------------------------------------------------------------------
-   เปิดใช้:  /live?theme=glass       ·  /scoreboard?theme=glass
-            /scoreboard/<กีฬา>?theme=glass  ·  (หรือ ?glass=1)
-   ไม่ใส่ param = สไตล์เดิมทุกอย่าง (ไฟล์นี้ทั้งไฟล์ scope ใต้ .glass ที่ <html>)
+   เปิดใช้:  ตั้งที่หน้า /control แท็บ "ตั้งค่า" -> settings.theme = "glass"
+            (overlay.js / board.js เติม class .glass ที่ <html> ทุกจอ)
+            หรือบังคับเฉพาะจอ: URL ?theme=glass / ?theme=default (ทับค่าที่ตั้งไว้)
+   ค่าเริ่มต้น / settings.theme ไม่ใช่ "glass" = สไตล์เดิมทุกอย่าง
+   ไฟล์นี้ทั้งไฟล์ scope ใต้ .glass
 
    โหลดต่อจาก overlay.css / board.css — override เฉพาะพื้นผิว (พื้นหลัง/ขอบ/เงา)
    ไม่แตะ layout / แอนิเมชัน / ฟอนต์ / เหรียญ / การไฮไลต์ผู้นำ

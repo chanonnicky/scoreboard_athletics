@@ -425,7 +425,7 @@
     var sportOn = !!(fu.visible && fu.template === "sportMatches");
     var sportLiveOn = !!(fu.visible && fu.template === "sportLive");
     var collapsed = localStorage.getItem("cg_preview_collapsed") === "1";
-    var glassPrev = localStorage.getItem("cg_preview_glass") === "1";
+    var glassPrev = (state.settings && state.settings.theme) === "glass";
 
     function cmdBtn(act, on, label, extra) {
       return '<button class="btn primary' + (on ? " is-live" : "") + '" data-act="' + act + '"' + (extra || "") + ">" +
@@ -511,13 +511,13 @@
         '<div class="row" style="justify-content:space-between;align-items:center">' +
           '<div class="preview-label">พรีวิว overlay (โปร่งใส = ลายตาราง)</div>' +
           '<div class="row" style="gap:6px">' +
-            '<button class="btn sm' + (glassPrev ? " is-live" : "") + '" data-act="preview-glass" title="ลองธีม liquid glass">' + (glassPrev ? "🧊 แก้ว" : "ปกติ") + "</button>" +
+            '<button class="btn sm' + (glassPrev ? " is-live" : "") + '" data-act="theme-toggle" title="สลับธีมทั้งงาน (ปกติ / liquid glass)">' + (glassPrev ? "🧊 แก้ว" : "ปกติ") + "</button>" +
             '<button class="btn sm" data-act="preview-toggle">' + (collapsed ? "แสดงพรีวิว" : "ซ่อนพรีวิว") + "</button>" +
           "</div>" +
         "</div>" +
         (collapsed ? "" :
-          '<div class="preview"><iframe src="/live?transport=poll' + (glassPrev ? "&theme=glass" : "") + '" title="preview"></iframe></div>' +
-          '<div class="preview-label">มุมมองนี้อัปเดตสดเหมือนที่ออกใน OBS/vMix' + (glassPrev ? " · ธีมแก้ว (ทดลอง)" : "") + "</div>") +
+          '<div class="preview"><iframe src="/live?transport=poll' + (glassPrev ? "&theme=glass" : "&theme=default") + '" title="preview"></iframe></div>' +
+          '<div class="preview-label">มุมมองนี้อัปเดตสดเหมือนที่ออกใน OBS/vMix' + (glassPrev ? " · ธีม 🧊 แก้ว" : "") + "</div>") +
       "</div>" +
 
       "</div>";
@@ -966,6 +966,7 @@
     var s = state.settings || {};
     var origin = location.origin;
     var isSc = isSchool();
+    var isGlass = s.theme === "glass";
     panel.innerHTML =
       '<div class="card"><h2>ตั้งค่าทั่วไป</h2>' +
         '<div class="field" style="max-width:560px">โหมดการแข่งขัน' +
@@ -974,6 +975,13 @@
             '<button class="btn' + (isSc ? " is-live" : "") + '" data-act="mode-school"' + (isSc ? " disabled" : "") + ">แข่งกับโรงเรียนภายนอก</button>" +
           "</div>" +
           '<p class="muted" style="margin-top:6px">สลับโหมดจะสลับชุดข้อมูลทั้งหมด (รายการ / ผล / แมตช์) — ข้อมูลอีกชุดถูกเก็บไว้ กลับมาเหมือนเดิมเมื่อสลับกลับ</p>' +
+        "</div>" +
+        '<div class="field" style="max-width:560px;margin-top:12px">ธีมแสดงผล (ทุกจอ Live / Scoreboard)' +
+          '<div class="mode-toggle">' +
+            '<button class="btn' + (isGlass ? "" : " is-live") + '" data-act="theme-default"' + (isGlass ? "" : " disabled") + ">ปกติ</button>" +
+            '<button class="btn' + (isGlass ? " is-live" : "") + '" data-act="theme-glass"' + (isGlass ? " disabled" : "") + ">🧊 Liquid Glass</button>" +
+          "</div>" +
+          '<p class="muted" style="margin-top:6px">มีผลกับทุกจอทันที · ธีมแก้วต้องใช้ OBS / vMix รุ่นใหม่ (backdrop-filter) · เติม <code>?theme=glass</code> หรือ <code>?theme=default</code> ต่อท้าย URL เพื่อบังคับเฉพาะจอนั้น</p>' +
         "</div>" +
         '<label class="field" style="max-width:360px;margin-top:12px">ชื่องาน (แสดงบน CG)<input type="text" id="setMeet" value="' + esc(s.meetTitle || "") + '"></label>' +
         '<label class="field" style="max-width:420px;margin-top:12px">โลโก้ส่วนกลาง (พาธ/URL — เว้นว่าง = ไม่แสดง)' +
@@ -997,9 +1005,10 @@
           '<a href="/live?slot=lower" target="_blank">/live?slot=lower &nbsp;— เฉพาะแถบล่าง</a>' +
           '<a href="/live?slot=full" target="_blank">/live?slot=full &nbsp;— เฉพาะเต็มจอ</a>' +
           '<a href="/live?transport=poll" target="_blank">/live?transport=poll &nbsp;— ถ้าเน็ตบล็อก SSE</a>' +
-          '<a href="/live?theme=glass" target="_blank">/live?theme=glass &nbsp;— 🧊 ธีม liquid glass (ทดลอง เทียบกับปกติ)</a>' +
+          '<a href="/live?theme=glass" target="_blank">/live?theme=glass &nbsp;— บังคับธีม 🧊 แก้ว (ดูเทียบ ไม่แตะค่าที่ตั้งไว้)</a>' +
+          '<a href="/live?theme=default" target="_blank">/live?theme=default &nbsp;— บังคับธีมปกติ</a>' +
         "</div>" +
-        '<p class="muted" style="margin-top:10px">ตั้งขนาด Browser Source / Web Input เป็น 1920×1080 · เติม <code>?theme=glass</code> ต่อท้าย URL ไหนก็ได้เพื่อลองธีมแก้ว</p>' +
+        '<p class="muted" style="margin-top:10px">ตั้งขนาด Browser Source / Web Input เป็น 1920×1080 · ธีมใช้ตามที่ตั้งไว้ด้านบน — <code>?theme=glass</code>/<code>?theme=default</code> ต่อท้าย URL = บังคับเฉพาะจอนั้น</p>' +
       "</div>" +
 
       '<div class="card"><h2>จอ Scoreboard (เปิดค้างที่จอในงาน)</h2>' +
@@ -1012,7 +1021,7 @@
             return '<a href="/scoreboard/' + esc(sp.key) + '" target="_blank">/scoreboard/' + esc(sp.key) +
               ' &nbsp;— สกอร์สด ' + esc(sp.name || sp.key) + " 🔴</a>";
           }).join("") +
-          '<a href="/scoreboard?view=all&theme=glass" target="_blank">/scoreboard?view=all&amp;theme=glass &nbsp;— 🧊 ธีม liquid glass (ทดลอง)</a>' +
+          '<a href="/scoreboard?view=all&theme=glass" target="_blank">/scoreboard?view=all&amp;theme=glass &nbsp;— บังคับธีม 🧊 แก้ว</a>' +
         "</div>" +
         '<p class="muted" style="margin-top:10px">เปิดเต็มจอ (F11) — จอสด (/scoreboard/&lt;กีฬา&gt;) โชว์คู่ที่ตั้ง “สด” จากหน้าจดคะแนน</p>' +
       "</div>" +
@@ -1075,10 +1084,16 @@
       localStorage.setItem("cg_preview_collapsed", c ? "0" : "1");
       render();
     },
-    "preview-glass": function () {
-      var g = localStorage.getItem("cg_preview_glass") === "1";
-      localStorage.setItem("cg_preview_glass", g ? "0" : "1");
-      render();
+    "theme-toggle": function () {
+      var g = (state.settings && state.settings.theme) === "glass";
+      cmd({ action: "setSettings", settings: { theme: g ? "default" : "glass" } })
+        .then(function (ok) { if (ok) toast(g ? "ธีม: ปกติ" : "ธีม: 🧊 แก้ว"); });
+    },
+    "theme-default": function () {
+      cmd({ action: "setSettings", settings: { theme: "default" } }).then(function (ok) { if (ok) toast("ธีม: ปกติ"); });
+    },
+    "theme-glass": function () {
+      cmd({ action: "setSettings", settings: { theme: "glass" } }).then(function (ok) { if (ok) toast("ธีม: 🧊 แก้ว"); });
     },
 
     "res-tap": function (b) {

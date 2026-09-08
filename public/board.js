@@ -16,10 +16,16 @@
   var transport = params.get("transport") || "sse";
   var VIEW = (params.get("view") || "results").toLowerCase();
   var INTERVAL = (parseFloat(params.get("page") || "9") || 9) * 1000;
-  // ธีมทดลอง "liquid glass" — /scoreboard?theme=glass (หรือ ?glass=1); ไม่ใส่ = สไตล์เดิม
-  if (params.get("theme") === "glass" || params.get("glass") === "1") {
-    document.documentElement.classList.add("glass");
+  // ธีม "liquid glass": URL ?theme=glass|default บังคับ; ไม่ใส่ = ตาม settings.theme
+  var themeParam = params.get("theme");
+  function applyTheme(state) {
+    var glass;
+    if (themeParam === "glass" || params.get("glass") === "1") glass = true;
+    else if (themeParam === "default" || themeParam === "classic") glass = false;
+    else glass = !!(state && state.settings && state.settings.theme === "glass");
+    document.documentElement.classList.toggle("glass", glass);
   }
+  applyTheme(null);
 
   // โหมดสด: /scoreboard/<sport> หรือ /board/<sport>
   var seg = location.pathname.replace(/\/+$/, "").split("/").filter(Boolean);
@@ -151,6 +157,7 @@
 
   function apply(state) {
     if (!state || !state.settings) return;
+    applyTheme(state);
     var root = document.documentElement;
     var houses = state.settings.houses || {};
     Object.keys(houses).forEach(function (k) { root.style.setProperty("--" + k, houses[k]); });
