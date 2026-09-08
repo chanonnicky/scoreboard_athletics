@@ -10,9 +10,69 @@ window.T = (function () {
     });
   }
 
+  /* ---- คู่แข่ง (competitor): สีคณะ หรือ โรงเรียน ตาม settings.mode ----------
+     โหมด "house" = 4 สีคณะเดิม (สไตล์จาก CSS .h-red …)
+     โหมด "school" = settings.schools = [{key,name,logo}] — ไม่มีสีเก็บไว้ กำหนดสีจาก
+     palette ตามลำดับใน roster (ใช้แค่ไฮไลต์ผู้นำ/ผู้ตาม) แล้วส่งเป็น inline var */
+  var SCHOOL_PALETTE = [
+    "#e53935", "#1e88e5", "#2e9d54", "#f4c020", "#8e24aa",
+    "#00897b", "#fb8c00", "#3949ab", "#c2185b", "#5d4037",
+  ];
+  function compMode(state) {
+    return (state.settings && state.settings.mode) === "school" ? "school" : "house";
+  }
+  function contrastInk(hex) {
+    var m = /^#?([0-9a-f]{6})$/i.exec(String(hex == null ? "" : hex).trim());
+    if (!m) return "#fff";
+    var n = parseInt(m[1], 16);
+    var L = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+    return L > 0.6 ? "#1a1a1a" : "#fff";
+  }
+  function schoolIndex(state, key) {
+    var list = (state.settings && state.settings.schools) || [];
+    for (var i = 0; i < list.length; i++) if (list[i] && list[i].key === key) return i;
+    return -1;
+  }
+  function comp(state, key) {
+    var s = state.settings || {};
+    if (compMode(state) === "school") {
+      var i = schoolIndex(state, key);
+      var sc = i >= 0 ? s.schools[i] : null;
+      var color = i >= 0 ? SCHOOL_PALETTE[i % SCHOOL_PALETTE.length] : "#888";
+      var ink = contrastInk(color);
+      return { name: (sc && sc.name) || key || "", logo: (sc && sc.logo) || "",
+               color: color, ink: ink, lightInk: ink !== "#fff" };
+    }
+    var names = s.houseNames || {}, colors = s.houses || {};
+    return { name: names[key] || key || "", logo: houseLogoUrl(state, key),
+             color: colors[key] || "#888", ink: "#fff", lightInk: false };
+  }
+  function compKeys(state) {
+    if (compMode(state) === "school") {
+      return ((state.settings && state.settings.schools) || []).map(function (s) { return s.key; });
+    }
+    return Object.keys((state.settings && state.settings.houses) || {});
+  }
+  // class ของ element ทีม: โหมด school -> "comp[ comp-lightbg]" + ต้องคู่กับ compStyle()
+  function compCls(state, key) {
+    if (compMode(state) === "school") {
+      return "comp" + (comp(state, key).lightInk ? " comp-lightbg" : "");
+    }
+    return hClass(key);
+  }
+  // inline CSS var สำหรับโหมด school (โหมด house ใช้ .h-<key> จาก CSS -> คืน "")
+  function compStyle(state, key) {
+    if (compMode(state) !== "school") return "";
+    var x = comp(state, key);
+    return ' style="--house:' + x.color + ';--ink:' + x.ink + '"';
+  }
+  function meetTitleOf(state) {
+    return (state.settings && state.settings.meetTitle) ||
+           (compMode(state) === "school" ? "การแข่งขัน" : "กีฬาสี");
+  }
+
   function houseName(state, h) {
-    var n = state.settings && state.settings.houseNames;
-    return (n && n[h]) || h || "";
+    return comp(state, h).name;
   }
 
   function hClass(h) {
@@ -66,6 +126,10 @@ window.T = (function () {
   /* โลโก้ประจำคณะสี — พาธจาก settings.houseLogos[h] ถ้าไม่ตั้งใช้ /pictures/house-<key>.png
      ตั้ง settings.houseLogos[h] = "" เพื่อปิดโลโก้ของคณะนั้น */
   function houseLogoUrl(state, h) {
+    if (compMode(state) === "school") {
+      var i = schoolIndex(state, h);
+      return i >= 0 ? (state.settings.schools[i].logo || "") : "";
+    }
     var m = state.settings && state.settings.houseLogos;
     if (m && Object.prototype.hasOwnProperty.call(m, h)) return m[h]; // ตั้งไว้ (อาจเว้นว่าง = ปิด)
     return "/pictures/house-" + (h || "").replace(/[^a-z]/gi, "") + ".png";
@@ -83,7 +147,7 @@ window.T = (function () {
       var r = (results || []).find(function (x) { return Number(x.rank) === rank; });
       if (!r) return "";
       return (
-        '<div class="t3-item t3-r' + rank + " " + hClass(r.house) + '">' +
+        '<div class="t3-item t3-r' + rank + " " + compCls(state, r.house) + '"' + compStyle(state, r.house) + ">" +
           '<div class="t3-medal t3-medal-' + rank + '">' + rank + "</div>" +
           houseLogoImg(state, r.house, "t3-logo") +
           '<div class="t3-house">' + esc(houseName(state, r.house)) + "</div>" +
@@ -132,7 +196,7 @@ window.T = (function () {
           ? '<div class="rres rlive"><span class="live-dot"></span>กำลังแข่ง</div>'
           : top3rows.length
           ? '<div class="rres">' + top3rows.map(function (r) {
-              return '<span class="rchip ' + hClass(r.house) + '"><b>' + esc(r.rank) + "</b>" +
+              return '<span class="rchip ' + compCls(state, r.house) + '"' + compStyle(state, r.house) + "><b>" + esc(r.rank) + "</b>" +
                      houseLogoImg(state, r.house, "rchip-logo") +
                      esc(houseName(state, r.house)) + "</span>";
             }).join("") + "</div>"
@@ -158,7 +222,7 @@ window.T = (function () {
       '<div class="card tpl-results-card">' +
         '<div class="card-head">' +
           '<div class="card-kicker">' + kicker + "</div>" +
-          '<div class="card-title">' + esc((state.settings && state.settings.meetTitle) || "กีฬาสี") + "</div>" +
+          '<div class="card-title">' + esc(meetTitleOf(state)) + "</div>" +
           logoImg(state) +
         "</div>" +
         '<div class="card-body">' + pagesHtml + "</div>" +
@@ -201,7 +265,7 @@ window.T = (function () {
       '<div class="card tpl-sched-card">' +
         '<div class="card-head">' +
           '<div class="card-kicker">' + kicker + "</div>" +
-          '<div class="card-title">' + esc((state.settings && state.settings.meetTitle) || "กีฬาสี") + "</div>" +
+          '<div class="card-title">' + esc(meetTitleOf(state)) + "</div>" +
           logoImg(state) +
         "</div>" +
         '<div class="card-body"><div class="slist">' + rows + "</div></div>" +
@@ -266,7 +330,7 @@ window.T = (function () {
       : '<span class="fbm-vs">VS</span>';
     return (
       '<div class="fbm' + (isLive ? " cur" : "") + '" style="--fbi:' + (idx || 0) + '">' +
-        '<div class="fbm-team fbm-home ' + hClass(m.home) + (hw ? " win" : "") + '">' +
+        '<div class="fbm-team fbm-home ' + compCls(state, m.home) + (hw ? " win" : "") + '"' + compStyle(state, m.home) + ">" +
           '<span class="fbm-name">' + esc(houseName(state, m.home)) + "</span>" +
           houseLogoImg(state, m.home, "fbm-logo") +
         "</div>" +
@@ -274,7 +338,7 @@ window.T = (function () {
           (m.title ? '<div class="fbm-title">' + esc(m.title) + "</div>" : "") +
           '<div class="fbm-score">' + mid + "</div>" +
         "</div>" +
-        '<div class="fbm-team fbm-away ' + hClass(m.away) + (aw ? " win" : "") + '">' +
+        '<div class="fbm-team fbm-away ' + compCls(state, m.away) + (aw ? " win" : "") + '"' + compStyle(state, m.away) + ">" +
           houseLogoImg(state, m.away, "fbm-logo") +
           '<span class="fbm-name">' + esc(houseName(state, m.away)) + "</span>" +
         "</div>" +
@@ -373,7 +437,7 @@ window.T = (function () {
         logoImg(state) +
       "</div>" +
       '<div class="card-body"><div class="live">' +
-        '<div class="live-team live-home ' + hClass(m.home) + (hw ? " win" : aw ? " trail" : "") + '">' +
+        '<div class="live-team live-home ' + compCls(state, m.home) + (hw ? " win" : aw ? " trail" : "") + '"' + compStyle(state, m.home) + ">" +
           houseLogoImg(state, m.home, "live-logo") +
           '<div class="live-name">' + esc(houseName(state, m.home)) + "</div>" +
         "</div>" +
@@ -382,7 +446,7 @@ window.T = (function () {
           clockHtml +
           status +
         "</div>" +
-        '<div class="live-team live-away ' + hClass(m.away) + (aw ? " win" : hw ? " trail" : "") + '">' +
+        '<div class="live-team live-away ' + compCls(state, m.away) + (aw ? " win" : hw ? " trail" : "") + '"' + compStyle(state, m.away) + ">" +
           houseLogoImg(state, m.away, "live-logo") +
           '<div class="live-name">' + esc(houseName(state, m.away)) + "</div>" +
         "</div>" +
@@ -430,8 +494,8 @@ window.T = (function () {
 
     return '<div class="sportbar" data-done="' + (m.done ? 1 : 0) + '">' +
       '<div class="sportbar-row">' +
-        '<div class="sportbar-team sportbar-home ' + hClass(m.home) +
-          (hw ? " win" : aw ? " trail" : "") + '">' +
+        '<div class="sportbar-team sportbar-home ' + compCls(state, m.home) +
+          (hw ? " win" : aw ? " trail" : "") + '"' + compStyle(state, m.home) + ">" +
           '<span class="sportbar-name">' + esc(houseName(state, m.home)) + "</span>" +
           houseLogoImg(state, m.home, "sportbar-logo") +
         "</div>" +
@@ -442,8 +506,8 @@ window.T = (function () {
           "</div>" +
           '<div class="sportbar-sub">' + clockHtml + statusHtml + "</div>" +
         "</div>" +
-        '<div class="sportbar-team sportbar-away ' + hClass(m.away) +
-          (aw ? " win" : hw ? " trail" : "") + '">' +
+        '<div class="sportbar-team sportbar-away ' + compCls(state, m.away) +
+          (aw ? " win" : hw ? " trail" : "") + '"' + compStyle(state, m.away) + ">" +
           houseLogoImg(state, m.away, "sportbar-logo") +
           '<span class="sportbar-name">' + esc(houseName(state, m.away)) + "</span>" +
         "</div>" +
@@ -457,5 +521,6 @@ window.T = (function () {
     sportMatches: sportMatches, sportLive: sportLive, sportLower: sportLower,
     esc: esc, clockValue: clockValue, clockDur: clockDur, clockRemain: clockRemain,
     remainSec: remainSec, fmtClock: fmtClock,
+    comp: comp, compMode: compMode, compKeys: compKeys,
   };
 })();

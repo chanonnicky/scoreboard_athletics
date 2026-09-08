@@ -65,6 +65,12 @@ body.is-offline #offline { opacity: 1; }
 .h-yellow { --house: var(--yellow); --ink: #1a1a1a; }
 .h-blue   { --house: var(--blue);   --ink: #fff; }
 
+/* โหมด "โรงเรียน" — ไม่มี .h-<key>; สี/ink มาจาก inline var (compStyle ใน templates.js)
+   สองบรรทัดล่างเป็น fallback + mirror ของเคสพิเศษ .h-yellow */
+.comp         { --house: #888; --ink: #fff; }
+.comp-lightbg { --ink: #1a1a1a; }
+.comp-lightbg.fbm-team.win .fbm-name { color: #ffd54a; }
+
 .dot { display: inline-block; width: .8em; height: .8em; border-radius: 50%;
   background: var(--house, #999); vertical-align: middle; }
 
