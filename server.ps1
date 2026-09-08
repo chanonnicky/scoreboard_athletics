@@ -141,19 +141,37 @@ $Lib = {
   }
 
   # migrate on load: dedupe ids + move legacy single "football" -> "sports" list
+  #                  + rename the old "football" sport -> "futsal"
   function Migrate-State {
     $changed = 0
     if ($script:G.State["events"]) { $changed += (Dedupe-EventIds) }
     if ($script:G.State.ContainsKey("football") -and -not $script:G.State.ContainsKey("sports")) {
       $fb = $script:G.State["football"]
       $sp = New-Dict
-      $sp["key"] = "football"; $sp["name"] = "Football"; $sp["icon"] = ""
+      $sp["key"] = "futsal"; $sp["name"] = "Futsal"; $sp["icon"] = ""
       $sp["points"]  = if ($fb -and $fb["points"])  { $fb["points"] }  else { @{ win = 3; draw = 1; loss = 0 } }
       $sp["matches"] = if ($fb -and $fb["matches"]) { $fb["matches"] } else { @() }
       $script:G.State["sports"] = @($sp)
       [void]$script:G.State.Remove("football")
       Write-Host "  [migrate] football -> sports"
       $changed++
+    }
+    # rename legacy sport football -> futsal (key + name + onair refs)
+    if ($script:G.State["sports"]) {
+      foreach ($sp in @($script:G.State["sports"])) {
+        if ($sp -and [string]$sp["key"] -eq "football") {
+          $sp["key"] = "futsal"
+          $sp["name"] = "Futsal"   # ASCII-only (see CLAUDE.md); server.py uses the Thai name
+          Write-Host "  [migrate] football -> futsal"
+          $changed++
+        }
+      }
+    }
+    if ($script:G.State["onair"]) {
+      foreach ($k in @($script:G.State["onair"].Keys)) {
+        $conf = $script:G.State["onair"][$k]
+        if ($conf -and [string]$conf["sport"] -eq "football") { $conf["sport"] = "futsal"; $changed++ }
+      }
     }
     if ($changed -gt 0) { Save-State }
   }
@@ -488,11 +506,11 @@ Write-Host " CG Live  -  scoreboard_athletics  (PowerShell)"
 Write-Host $bar
 Write-Host "  Control   : http://${ip}:$Port/control              (Live control)"
 Write-Host "  Score     : http://${ip}:$Port/score                (score: athletics)"
-Write-Host "  Score/foot: http://${ip}:$Port/score/football       (score: football)"
+Write-Host "  Score/futs: http://${ip}:$Port/score/futsal         (score: futsal)"
 Write-Host "  Score/bask: http://${ip}:$Port/score/basketball     (score: basketball)"
 Write-Host "  Live      : http://${ip}:$Port/live                 <<  put this in OBS / vMix"
 Write-Host "  Scoreboard: http://${ip}:$Port/scoreboard           (rotating display)"
-Write-Host "  SB/live   : http://${ip}:$Port/scoreboard/football  (live match score)"
+Write-Host "  SB/live   : http://${ip}:$Port/scoreboard/futsal    (live match score)"
 Write-Host "  Local     : http://127.0.0.1:$Port/control"
 if ($Token) { Write-Host "  Token   :  $Token" }
 Write-Host $bar

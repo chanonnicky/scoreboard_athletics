@@ -647,15 +647,17 @@
   }
   function newMatchId() { return "m_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
-  // ---- นาฬิกาแมตช์ (สตอปวอตช์ นับขึ้น) ---- //
+  // ---- นาฬิกาแมตช์ (นับถอยหลัง) ---- //
+  var CLK_DEFAULT_DUR = 600;   // ค่าตั้งต้น 10:00 (ปรับด้วยปุ่ม ± ได้)
   function normClock(c) {
     return {
       running: !!(c && c.running),
       elapsed: (c && Number(c.elapsed)) || 0,
       since: (c && Number(c.since)) || 0,
+      dur: (c && c.dur != null) ? Math.max(0, Number(c.dur) || 0) : CLK_DEFAULT_DUR,
     };
   }
-  function clockNow(c) {
+  function clockNow(c) {                 // เวลาที่เดินไปแล้ว (นับขึ้น)
     c = normClock(c);
     return c.elapsed + (c.running ? Math.max(0, (Date.now() - c.since) / 1000) : 0);
   }
@@ -672,7 +674,11 @@
     if (!el || el.getAttribute("data-run") !== "1") { stopSpClockTick(); return; }
     var base = parseFloat(el.getAttribute("data-el")) || 0;
     var since = parseFloat(el.getAttribute("data-since")) || 0;
-    el.textContent = T.fmtClock(base + Math.max(0, (Date.now() - since) / 1000));
+    var dur = parseFloat(el.getAttribute("data-dur"));
+    if (isNaN(dur)) dur = CLK_DEFAULT_DUR;
+    var remain = T.remainSec(base, since, dur, true);
+    el.textContent = T.fmtClock(remain);
+    if (remain <= 0) el.classList.add("ended");
   }
   function restartSpClockTick() {
     stopSpClockTick();
@@ -744,7 +750,7 @@
     var key = curSportKey();
     if (!sportByKey(key)) {
       panel.innerHTML = '<div class="card"><h2>ไม่พบกีฬา "' + esc(key || "") + '"</h2>' +
-        '<p class="muted">URL ต้องเป็น /score/football หรือ /score/basketball</p></div>';
+        '<p class="muted">URL ต้องเป็น /score/futsal หรือ /score/basketball</p></div>';
       return;
     }
     sportEnsureDraft();
@@ -769,12 +775,13 @@
       }
       var ck = normClock(cm.clock);
       var ckRun = ck.running && !cm.done;
-      var ckEl = ck.elapsed, ckSince = ck.since;
+      var ckEl = ck.elapsed, ckSince = ck.since, ckDur = ck.dur;
+      var ckRemain = T.remainSec(ckEl, ckSince, ckDur, ckRun);
       var clockRow =
         '<div class="sp-clock-row">' +
-          '<div class="sp-clock' + (ckRun ? " run" : "") + '" data-run="' + (ckRun ? 1 : 0) +
-            '" data-el="' + ckEl + '" data-since="' + ckSince + '">' +
-            T.fmtClock(ckRun ? ckEl + Math.max(0, (Date.now() - ckSince) / 1000) : ckEl) + "</div>" +
+          '<div class="sp-clock' + (ckRun ? " run" : "") + (ckRemain <= 0 ? " ended" : "") + '" data-run="' + (ckRun ? 1 : 0) +
+            '" data-el="' + ckEl + '" data-since="' + ckSince + '" data-dur="' + ckDur + '">' +
+            T.fmtClock(ckRemain) + "</div>" +
           '<button class="btn primary lg" data-act="clk-toggle">' + (ckRun ? "■ หยุด" : "▶ เริ่ม") + "</button>" +
           '<button class="btn" data-act="clk-add" data-d="60">+1:00</button>' +
           '<button class="btn" data-act="clk-add" data-d="-60">−1:00</button>' +
@@ -1028,7 +1035,7 @@
       sportDraft.matches.push({
         id: newMatchId(), level: (last && last.level) || "ป.1", title: "",
         home: k[0], away: k[1] || k[0], hs: 0, as: 0, done: false,
-        clock: { running: false, elapsed: 0, since: 0 },
+        clock: { running: false, elapsed: 0, since: 0, dur: CLK_DEFAULT_DUR },
       });
       renderSportScore();
       scheduleSportSave();
@@ -1074,12 +1081,7 @@
       if (!cm) return;
       var c = normClock(cm.clock);
       var d = Number(b.dataset.d) || 0;
-      if (c.running) {
-        c.since -= d * 1000;                       // เดินอยู่: เลื่อนจุดเริ่ม -> เวลารวมเปลี่ยน d วินาที
-        if (clockNow(c) < 0) { c.elapsed = 0; c.since = Date.now(); }
-      } else {
-        c.elapsed = Math.max(0, c.elapsed + d);
-      }
+      c.dur = Math.max(0, c.dur + d);               // นับถอยหลัง: ปุ่ม ± ปรับความยาวเวลา -> เวลาที่เหลือเปลี่ยน d วินาที
       cm.clock = c;
       renderSportScore();
       saveSportNow();
@@ -1088,7 +1090,7 @@
       sportCollectFromDom();
       var cm = curDraftMatch();
       if (!cm) return;
-      cm.clock = { running: false, elapsed: 0, since: 0 };
+      cm.clock = { running: false, elapsed: 0, since: 0, dur: normClock(cm.clock).dur };
       renderSportScore();
       saveSportNow();
     },

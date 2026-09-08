@@ -60,10 +60,10 @@ there are no automated tests. Two reliable checks:
 Windows default) are independent reimplementations of the *same* HTTP API and behavior. Any
 change to routes, command handling, or the state model must be made in **both** files, or Windows
 and macOS deployments diverge. They are currently in parity (routes incl. `/board`; commands incl.
-`setSport`/`deleteSport`; the id-dedupe + `football`→`sports` migration on load). Two intentional
-differences: `server.ps1` has no SSE (`/api/events` 404s → clients poll), and it must stay
-**ASCII-only** (PS 5.1 reads BOM-less scripts as ANSI), so its migration names the legacy sport
-`"Football"` rather than the Thai name `server.py` uses.
+`setSport`/`deleteSport`; the id-dedupe + `football`→`sports` + `football`→`futsal` rename
+migration on load). Two intentional differences: `server.ps1` has no SSE (`/api/events` 404s →
+clients poll), and it must stay **ASCII-only** (PS 5.1 reads BOM-less scripts as ANSI), so its
+migration names the futsal sport `"Futsal"` rather than the Thai name `server.py` uses.
 
 Both serve requests **concurrently** (`server.py` via `ThreadingHTTPServer`; `server.ps1` accepts
 on the main thread and dispatches each request to a 16-slot **runspace pool**). In `server.ps1`
@@ -109,7 +109,7 @@ state and one operator control:
 |---|---|---|
 | `/control` | control.html | **Live control** — operator shows/hides overlay graphics anytime |
 | `/score` | control.html | score-entry: athletics events (rank houses) |
-| `/score/<sport>` | control.html | score-entry per sport (football/basketball): edit matches, set the **current match**, live +/- and number entry |
+| `/score/<sport>` | control.html | score-entry per sport (futsal/basketball): edit matches, set the **current match**, live +/- and number entry |
 | `/live` (alias `/overlay`) | overlay.html | **Live** — transparent OBS/vMix overlay, driven by `state.onair` |
 | `/scoreboard` (alias `/board`) | board.html | **Scoreboard type 1** — opaque venue screen, auto-rotates all results (`?view=all\|results\|<sport>`) |
 | `/scoreboard/<sport>` | board.html | **Scoreboard type 2** — live single-match scoreboard of that sport's `currentId` |
@@ -174,13 +174,17 @@ Matches divide by `level` (grade — the picker offers ป.1–ม.6, free text)
 match "playing now". There is **no standings/bracket** (removed by request) — only the match list and
 the live scoreboard. Add a sport by adding a list entry, not new code.
 
-`match.clock = { running, elapsed, since }` is a **count-up stopwatch** (missing = stopped at 0):
-displayed value = `elapsed + (running ? (Date.now() - since)/1000 : 0)`. `since` is stamped by the
-control client (`Date.now()`) — accepts small control-vs-display clock skew, no server change.
-Helpers `T.clockValue` / `T.fmtClock` (templates.js). Consumers tick it themselves every 0.5s
-(`board.js` `startClockTick`, `control.js` `restartSpClockTick`) since state doesn't change while it
-runs. `sportCollectFromDom` freezes the clock when a match is marked `done`. Controls live on the
-`/score/<sport>` live-match card (`clk-toggle` / `clk-add` ±1:00/±0:10 / `clk-reset`).
+`match.clock = { running, elapsed, since, dur }` is a **count-down clock** (missing = stopped, full
+`dur` remaining; `dur` missing = 600s = 10:00). Internally it's still a count-up: `elapsed`/`since`
+track time run (`since` stamped by the control client via `Date.now()`, tolerates small skew, no
+server change); displayed value = `max(0, dur − (elapsed + (running ? (now − since)/1000 : 0)))`.
+At 0 it holds `00:00` and gets a `.ended` class (red). Helpers `T.remainSec` (tick from `data-*`
+attrs) / `T.clockRemain` / `T.clockDur` / `T.fmtClock` (templates.js); the clock div carries
+`data-el`/`data-since`/`data-dur`. Consumers tick every 0.5s (`board.js`/`overlay.js`
+`startClockTick`, `control.js` `restartSpClockTick`) since state doesn't change while it runs.
+`sportCollectFromDom` freezes the clock when a match is marked `done`. Controls live on the
+`/score/<sport>` live-match card: `clk-toggle` (start/stop), `clk-add` ±1:00/±0:10 (adjusts `dur`
+→ remaining), `clk-reset` (elapsed→0, keeps `dur`).
 
 Templates: `sportMatches(state, key)` (match list grouped by grade level, sorted ป.1→ม.6 via
 `gradeRank`) and `sportLive(state, key)` (big scoreboard of `currentId` — two teams + score + live
@@ -190,7 +194,8 @@ via the `setSport` command (whole-sport upsert; debounced or immediate for +/-).
 it: `onair[slot].sport` carries the key on Live's `show`; both `sportMatches` and `sportLive` are
 pushable to `/live`'s full slot (`renderLive()`'s per-sport button pair, `show-full-sport` /
 `show-full-sportlive`) and `/scoreboard/<sport>` always renders `sportLive`. `load_state` migrates
-a legacy `state.football` object into `state.sports[0]`.
+a legacy `state.football` object into `state.sports[0]`, and renames the old `football` sport
+(key + name + `onair` refs) to `futsal` / ฟุตซอล.
 
 `overlay.js` mirrors `board.js`'s `sportLive` handling since it's a third consumer of the same
 template: `isSport()` covers both `sportMatches`/`sportLive` (for `sportSig` + the `sameShell`

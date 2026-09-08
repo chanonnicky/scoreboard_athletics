@@ -285,7 +285,7 @@ table.fb-tbl input.fb-num { width: 50px; text-align: center; }
 }
 .sp-live-vs { font-size: 40px; font-weight: 800; opacity: .4; }
 
-/* นาฬิกาแมตช์ (สตอปวอตช์) */
+/* นาฬิกาแมตช์ (นับถอยหลัง) */
 .sp-clock-row {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   justify-content: center; margin-top: 14px;
@@ -297,6 +297,7 @@ table.fb-tbl input.fb-num { width: 50px; text-align: center; }
   background: var(--bg-3); border: 1px solid var(--stroke);
 }
 .sp-clock.run { border-color: var(--ok); color: #b6f0c8; }
+.sp-clock.ended { border-color: var(--danger); color: #ff8f8f; background: rgba(233,60,60,.14); }
 
 /* แถวคู่ที่ตั้งเป็น "สด" ในตาราง */
 .fb-tbl tr.cur { background: rgba(255,213,74,.12); }

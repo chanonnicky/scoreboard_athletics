@@ -27,14 +27,28 @@ window.T = (function () {
 
   function eventLevel(ev) { return ev.level || ev.ageGroup || ""; }
 
-  /* ---- นาฬิกาจับเวลาแมตช์ (สตอปวอตช์ นับขึ้น) ----
-     clock = { running:bool, elapsed:วินาทีที่สะสมไว้, since:unix ms ตอนเริ่มเดินรอบนี้ }
-     ไม่มี clock / undefined = ถือว่าหยุดที่ 0 · ผู้บริโภค (board/control) tick เองทุกวินาที */
-  function clockValue(clock) {
+  /* ---- นาฬิกาจับเวลาแมตช์ (นับถอยหลัง) ----
+     clock = { running:bool, elapsed:วินาทีที่เดินไปแล้ว, since:unix ms ตอนเริ่มเดินรอบนี้,
+               dur:ความยาวครึ่ง/ควอเตอร์ เป็นวินาที (ไม่ระบุ = 600 = 10:00) }
+     เวลาที่โชว์ = max(0, dur − เวลาที่เดินไปแล้ว) · ไม่มี clock = หยุดที่ dur เต็ม
+     ผู้บริโภค (board/overlay/control) tick เองทุกครึ่งวินาที */
+  var CLOCK_DEFAULT_DUR = 600;
+  function clockValue(clock) {            // เวลาที่เดินไปแล้ว (นับขึ้น) — ใช้ภายใน
     if (!clock) return 0;
     var el = Number(clock.elapsed) || 0;
     if (!clock.running) return el;
     return el + Math.max(0, (Date.now() - (Number(clock.since) || 0)) / 1000);
+  }
+  function clockDur(clock) {
+    if (!clock || clock.dur == null) return CLOCK_DEFAULT_DUR;
+    return Math.max(0, Number(clock.dur) || 0);
+  }
+  function clockRemain(clock) {           // เวลาที่เหลือ (นับถอยหลัง)
+    return Math.max(0, clockDur(clock) - clockValue(clock));
+  }
+  function remainSec(base, since, dur, running) {  // สำหรับ tick จาก data-* attribute
+    var up = (Number(base) || 0) + (running ? Math.max(0, (Date.now() - (Number(since) || 0)) / 1000) : 0);
+    return Math.max(0, (Number(dur) || 0) - up);
   }
   function fmtClock(sec) {
     sec = Math.max(0, Math.floor(Number(sec) || 0));
@@ -342,14 +356,16 @@ window.T = (function () {
       ? '<div class="live-status done">จบการแข่งขัน</div>'
       : '<div class="live-status"><span class="live-dot"></span>กำลังแข่ง</div>';
 
-    // นาฬิกา — จบแล้วถือว่าหยุด (board.js อ่าน data-* แล้ว tick เอง)
+    // นาฬิกานับถอยหลัง — จบแล้วถือว่าหยุด (board.js อ่าน data-* แล้ว tick เอง)
     var ck = m.clock || {};
     var ckRun = !!ck.running && !m.done;
     var ckEl = Number(ck.elapsed) || 0;
     var ckSince = Number(ck.since) || 0;
-    var clockHtml = '<div class="live-clock' + (ckRun ? " run" : " paused") + '" data-run="' + (ckRun ? 1 : 0) +
-      '" data-el="' + ckEl + '" data-since="' + ckSince + '">' +
-      fmtClock(ckRun ? ckEl + Math.max(0, (Date.now() - ckSince) / 1000) : ckEl) + "</div>";
+    var ckDur = clockDur(ck);
+    var ckRemain = remainSec(ckEl, ckSince, ckDur, ckRun);
+    var clockHtml = '<div class="live-clock' + (ckRun ? " run" : " paused") + (ckRemain <= 0 ? " ended" : "") +
+      '" data-run="' + (ckRun ? 1 : 0) + '" data-el="' + ckEl + '" data-since="' + ckSince +
+      '" data-dur="' + ckDur + '">' + fmtClock(ckRemain) + "</div>";
     return '<div class="card tpl-live-card">' +
       '<div class="card-head">' +
         '<div class="card-kicker">' + esc(title) + " · สกอร์สด</div>" +
@@ -377,6 +393,7 @@ window.T = (function () {
   return {
     top3: top3, results: results, schedule: schedule,
     sportMatches: sportMatches, sportLive: sportLive,
-    esc: esc, clockValue: clockValue, fmtClock: fmtClock,
+    esc: esc, clockValue: clockValue, clockDur: clockDur, clockRemain: clockRemain,
+    remainSec: remainSec, fmtClock: fmtClock,
   };
 })();

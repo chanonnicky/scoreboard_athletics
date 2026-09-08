@@ -465,6 +465,10 @@ body.is-offline #offline { opacity: 1; }
 }
 .live-clock.run { color: #eafff2; border-color: rgba(120,235,170,.4); }
 .live-clock.paused { opacity: .5; }
+.live-clock.ended {
+  color: #ff6a6a; opacity: 1;
+  border-color: rgba(233,60,60,.5); background: rgba(233,60,60,.16);
+}
 .live-status {
   display: inline-flex; align-items: center; gap: 10px;
   font-size: 24px; font-weight: 700; letter-spacing: 1px;

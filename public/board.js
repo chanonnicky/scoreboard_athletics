@@ -1,7 +1,7 @@
 /* board.js — จอ Scoreboard (เปิดค้างที่จอในงาน) อัปเดตสดจาก server
    2 โหมด ตาม URL:
      /scoreboard  หรือ /board            → วนผลทั้งหมด (ใช้ ?view=all|results|<กีฬา>)
-     /scoreboard/<กีฬา>                  → สกอร์บอร์ดสดของคู่ที่กำลังแข่ง (football/basketball)
+     /scoreboard/<กีฬา>                  → สกอร์บอร์ดสดของคู่ที่กำลังแข่ง (futsal/basketball)
    query params:
      ?view=all          วนรวมทุกอย่าง: กรีฑา → ทุกกีฬา
          =results       (ดีฟอลต์) วนผลการแข่งขันกรีฑา
@@ -108,7 +108,7 @@
     el.classList.add("bump");
   }
 
-  // ---- นาฬิกาแมตช์ (สตอปวอตช์) — เดินเองทุกครึ่งวินาทีระหว่างที่ state ไม่เปลี่ยน ---- //
+  // ---- นาฬิกาแมตช์ (นับถอยหลัง) — เดินเองทุกครึ่งวินาทีระหว่างที่ state ไม่เปลี่ยน ---- //
   var clockTimer = null;
   function stopClockTick() { if (clockTimer) { clearInterval(clockTimer); clockTimer = null; } }
   function tickClock() {
@@ -116,7 +116,11 @@
     if (!el || el.getAttribute("data-run") !== "1") { stopClockTick(); return; }
     var base = parseFloat(el.getAttribute("data-el")) || 0;
     var since = parseFloat(el.getAttribute("data-since")) || 0;
-    el.textContent = window.T.fmtClock(base + Math.max(0, (Date.now() - since) / 1000));
+    var dur = parseFloat(el.getAttribute("data-dur"));
+    if (isNaN(dur)) dur = 600;
+    var remain = window.T.remainSec(base, since, dur, true);
+    el.textContent = window.T.fmtClock(remain);
+    if (remain <= 0) el.classList.add("ended");
   }
   function startClockTick() {
     stopClockTick();

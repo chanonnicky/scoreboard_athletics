@@ -71,12 +71,24 @@ def load_state():
     if "football" in STATE and "sports" not in STATE:
         fb = STATE.pop("football") or {}
         STATE["sports"] = [{
-            "key": "football", "name": "ฟุตบอล", "icon": "⚽",
+            "key": "futsal", "name": "ฟุตซอล", "icon": "⚽",
             "points": fb.get("points", {"win": 3, "draw": 1, "loss": 0}),
             "matches": fb.get("matches", []),
         }]
         print("  [migrate] ย้าย football -> sports")
         changed = True
+    # เปลี่ยนกีฬาเดิม football/ฟุตบอล -> futsal/ฟุตซอล (key + ชื่อ + ที่ onair ชี้อยู่)
+    for sp in STATE.get("sports", []):
+        if sp.get("key") == "football":
+            sp["key"] = "futsal"
+            if sp.get("name") in ("ฟุตบอล", "Football", "", None):
+                sp["name"] = "ฟุตซอล"
+            print("  [migrate] football -> futsal")
+            changed = True
+    for conf in (STATE.get("onair") or {}).values():
+        if isinstance(conf, dict) and conf.get("sport") == "football":
+            conf["sport"] = "futsal"
+            changed = True
     if changed:
         _save_now()
 
@@ -456,11 +468,11 @@ def main():
     print(line)
     print("  Control  :  http://%s:%d/control            (คุม Live)" % (ip, args.port))
     print("  Score    :  http://%s:%d/score              (จดคะแนน กรีฑา)" % (ip, args.port))
-    print("     บอล   :  http://%s:%d/score/football     (จดคะแนน บอล)" % (ip, args.port))
+    print("     ฟุตซอล:  http://%s:%d/score/futsal       (จดคะแนน ฟุตซอล)" % (ip, args.port))
     print("     บาส   :  http://%s:%d/score/basketball   (จดคะแนน บาส)" % (ip, args.port))
     print("  Live     :  http://%s:%d/live               << ใส่ใน OBS / vMix" % (ip, args.port))
     print("  Scoreboard: http://%s:%d/scoreboard         (จอวนผลทั้งหมด)" % (ip, args.port))
-    print("     สด บอล: http://%s:%d/scoreboard/football (สกอร์สด บอล)" % (ip, args.port))
+    print("  สด ฟุตซอล: http://%s:%d/scoreboard/futsal   (สกอร์สด ฟุตซอล)" % (ip, args.port))
     print("     สด บาส: http://%s:%d/scoreboard/basketball (สกอร์สด บาส)" % (ip, args.port))
     print("  Local    :  http://127.0.0.1:%d/control" % args.port)
     if TOKEN:

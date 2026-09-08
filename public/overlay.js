@@ -83,7 +83,7 @@
   }
   function isSport(t) { return t === "sportMatches" || t === "sportLive"; }
 
-  // ---- นาฬิกาแมตช์ (สตอปวอตช์) + สกอร์เด้ง สำหรับ sportLive บนจอ Live ---- //
+  // ---- นาฬิกาแมตช์ (นับถอยหลัง) + สกอร์เด้ง สำหรับ sportLive บนจอ Live ---- //
   var clockTimers = {};  // slot -> interval id
   var liveScores = {};   // slot -> {id,hs,as,done} ของคู่สดล่าสุด (เทียบหาว่าฝั่งไหนสกอร์เปลี่ยน)
 
@@ -96,7 +96,11 @@
     if (!el || el.getAttribute("data-run") !== "1") { stopClockTick(slot); return; }
     var base = parseFloat(el.getAttribute("data-el")) || 0;
     var since = parseFloat(el.getAttribute("data-since")) || 0;
-    el.textContent = T.fmtClock(base + Math.max(0, (Date.now() - since) / 1000));
+    var dur = parseFloat(el.getAttribute("data-dur"));
+    if (isNaN(dur)) dur = 600;
+    var remain = T.remainSec(base, since, dur, true);
+    el.textContent = T.fmtClock(remain);
+    if (remain <= 0) el.classList.add("ended");
   }
   function startClockTick(slot) {
     stopClockTick(slot);
