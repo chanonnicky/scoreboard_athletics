@@ -391,8 +391,9 @@ window.T = (function () {
   }
 
   /* ---- แถบล่างสกอร์สด (lower third) — คู่ที่กำลังแข่งของกีฬาเดียว ----------
-     พฤติกรรมสดเหมือน sportLive (นาฬิกานับถอยหลัง / สกอร์เด้ง / จุด LIVE)
+     ไม่มีพื้นหลัง · สกอร์ตัวใหญ่ · นาฬิกานับถอยหลัง · จุด LIVE คนละบรรทัด · ชื่อกีฬาล่างสุด
      แต่เป็นแถบล่าง จึงขึ้นพร้อมกราฟิกเต็มจอได้
+     overlay.js แก้สกอร์/นาฬิกา/สถานะในที่ (patchSportbar) — ไม่ re-render ทั้งแถบ ไม่มีวูบ
      ไม่มีคู่ที่กำลังแข่ง (currentId) -> คืน null (แถบไม่ต้องขึ้น)              */
   function sportLower(state, key) {
     var sport = getSport(state, key);
@@ -417,12 +418,17 @@ window.T = (function () {
       '" data-run="' + (ckRun ? 1 : 0) + '" data-el="' + ckEl + '" data-since="' + ckSince +
       '" data-dur="' + ckDur + '">' + fmtClock(ckRemain) + "</div>";
 
-    // สถานะ: กำลังแข่ง = จุดกะพริบเฉย ๆ (ไม่มีคำว่า LIVE) · จบแล้ว = ป้าย "จบแล้ว"
-    var statusHtml = m.done
-      ? '<span class="sportbar-live done">จบแล้ว</span>'
-      : '<span class="live-dot"></span>';
+    // สถานะ — อยู่คนละบรรทัดกับนาฬิกา · จุดกะพริบ + LIVE (หรือ "จบแล้ว")
+    // เรนเดอร์ทั้ง LIVE และ "จบแล้ว" ไว้เสมอ สลับด้วย .sportbar[data-done]
+    // เพื่อให้ overlay.js แก้สกอร์/นาฬิกา/สถานะในที่ได้ โดยจุดกะพริบไม่รีสตาร์ตแอนิเมชัน
+    var statusHtml =
+      '<div class="sportbar-status">' +
+        '<span class="live-dot"></span>' +
+        '<span class="sportbar-live-word">LIVE</span>' +
+        '<span class="sportbar-done-word">จบแล้ว</span>' +
+      "</div>";
 
-    return '<div class="sportbar">' +
+    return '<div class="sportbar" data-done="' + (m.done ? 1 : 0) + '">' +
       '<div class="sportbar-row">' +
         '<div class="sportbar-team sportbar-home ' + hClass(m.home) +
           (hw ? " win" : aw ? " trail" : "") + '">' +

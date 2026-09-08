@@ -212,8 +212,12 @@ template: `isSport()` covers `sportMatches`/`sportLive`/`sportLower` (for `sport
 `sameShell` same-sport check — needed because unlike `top3`/`schedule`, `conf.eventId` is always
 `null` for sport templates, so without comparing `conf.sport` too, switching from one sport's card
 to another's would wrongly read as "unchanged"), and a narrower `isLiveSport()`
-(`sportLive`/`sportLower`) gates its own clock ticker (`startClockTick`/`tickClock`) plus
-score-bump/`.just-final` diffing (`bumpLiveScore`) per slot, independently of `board.js`'s copies
-— both must stay in sync if that logic changes. `sportLower` is Live-only (no `board.js` path);
-the bar reuses `sportLive`'s `.live-clock`/`.ls-h`/`.ls-a`/`.live-dot` class hooks so that logic
-needs no bar-specific branch beyond the `.just-final` selector (`.tpl-live-card, .sportbar`).
+(`sportLive`/`sportLower`) gates the per-slot clock ticker (`startClockTick`/`tickClock`).
+Score-bump + `.just-final` (`bumpLiveScore`, `.tpl-live-card` only) stay `sportLive`-only,
+independently of `board.js`'s copies — both must stay in sync if that logic changes.
+`sportLower` is Live-only (no `board.js` path) and deliberately **calm** — no score-bump, no
+finish-flash. On a same-match update `renderSlot` calls `patchSportbar()` (a shell signature =
+homes + names + logos + sport name/icon decides patch-vs-rebuild), editing only score text,
+`.live-clock` (class + `data-*` + text), team win/trail classes, and `.sportbar[data-done]` — so
+the pulsing `.live-dot` and the `<img>` logos are never re-created and nothing flickers. The
+status line renders `.live-dot` + `LIVE` + `จบแล้ว` always; CSS `[data-done]` toggles which show.
