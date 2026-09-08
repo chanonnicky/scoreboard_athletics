@@ -417,9 +417,10 @@ window.T = (function () {
       '" data-run="' + (ckRun ? 1 : 0) + '" data-el="' + ckEl + '" data-since="' + ckSince +
       '" data-dur="' + ckDur + '">' + fmtClock(ckRemain) + "</div>";
 
+    // สถานะ: กำลังแข่ง = จุดกะพริบเฉย ๆ (ไม่มีคำว่า LIVE) · จบแล้ว = ป้าย "จบแล้ว"
     var statusHtml = m.done
       ? '<span class="sportbar-live done">จบแล้ว</span>'
-      : '<span class="sportbar-live"><span class="live-dot"></span>LIVE</span>';
+      : '<span class="live-dot"></span>';
 
     return '<div class="sportbar">' +
       '<div class="sportbar-row">' +
