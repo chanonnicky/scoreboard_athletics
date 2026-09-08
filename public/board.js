@@ -16,6 +16,10 @@
   var transport = params.get("transport") || "sse";
   var VIEW = (params.get("view") || "results").toLowerCase();
   var INTERVAL = (parseFloat(params.get("page") || "9") || 9) * 1000;
+  // ธีมทดลอง "liquid glass" — /scoreboard?theme=glass (หรือ ?glass=1); ไม่ใส่ = สไตล์เดิม
+  if (params.get("theme") === "glass" || params.get("glass") === "1") {
+    document.documentElement.classList.add("glass");
+  }
 
   // โหมดสด: /scoreboard/<sport> หรือ /board/<sport>
   var seg = location.pathname.replace(/\/+$/, "").split("/").filter(Boolean);

@@ -1,0 +1,160 @@
+/* ============================================================================
+   glass.css — ธีมทดลอง "liquid glass" (frosted / โปร่งแสง / มีขอบเรืองแสง)
+   ----------------------------------------------------------------------------
+   เปิดใช้:  /live?theme=glass       ·  /scoreboard?theme=glass
+            /scoreboard/<กีฬา>?theme=glass  ·  (หรือ ?glass=1)
+   ไม่ใส่ param = สไตล์เดิมทุกอย่าง (ไฟล์นี้ทั้งไฟล์ scope ใต้ .glass ที่ <html>)
+
+   โหลดต่อจาก overlay.css / board.css — override เฉพาะพื้นผิว (พื้นหลัง/ขอบ/เงา)
+   ไม่แตะ layout / แอนิเมชัน / ฟอนต์ / เหรียญ / การไฮไลต์ผู้นำ
+   หมายเหตุ: backdrop-filter เห็นผลเต็มบนจอทึบ (/scoreboard); บน /live (โปร่งใส)
+   จะเหลือแค่ความโปร่งแสง + ขอบ + แสงสะท้อน — ยังดู "แก้ว" อยู่
+   เลี่ยง color-mix() เพื่อให้ CEF รุ่นเก่าของ OBS/vMix ยังใช้ได้
+   ============================================================================ */
+
+:root.glass {
+  --panel:  rgba(20, 26, 38, 0.52);
+  --panel-2: rgba(255, 255, 255, 0.10);
+  --stroke: rgba(255, 255, 255, 0.28);
+}
+
+/* ---- การ์ดหลัก (results / schedule / sportMatches / sportLive) ------------ */
+.glass .card {
+  background-color: rgba(255, 255, 255, 0.07);
+  background-image: linear-gradient(155deg,
+      rgba(255, 255, 255, 0.16),
+      rgba(255, 255, 255, 0.03) 42%,
+      rgba(255, 255, 255, 0.10));
+  -webkit-backdrop-filter: blur(34px) saturate(1.8);
+          backdrop-filter: blur(34px) saturate(1.8);
+  border: 1px solid rgba(255, 255, 255, 0.30);
+  border-radius: 28px;
+  box-shadow:
+      0 44px 100px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.55),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+}
+/* แสงสะท้อนมุมบนซ้าย (ไม่ใช้ blend-mode เพื่อความเข้ากันได้) */
+.glass .card::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(130% 70% at 12% -12%,
+      rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 62%);
+}
+.glass .card-head {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.02));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+/* ---- แถวในลิสต์: ผลกรีฑา / แมตช์ / ตารางแข่ง ---------------------------- */
+.glass .rrow2,
+.glass .fbm,
+.glass .srow {
+  background: rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(10px);
+          backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+.glass .rrow2.cur,
+.glass .fbm.cur {
+  background: rgba(255, 213, 74, 0.20);
+  border-color: rgba(255, 213, 74, 0.55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.30), 0 0 34px rgba(255, 213, 74, 0.25);
+}
+.glass .srow.cur {
+  background: rgba(255, 213, 74, 0.20);
+  border-color: rgba(255, 213, 74, 0.55);
+}
+
+/* ---- ชิปอันดับ (ผลกรีฑา) — เนื้อแก้วเคลือบสีคณะ ---------------------------- */
+.glass .rchip {
+  background-color: var(--house, #666);
+  background-image: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.30), rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, 0.14));
+  -webkit-backdrop-filter: blur(6px);
+          backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 4px 16px rgba(0, 0, 0, 0.28);
+}
+.glass .rchip b { background: rgba(255, 255, 255, 0.55); }
+
+/* ---- แถบล่าง TOP 3 ------------------------------------------------------- */
+.glass .t3 {
+  background-color: rgba(255, 255, 255, 0.06);
+  background-image: linear-gradient(155deg,
+      rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0.11));
+  -webkit-backdrop-filter: blur(32px) saturate(1.7);
+          backdrop-filter: blur(32px) saturate(1.7);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 20px;
+  box-shadow: 0 26px 66px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+.glass .t3-head {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0));
+  border-right-color: rgba(255, 255, 255, 0.22);
+}
+.glass .t3-item + .t3-item { border-left-color: rgba(255, 255, 255, 0.22); }
+.glass .t3-item::before { opacity: 0.24; }
+.glass .t3-r1::before { opacity: 0.4; }
+
+/* ---- สกอร์บอร์ดคู่สด (เต็มจอ) ------------------------------------------- */
+.glass .live-team {
+  background: rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(14px);
+          backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 -8px 0 var(--house, #666), inset 0 1px 0 rgba(255, 255, 255, 0.30);
+}
+.glass .live-team.win {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.05));
+  box-shadow:
+      inset 0 -8px 0 var(--house, #666),
+      inset 0 1px 0 rgba(255, 255, 255, 0.42),
+      0 0 0 3px var(--house, #fff),
+      0 22px 48px rgba(0, 0, 0, 0.42);
+}
+.glass .live-clock {
+  background: rgba(0, 0, 0, 0.30);
+  -webkit-backdrop-filter: blur(8px);
+          backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+}
+.glass .live-status {
+  -webkit-backdrop-filter: blur(8px);
+          backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.glass .live-wait {
+  border-radius: 20px; background: rgba(255, 255, 255, 0.05);
+}
+
+/* ---- แถบล่างสกอร์สด (sportbar — เดิมไม่มีพื้นหลัง; ใส่แผ่นแก้วบาง ๆ) ------- */
+.glass .sportbar {
+  background-color: rgba(255, 255, 255, 0.05);
+  background-image: linear-gradient(155deg,
+      rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.02) 50%, rgba(255, 255, 255, 0.09));
+  -webkit-backdrop-filter: blur(26px) saturate(1.6);
+          backdrop-filter: blur(26px) saturate(1.6);
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 24px;
+  padding: 22px 44px 20px;
+  box-shadow: 0 24px 58px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.50);
+}
+.glass .sportbar-team {
+  border-bottom-color: var(--house, #888);
+}
+.glass .sportbar .live-clock {
+  background: rgba(0, 0, 0, 0.34);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+}
+
+/* ---- ป้ายเล็ก ๆ / chip อื่น ๆ ที่ใช้ var(--house) --------------------- */
+.glass .pill,
+.glass .fbbr-champ,
+.glass .fbt-row.lead {
+  -webkit-backdrop-filter: blur(6px);
+          backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+}

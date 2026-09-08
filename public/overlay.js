@@ -11,6 +11,10 @@
   var view = params.get("slot") || "both";
   var scale = parseFloat(params.get("scale") || "1") || 1;
   var transport = params.get("transport") || "sse";
+  // ธีมทดลอง "liquid glass" — /live?theme=glass (หรือ ?glass=1); ไม่ใส่ = สไตล์เดิม
+  if (params.get("theme") === "glass" || params.get("glass") === "1") {
+    document.documentElement.classList.add("glass");
+  }
 
   var stage = document.getElementById("stage");
   stage.style.transform = "scale(" + scale + ")";
