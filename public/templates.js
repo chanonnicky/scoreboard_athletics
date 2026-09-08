@@ -422,27 +422,26 @@ window.T = (function () {
       : '<span class="sportbar-live"><span class="live-dot"></span>LIVE</span>';
 
     return '<div class="sportbar">' +
-      '<div class="sportbar-head">' +
-        '<div class="sportbar-kicker">สกอร์สด</div>' +
-        '<div class="sportbar-sport">' + esc(sportNm) + "</div>" +
-      "</div>" +
-      '<div class="sportbar-team sportbar-home ' + hClass(m.home) +
-        (hw ? " win" : aw ? " trail" : "") + '">' +
-        '<span class="sportbar-name">' + esc(houseName(state, m.home)) + "</span>" +
-        houseLogoImg(state, m.home, "sportbar-logo") +
-      "</div>" +
-      '<div class="sportbar-mid">' +
-        '<div class="sportbar-score">' +
-          '<span class="ls ls-h">' + esc(hs) + "</span><i>:</i>" +
-          '<span class="ls ls-a">' + esc(as) + "</span>" +
+      '<div class="sportbar-row">' +
+        '<div class="sportbar-team sportbar-home ' + hClass(m.home) +
+          (hw ? " win" : aw ? " trail" : "") + '">' +
+          '<span class="sportbar-name">' + esc(houseName(state, m.home)) + "</span>" +
+          houseLogoImg(state, m.home, "sportbar-logo") +
         "</div>" +
-        '<div class="sportbar-sub">' + clockHtml + statusHtml + "</div>" +
+        '<div class="sportbar-mid">' +
+          '<div class="sportbar-score">' +
+            '<span class="ls ls-h">' + esc(hs) + "</span><i>:</i>" +
+            '<span class="ls ls-a">' + esc(as) + "</span>" +
+          "</div>" +
+          '<div class="sportbar-sub">' + clockHtml + statusHtml + "</div>" +
+        "</div>" +
+        '<div class="sportbar-team sportbar-away ' + hClass(m.away) +
+          (aw ? " win" : hw ? " trail" : "") + '">' +
+          houseLogoImg(state, m.away, "sportbar-logo") +
+          '<span class="sportbar-name">' + esc(houseName(state, m.away)) + "</span>" +
+        "</div>" +
       "</div>" +
-      '<div class="sportbar-team sportbar-away ' + hClass(m.away) +
-        (aw ? " win" : hw ? " trail" : "") + '">' +
-        houseLogoImg(state, m.away, "sportbar-logo") +
-        '<span class="sportbar-name">' + esc(houseName(state, m.away)) + "</span>" +
-      "</div>" +
+      '<div class="sportbar-foot">' + esc(sportNm) + "</div>" +
     "</div>";
   }
 
