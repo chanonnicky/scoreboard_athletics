@@ -78,12 +78,16 @@ def load_state():
         print("  [migrate] ย้าย football -> sports")
         changed = True
     # เปลี่ยนกีฬาเดิม football/ฟุตบอล -> futsal/ฟุตซอล (key + ชื่อ + ที่ onair ชี้อยู่)
+    # แก้ชื่อแยกจาก key เพราะ state ที่ server.ps1 ย้ายมาก่อนจะเป็น key=futsal/name=Futsal
     for sp in STATE.get("sports", []):
         if sp.get("key") == "football":
             sp["key"] = "futsal"
-            if sp.get("name") in ("ฟุตบอล", "Football", "", None):
-                sp["name"] = "ฟุตซอล"
             print("  [migrate] football -> futsal")
+            changed = True
+        if sp.get("key") == "futsal" and sp.get("name") in (
+            "ฟุตบอล", "Football", "Futsal", "futsal", "", None
+        ):
+            sp["name"] = "ฟุตซอล"
             changed = True
     for conf in (STATE.get("onair") or {}).values():
         if isinstance(conf, dict) and conf.get("sport") == "football":
@@ -184,10 +188,8 @@ def apply_command(cmd):
                 "sport": cmd.get("sport"),
                 "visible": True,
             }
-            # แสดงได้ทีละช่องเท่านั้น — ซ่อนช่องอื่น
-            for other, conf in onair.items():
-                if other != slot:
-                    conf["visible"] = False
+            # แต่ละช่อง (lower/full) ขึ้นพร้อมกันได้ — ขึ้นอันใหม่ในช่องเดิมแทนที่อันเก่า
+            # (ใช้ hideAll ถ้าจะเคลียร์ทั้งหมด)
 
         elif action == "hide":
             slot = cmd["slot"]

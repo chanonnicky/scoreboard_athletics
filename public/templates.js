@@ -390,9 +390,65 @@ window.T = (function () {
     "</div>";
   }
 
+  /* ---- แถบล่างสกอร์สด (lower third) — คู่ที่กำลังแข่งของกีฬาเดียว ----------
+     พฤติกรรมสดเหมือน sportLive (นาฬิกานับถอยหลัง / สกอร์เด้ง / จุด LIVE)
+     แต่เป็นแถบล่าง จึงขึ้นพร้อมกราฟิกเต็มจอได้
+     ไม่มีคู่ที่กำลังแข่ง (currentId) -> คืน null (แถบไม่ต้องขึ้น)              */
+  function sportLower(state, key) {
+    var sport = getSport(state, key);
+    if (!sport) return null;
+    var m = currentMatch(sport);
+    if (!m) return null;
+
+    var sportNm = (sport.icon ? sport.icon + " " : "") + (sport.name || "กีฬา");
+    var hs = Number(m.hs) || 0, as = Number(m.as) || 0;
+    var tied = hs === as;
+    var hw = !tied && hs > as, aw = !tied && as > hs;
+
+    // นาฬิกา — ก๊อปจาก sportLive ให้เหมือนกันเป๊ะ (เพิ่มแค่คลาส sportbar-clock)
+    var ck = m.clock || {};
+    var ckRun = !!ck.running && !m.done;
+    var ckEl = Number(ck.elapsed) || 0;
+    var ckSince = Number(ck.since) || 0;
+    var ckDur = clockDur(ck);
+    var ckRemain = remainSec(ckEl, ckSince, ckDur, ckRun);
+    var clockHtml = '<div class="live-clock sportbar-clock' + (ckRun ? " run" : " paused") +
+      (ckRemain <= 0 ? " ended" : "") +
+      '" data-run="' + (ckRun ? 1 : 0) + '" data-el="' + ckEl + '" data-since="' + ckSince +
+      '" data-dur="' + ckDur + '">' + fmtClock(ckRemain) + "</div>";
+
+    var statusHtml = m.done
+      ? '<span class="sportbar-live done">จบแล้ว</span>'
+      : '<span class="sportbar-live"><span class="live-dot"></span>LIVE</span>';
+
+    return '<div class="sportbar">' +
+      '<div class="sportbar-head">' +
+        '<div class="sportbar-kicker">สกอร์สด</div>' +
+        '<div class="sportbar-sport">' + esc(sportNm) + "</div>" +
+      "</div>" +
+      '<div class="sportbar-team sportbar-home ' + hClass(m.home) +
+        (hw ? " win" : aw ? " trail" : "") + '">' +
+        '<span class="sportbar-name">' + esc(houseName(state, m.home)) + "</span>" +
+        houseLogoImg(state, m.home, "sportbar-logo") +
+      "</div>" +
+      '<div class="sportbar-mid">' +
+        '<div class="sportbar-score">' +
+          '<span class="ls ls-h">' + esc(hs) + "</span><i>:</i>" +
+          '<span class="ls ls-a">' + esc(as) + "</span>" +
+        "</div>" +
+        '<div class="sportbar-sub">' + clockHtml + statusHtml + "</div>" +
+      "</div>" +
+      '<div class="sportbar-team sportbar-away ' + hClass(m.away) +
+        (aw ? " win" : hw ? " trail" : "") + '">' +
+        houseLogoImg(state, m.away, "sportbar-logo") +
+        '<span class="sportbar-name">' + esc(houseName(state, m.away)) + "</span>" +
+      "</div>" +
+    "</div>";
+  }
+
   return {
     top3: top3, results: results, schedule: schedule,
-    sportMatches: sportMatches, sportLive: sportLive,
+    sportMatches: sportMatches, sportLive: sportLive, sportLower: sportLower,
     esc: esc, clockValue: clockValue, clockDur: clockDur, clockRemain: clockRemain,
     remainSec: remainSec, fmtClock: fmtClock,
   };

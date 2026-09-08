@@ -145,10 +145,15 @@ $Lib = {
   function Migrate-State {
     $changed = 0
     if ($script:G.State["events"]) { $changed += (Dedupe-EventIds) }
+    # This file must stay ASCII-only (see CLAUDE.md), so the Thai sport names are
+    # built from Unicode code points:  0E1F 0E38 0E15 0E0B 0E2D 0E25 = "futsal" in Thai,
+    #                                  0E1F 0E38 0E15 0E1A 0E2D 0E25 = "football" in Thai.
+    $futsalTh   = -join [char[]](0x0E1F,0x0E38,0x0E15,0x0E0B,0x0E2D,0x0E25)
+    $footballTh = -join [char[]](0x0E1F,0x0E38,0x0E15,0x0E1A,0x0E2D,0x0E25)
     if ($script:G.State.ContainsKey("football") -and -not $script:G.State.ContainsKey("sports")) {
       $fb = $script:G.State["football"]
       $sp = New-Dict
-      $sp["key"] = "futsal"; $sp["name"] = "Futsal"; $sp["icon"] = ""
+      $sp["key"] = "futsal"; $sp["name"] = $futsalTh; $sp["icon"] = ""
       $sp["points"]  = if ($fb -and $fb["points"])  { $fb["points"] }  else { @{ win = 3; draw = 1; loss = 0 } }
       $sp["matches"] = if ($fb -and $fb["matches"]) { $fb["matches"] } else { @() }
       $script:G.State["sports"] = @($sp)
@@ -156,13 +161,20 @@ $Lib = {
       Write-Host "  [migrate] football -> sports"
       $changed++
     }
-    # rename legacy sport football -> futsal (key + name + onair refs)
+    # rename legacy sport football -> futsal + force the Thai display name
+    # (name fixed independently of key: a state already moved by an older server.ps1
+    #  build has key=futsal/name=Futsal and would otherwise never be repaired)
     if ($script:G.State["sports"]) {
       foreach ($sp in @($script:G.State["sports"])) {
-        if ($sp -and [string]$sp["key"] -eq "football") {
+        if (-not $sp) { continue }
+        if ([string]$sp["key"] -eq "football") {
           $sp["key"] = "futsal"
-          $sp["name"] = "Futsal"   # ASCII-only (see CLAUDE.md); server.py uses the Thai name
           Write-Host "  [migrate] football -> futsal"
+          $changed++
+        }
+        if ([string]$sp["key"] -eq "futsal" -and
+            @("Futsal", "Football", "futsal", "", $footballTh) -contains [string]$sp["name"]) {
+          $sp["name"] = $futsalTh
           $changed++
         }
       }
@@ -191,10 +203,8 @@ $Lib = {
           $d = New-Dict
           $d["template"] = $cmd["template"]; $d["eventId"] = $cmd["eventId"]; $d["sport"] = $cmd["sport"]; $d["visible"] = $true
           $onair[$slot] = $d
-          # only one slot visible at a time -- hide the others
-          foreach ($k in @($onair.Keys)) {
-            if ($k -ne $slot -and $onair[$k]) { $onair[$k]["visible"] = $false }
-          }
+          # lower + full can be on air together; a new item just replaces its own slot
+          # (hideAll clears both)
         }
         "hide" {
           $slot = [string]$cmd["slot"]

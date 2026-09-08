@@ -81,7 +81,9 @@
     return (sportKey || "") + "||" + JSON.stringify(state.sports || []) +
       "||" + JSON.stringify(s.houseNames || {}) + "||" + JSON.stringify(s.houseLogos || {});
   }
-  function isSport(t) { return t === "sportMatches" || t === "sportLive"; }
+  function isSport(t) { return t === "sportMatches" || t === "sportLive" || t === "sportLower"; }
+  // เทมเพลตสกอร์สด (เดินนาฬิกา + เด้งสกอร์เอง): สกอร์บอร์ดเต็มจอ + แถบล่าง
+  function isLiveSport(t) { return t === "sportLive" || t === "sportLower"; }
 
   // ---- นาฬิกาแมตช์ (นับถอยหลัง) + สกอร์เด้ง สำหรับ sportLive บนจอ Live ---- //
   var clockTimers = {};  // slot -> interval id
@@ -131,7 +133,7 @@
       if (nhs !== prevScore.hs) bumpEl(root, ".ls-h");
       if (nas !== prevScore.as) bumpEl(root, ".ls-a");
       if (lm.done && !prevScore.done) {
-        var card = root.querySelector(".tpl-live-card");
+        var card = root.querySelector(".tpl-live-card, .sportbar");
         if (card) card.classList.add("just-final");
       }
     }
@@ -154,6 +156,7 @@
       case "schedule": return T.schedule(state, conf.eventId);
       case "sportMatches": return T.sportMatches(state, conf.sport);
       case "sportLive": return T.sportLive(state, conf.sport);
+      case "sportLower": return T.sportLower(state, conf.sport);
       default:         return null;
     }
   }
@@ -198,7 +201,7 @@
     if (sameShell) {
       // อัปเดตข้อมูลสด ไม่ต้อง re-animate
       cur.innerHTML = html;
-      if (conf.template === "sportLive") bumpLiveScore(slot, cur, state, conf.sport, false);
+      if (isLiveSport(conf.template)) bumpLiveScore(slot, cur, state, conf.sport, false);
     } else {
       if (cur) {
         cur.classList.remove("in");
@@ -215,7 +218,7 @@
       requestAnimationFrame(function () {
         requestAnimationFrame(function () { wrap.classList.add("in"); });
       });
-      if (conf.template === "sportLive") bumpLiveScore(slot, wrap, state, conf.sport, true);
+      if (isLiveSport(conf.template)) bumpLiveScore(slot, wrap, state, conf.sport, true);
     }
 
     if (isPaged) startPager(slot);
@@ -233,8 +236,8 @@
       }
     }
 
-    // สกอร์บอร์ดคู่สด: เดินนาฬิกาเอง (state ไม่เปลี่ยนระหว่างที่นาฬิกาวิ่งอยู่)
-    if (conf.template === "sportLive") startClockTick(slot);
+    // สกอร์บอร์ดคู่สด / แถบล่าง: เดินนาฬิกาเอง (state ไม่เปลี่ยนระหว่างที่นาฬิกาวิ่งอยู่)
+    if (isLiveSport(conf.template)) startClockTick(slot);
     else stopClockTick(slot);
 
     last[slot] = { template: conf.template, eventId: conf.eventId, sport: conf.sport, visible: true, sig: sig };

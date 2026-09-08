@@ -39,7 +39,11 @@
   var TPL_NAMES = {
     top3: "อันดับ 1–3", results: "ผลการแข่งขัน", schedule: "ตารางการแข่งขัน",
     sportMatches: "กีฬา · ผลแมตช์", sportLive: "กีฬา · สกอร์สด",
+    sportLower: "แถบล่าง · สกอร์สด",
   };
+  function isSportTpl(t) {
+    return t === "sportMatches" || t === "sportLive" || t === "sportLower";
+  }
 
   // ---- token ------------------------------------------------------- //
   tokenInput.value = localStorage.getItem("cg_token") || "";
@@ -131,7 +135,22 @@
     };
   })();
 
+  // ชื่อกีฬาไทยจาก key (เช่น "futsal" -> "ฟุตซอล") — ต้องรอ state โหลดก่อน
+  function sportName(key) {
+    var sp = sportByKey(key);
+    return (sp && sp.name) || key || "";
+  }
+  // แก้หัวข้อ/แบรนด์หน้า /score/<sport> ให้เป็นชื่อกีฬาไทย (บรรทัด 16–23 เป็นแค่ fallback ก่อน state มา)
+  function renderScoreBrand() {
+    if (MODE !== "score") return;
+    var label = SCORE_SPORT ? sportName(SCORE_SPORT) : "กีฬาสี";
+    document.title = "CG Live — จดคะแนน" + (SCORE_SPORT ? " " + label : "");
+    var brand = document.querySelector(".brand");
+    if (brand) brand.innerHTML = "🏁 จดคะแนน <span>" + esc(label) + "</span>";
+  }
+
   function onState() {
+    renderScoreBrand();
     renderHeader();
 
     // รายการที่เลือก = แชร์ทั้งงาน — เคลียร์ override เมื่อเซิร์ฟเวอร์สะท้อนค่าเรากลับมา
@@ -173,6 +192,10 @@
       var s = o[slot] || {};
       if (!s.visible || !s.template) return '<span class="chip">' + slot + ": —</span>";
       var label = TPL_NAMES[s.template] || s.template;
+      if (isSportTpl(s.template) && s.sport) {
+        var sp = (state.sports || []).find(function (x) { return x.key === s.sport; });
+        if (sp) label += " · " + (sp.name || s.sport);
+      }
       var ev = (state.events || []).find(function (e) { return e.id === s.eventId; });
       if (ev) label += " · " + ev.title;
       return '<span class="chip on">▶ ' + slot + ": " + esc(label) + "</span>";
@@ -379,7 +402,7 @@
       inner = '<div class="oa-empty">— จอว่าง —</div>';
     } else {
       var label = TPL_NAMES[s.template] || s.template;
-      if ((s.template === "sportMatches" || s.template === "sportLive") && s.sport) {
+      if (isSportTpl(s.template) && s.sport) {
         var sp = (state.sports || []).find(function (x) { return x.key === s.sport; });
         if (sp) label += " · " + (sp.name || s.sport);
       }
@@ -398,6 +421,7 @@
     var lo = (state.onair && state.onair.lower) || {};
     var fu = (state.onair && state.onair.full) || {};
     var top3On = !!(lo.visible && lo.template === "top3");
+    var sportBarOn = !!(lo.visible && lo.template === "sportLower");
     var schedOn = !!(fu.visible && fu.template === "schedule");
     var resOn = !!(fu.visible && fu.template === "results");
     var sportOn = !!(fu.visible && fu.template === "sportMatches");
@@ -419,6 +443,12 @@
         cmdBtn("show-full-sport", onList, nm, dataSport) +
         cmdBtn("show-full-sportlive", onLive, "สด " + nm, dataSport) +
       "</div>";
+    }).join("");
+    // แถบล่าง: ปุ่มสกอร์สดของแต่ละกีฬา (คู่ที่ตั้ง "สด" อยู่) — ขึ้นพร้อมเต็มจอได้
+    var barBtns = (state.sports || []).map(function (sp) {
+      var nm = esc((sp.icon ? sp.icon + " " : "") + (sp.name || sp.key));
+      var on = !!(lo.visible && lo.template === "sportLower" && lo.sport === sp.key);
+      return cmdBtn("show-lower-sportbar", on, "สด " + nm, ' data-sport="' + esc(sp.key) + '"');
     }).join("");
 
     panel.innerHTML =
@@ -453,11 +483,12 @@
 
         '<div class="card">' +
           '<h2 style="margin:0 0 4px">สั่งขึ้นจอ</h2>' +
-          '<p class="muted" style="margin:0 0 10px">ขึ้นได้ทีละอย่าง — ขึ้นอันใหม่ อันเก่าจะลงเอง</p>' +
+          '<p class="muted" style="margin:0 0 10px">แถบล่างกับเต็มจอขึ้นพร้อมกันได้ — ในช่องเดียวกัน ขึ้นอันใหม่ อันเก่าจะลงเอง</p>' +
           "<h3>แถบล่าง</h3>" +
           '<div class="cmd-grid">' +
             cmdBtn("show-lower-top3", top3On, "อันดับ 1–3", ' style="min-width:170px"') +
-            '<button class="btn" data-act="hide-lower"' + (top3On ? "" : " disabled") + ">ซ่อนแถบล่าง</button>" +
+            barBtns +
+            '<button class="btn" data-act="hide-lower"' + (top3On || sportBarOn ? "" : " disabled") + ">ซ่อนแถบล่าง</button>" +
           "</div>" +
           "<h3>เต็มจอ</h3>" +
           '<div class="cmd-grid">' +
@@ -930,6 +961,9 @@
       var eid = selectedEventId();
       if (!eid) return toast("เลือกรายการก่อน", true);
       cmd({ action: "show", slot: "lower", template: "top3", eventId: eid });
+    },
+    "show-lower-sportbar": function (b) {
+      cmd({ action: "show", slot: "lower", template: "sportLower", eventId: null, sport: b.dataset.sport });
     },
     "hide-lower": function () { cmd({ action: "hide", slot: "lower" }); },
     "show-full-results": function () {

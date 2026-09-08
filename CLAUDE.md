@@ -61,9 +61,11 @@ Windows default) are independent reimplementations of the *same* HTTP API and be
 change to routes, command handling, or the state model must be made in **both** files, or Windows
 and macOS deployments diverge. They are currently in parity (routes incl. `/board`; commands incl.
 `setSport`/`deleteSport`; the id-dedupe + `football`→`sports` + `football`→`futsal` rename
-migration on load). Two intentional differences: `server.ps1` has no SSE (`/api/events` 404s →
-clients poll), and it must stay **ASCII-only** (PS 5.1 reads BOM-less scripts as ANSI), so its
-migration names the futsal sport `"Futsal"` rather than the Thai name `server.py` uses.
+migration on load, incl. forcing the sport's display name to `ฟุตซอล`). The one intentional
+difference: `server.ps1` has no SSE (`/api/events` 404s → clients poll). It must also stay
+**ASCII-only** (PS 5.1 reads BOM-less scripts as ANSI), so where it needs the Thai name it
+builds the string from Unicode code points (`-join [char[]](0x0E1F,…)`) — both servers still
+converge on `name: "ฟุตซอล"`.
 
 Both serve requests **concurrently** (`server.py` via `ThreadingHTTPServer`; `server.ps1` accepts
 on the main thread and dispatches each request to a 16-slot **runspace pool**). In `server.ps1`
@@ -88,6 +90,10 @@ seed used on first run and on reset). Mutations go through one endpoint:
 - `POST /api/command` → `apply_command()` mutates in-memory `STATE`, then `save_soon()` (debounced
   disk write) + `broadcast()` (push to SSE subscribers). `GET /api/state` returns the whole blob;
   `GET /api/events` is the SSE stream.
+
+`onair` has two independent slots, `lower` and `full`; the `show` command sets one slot and does
+**not** touch the other — a lower-third and a full-screen graphic can be on air together. Pushing
+a new template into a slot replaces whatever that slot held; `hideAll` clears both.
 
 Because the whole blob round-trips, a running server holds authoritative state in memory and will
 **overwrite `data/state.json` on the next command**. Editing `state.json` by hand while a server
@@ -147,8 +153,10 @@ the on-air `schedule` window when the pointer moves) is gated to `/control`.
 
 `public/templates.js` (`window.T`) renders every CG as an HTML string. Templates: `top3`, `results`,
 `schedule` (athletics); `sportMatches` (per-sport match list grouped by grade level); `sportLive`
-(single current-match scoreboard). Consumers: `overlay.js` (Live, `state.onair` slots),
-`control.js` (control + score pages, with live preview via the same `T.*`), `board.js` (Scoreboard).
+(single current-match scoreboard); `sportLower` (the current match as a compact lower-third bar —
+Live overlay only, `null` when no current match). Consumers: `overlay.js` (Live, `state.onair`
+slots), `control.js` (control + score pages, with live preview via the same `T.*`), `board.js`
+(Scoreboard).
 
 `overlay.css` holds the shared card/house/animation styles (loaded by both overlay and board);
 `board.css` only overrides background and sizing. House colors are CSS variables
@@ -193,14 +201,19 @@ control.js): match CRUD, "ตั้งสด" to set `currentId`, and +/- / numb
 via the `setSport` command (whole-sport upsert; debounced or immediate for +/-). Live/Scoreboard read
 it: `onair[slot].sport` carries the key on Live's `show`; both `sportMatches` and `sportLive` are
 pushable to `/live`'s full slot (`renderLive()`'s per-sport button pair, `show-full-sport` /
-`show-full-sportlive`) and `/scoreboard/<sport>` always renders `sportLive`. `load_state` migrates
-a legacy `state.football` object into `state.sports[0]`, and renames the old `football` sport
-(key + name + `onair` refs) to `futsal` / ฟุตซอล.
+`show-full-sportlive`), `sportLower` is pushable to Live's **lower** slot (`renderLive()`'s
+per-sport `show-lower-sportbar` buttons, and can be on air *with* a full-slot graphic), and
+`/scoreboard/<sport>` always renders `sportLive`. `load_state` migrates a legacy `state.football`
+object into `state.sports[0]`, and renames the old `football` sport (key + name + `onair` refs) to
+`futsal` / ฟุตซอล (name forced even when the key is already `futsal`).
 
 `overlay.js` mirrors `board.js`'s `sportLive` handling since it's a third consumer of the same
-template: `isSport()` covers both `sportMatches`/`sportLive` (for `sportSig` + the `sameShell`
-same-sport check — needed because unlike `top3`/`schedule`, `conf.eventId` is always `null` for
-sport templates, so without comparing `conf.sport` too, switching from one sport's card to
-another's would wrongly read as "unchanged"), and it runs its own clock ticker
-(`startClockTick`/`tickClock`) plus score-bump/`.just-final` diffing (`bumpLiveScore`) per slot,
-independently of `board.js`'s copies — both must stay in sync if that logic changes.
+template: `isSport()` covers `sportMatches`/`sportLive`/`sportLower` (for `sportSig` + the
+`sameShell` same-sport check — needed because unlike `top3`/`schedule`, `conf.eventId` is always
+`null` for sport templates, so without comparing `conf.sport` too, switching from one sport's card
+to another's would wrongly read as "unchanged"), and a narrower `isLiveSport()`
+(`sportLive`/`sportLower`) gates its own clock ticker (`startClockTick`/`tickClock`) plus
+score-bump/`.just-final` diffing (`bumpLiveScore`) per slot, independently of `board.js`'s copies
+— both must stay in sync if that logic changes. `sportLower` is Live-only (no `board.js` path);
+the bar reuses `sportLive`'s `.live-clock`/`.ls-h`/`.ls-a`/`.live-dot` class hooks so that logic
+needs no bar-specific branch beyond the `.just-final` selector (`.tpl-live-card, .sportbar`).
