@@ -143,7 +143,8 @@
   // แก้หัวข้อ/แบรนด์หน้า /score/<sport> ให้เป็นชื่อกีฬาไทย (บรรทัด 16–23 เป็นแค่ fallback ก่อน state มา)
   function renderScoreBrand() {
     if (MODE !== "score") return;
-    var label = SCORE_SPORT ? sportName(SCORE_SPORT) : "กีฬาสี";
+    var label = SCORE_SPORT ? sportName(SCORE_SPORT)
+      : ((state && state.settings && state.settings.meetTitle) || (isSchool() ? "การแข่งขัน" : "กีฬาสี"));
     document.title = "CG Live — จดคะแนน" + (SCORE_SPORT ? " " + label : "");
     var brand = document.querySelector(".brand");
     if (brand) brand.innerHTML = "🏁 จดคะแนน <span>" + esc(label) + "</span>";
@@ -280,22 +281,19 @@
   markActiveNav();
 
   // ---- shared bits ----------------------------------------- //
+  // โหมด: "house" = 4 สีคณะ · "school" = รายชื่อโรงเรียน (settings.schools)
+  function isSchool() { return (state.settings && state.settings.mode) === "school"; }
+  function compWord() { return isSchool() ? "โรงเรียน" : "สีคณะ"; }
   function houseKeys() {
+    if (isSchool()) {
+      return ((state.settings && state.settings.schools) || []).map(function (s) { return s.key; });
+    }
     return Object.keys((state.settings && state.settings.houses) || { red: 1, green: 1, yellow: 1, blue: 1 });
   }
-  function houseName(h) {
-    var n = state.settings && state.settings.houseNames;
-    return (n && n[h]) || h;
-  }
-  function houseColor(h) {
-    var c = state.settings && state.settings.houses;
-    return (c && c[h]) || "#888";
-  }
-  function houseLogo(h) {
-    var m = state.settings && state.settings.houseLogos;
-    if (m && Object.prototype.hasOwnProperty.call(m, h)) return m[h];
-    return "/pictures/house-" + (h || "").replace(/[^a-z]/gi, "") + ".png";
-  }
+  // resolve ผ่าน templates.js ให้ตรงกับที่ CG เรนเดอร์เป๊ะ
+  function houseName(h) { return T.comp(state, h).name || h; }
+  function houseColor(h) { return T.comp(state, h).color; }
+  function houseLogo(h) { return T.comp(state, h).logo; }
   function eventSelect(id, selected, extra) {
     var opts = (state.events || []).map(function (e) {
       return '<option value="' + e.id + '"' + (e.id === selected ? " selected" : "") + ">" + esc(e.title) + "</option>";
@@ -542,9 +540,10 @@
     ensureDraft(ev);
     var hk = houseKeys();
 
-    var tapBtns = hk.map(function (h) {
+    var tapBtns = hk.length ? hk.map(function (h) {
       return '<button class="hbtn" data-act="res-tap" data-house="' + h + '" style="--hc:' + houseColor(h) + '">' + esc(houseName(h)) + "</button>";
-    }).join("");
+    }).join("") : '<span class="muted">' +
+      (isSchool() ? 'ยังไม่มีโรงเรียน — เพิ่มในหน้า "ตั้งค่า"' : "ยังไม่มีคณะ") + "</span>";
 
     var lines = resDraft.rows.map(function (h, i) {
       return '<div class="res-line">' +
@@ -557,7 +556,7 @@
     }).join("");
 
     host.innerHTML =
-      '<p class="muted">แตะสีคณะ "เรียงตามลำดับเข้าเส้น" — แตะแล้วต่อท้ายอันดับถัดไป</p>' +
+      '<p class="muted">แตะ' + compWord() + ' "เรียงตามลำดับเข้าเส้น" — แตะแล้วต่อท้ายอันดับถัดไป</p>' +
       '<div class="hbtns">' + tapBtns + "</div>" +
       '<div class="res-lines">' + (lines || '<span class="muted">— ยังไม่มีผล —</span>') + "</div>" +
       '<div class="row" style="margin-top:12px">' +
@@ -874,27 +873,100 @@
   // ========================================================= //
   //  SETTINGS
   // ========================================================= //
+  function newSchoolKey() {
+    return "sc_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  }
+  function schoolRowHtml(sc) {
+    sc = sc || { key: newSchoolKey(), name: "", logo: "" };
+    var logo = sc.logo || "";
+    return '<tr data-key="' + esc(sc.key) + '">' +
+      '<td><input type="text" data-sname value="' + esc(sc.name || "") + '" placeholder="เช่น โรงเรียนสาธิต"></td>' +
+      '<td class="school-logo-cell">' +
+        '<img class="school-logo-prev" src="' + esc(logo) + '"' + (logo ? "" : " hidden") + ' alt="">' +
+        '<input type="file" accept="image/*" data-slogo-file>' +
+        '<input type="hidden" data-slogo value="' + esc(logo) + '">' +
+      "</td>" +
+      '<td><button class="btn danger sm" data-act="school-rm">✕</button></td>' +
+    "</tr>";
+  }
+  function houseEditorHtml() {
+    return '<h3>สีและชื่อคณะ</h3>' +
+      '<table class="tbl"><thead><tr><th>คีย์</th><th>สี</th><th>ชื่อที่แสดง</th><th>โลโก้ (พาธ — เว้นว่าง = ปิด)</th></tr></thead><tbody>' +
+      houseKeys().map(function (h) {
+        return "<tr><td>" + h + "</td>" +
+          '<td><input type="color" data-hcolor="' + h + '" value="' + toHex(houseColor(h)) + '"></td>' +
+          '<td><input type="text" data-hname="' + h + '" value="' + esc(houseName(h)) + '"></td>' +
+          '<td><input type="text" data-hlogo="' + h + '" value="' + esc(houseLogo(h)) + '" placeholder="/pictures/house-' + h + '.png"></td></tr>';
+      }).join("") + "</tbody></table>" +
+      '<p class="muted" style="margin-top:4px">วางไฟล์โลโก้คณะที่ <code>public/pictures/house-&lt;คีย์&gt;.png</code> — จะขึ้นคู่กับสีตอนโชว์ TOP 3</p>';
+  }
+  function schoolEditorHtml(s) {
+    var rows = (s.schools || []).map(schoolRowHtml).join("");
+    return '<h3>โรงเรียนที่ร่วมแข่ง</h3>' +
+      '<table class="tbl school-tbl" id="schoolTbl"><thead><tr><th>ชื่อโรงเรียน</th><th>โลโก้</th><th></th></tr></thead><tbody>' +
+      (rows || '<tr data-empty><td colspan="3" class="muted">ยังไม่มีโรงเรียน — กด “เพิ่มโรงเรียน”</td></tr>') +
+      "</tbody></table>" +
+      '<div class="row" style="margin-top:10px">' +
+        '<button class="btn" data-act="school-add">+ เพิ่มโรงเรียน</button>' +
+        '<span class="muted">อัปโหลดโลโก้ (PNG พื้นหลังโปร่งใส) แล้วกด “บันทึกการตั้งค่า”</span>' +
+      "</div>";
+  }
+
+  function schoolRowsFromDom() {
+    return [].map.call(document.querySelectorAll("#schoolTbl tbody tr[data-key]"), function (tr) {
+      var nm = tr.querySelector("[data-sname]"), lg = tr.querySelector("[data-slogo]");
+      return { key: tr.getAttribute("data-key"), name: nm ? nm.value.trim() : "", logo: lg ? lg.value : "" };
+    });
+  }
+  function switchMode(m) {
+    if (((state.settings && state.settings.mode) || "house") === m) return;
+    var msg = m === "school"
+      ? 'สลับไปโหมด "แข่งกับภายนอก" ?\nข้อมูลกีฬาสีตอนนี้จะถูกเก็บไว้ กลับมาได้เมื่อสลับกลับ'
+      : 'สลับกลับโหมด "กีฬาสีภายใน" ?\nข้อมูลการแข่งภายนอกตอนนี้จะถูกเก็บไว้ กลับมาได้เมื่อสลับกลับ';
+    if (!confirm(msg)) return;
+    cmd({ action: "setMode", mode: m }).then(function (ok) { if (ok) toast("สลับโหมดแล้ว"); });
+  }
+  // อัปโหลดรูป -> คืน URL (/uploads/…) ผ่าน POST /api/upload (base64 data URL)
+  function uploadImage(file) {
+    return new Promise(function (resolve, reject) {
+      if (!file) return reject(new Error("ไม่มีไฟล์"));
+      if (file.size > 2 * 1024 * 1024) return reject(new Error("ไฟล์ใหญ่เกิน 2MB"));
+      var fr = new FileReader();
+      fr.onerror = function () { reject(new Error("อ่านไฟล์ไม่ได้")); };
+      fr.onload = function () {
+        fetch("/api/upload", { method: "POST", headers: hdrs(), body: JSON.stringify({ name: file.name, dataUrl: fr.result }) })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            if (!res.ok) throw new Error(res.j.error || "อัปโหลดล้มเหลว");
+            resolve(res.j.url);
+          })
+          .catch(reject);
+      };
+      fr.readAsDataURL(file);
+    });
+  }
+
   function renderSettings() {
     var s = state.settings || {};
     var origin = location.origin;
+    var isSc = isSchool();
     panel.innerHTML =
       '<div class="card"><h2>ตั้งค่าทั่วไป</h2>' +
-        '<label class="field" style="max-width:360px">ชื่องาน (แสดงบน CG)<input type="text" id="setMeet" value="' + esc(s.meetTitle || "") + '"></label>' +
-        '<label class="field" style="max-width:420px;margin-top:12px">โลโก้โรงเรียน (พาธ/URL — เว้นว่าง = ไม่แสดง)' +
+        '<div class="field" style="max-width:560px">โหมดการแข่งขัน' +
+          '<div class="mode-toggle">' +
+            '<button class="btn' + (!isSc ? " is-live" : "") + '" data-act="mode-house"' + (!isSc ? " disabled" : "") + ">กีฬาสีภายใน (4 คณะ)</button>" +
+            '<button class="btn' + (isSc ? " is-live" : "") + '" data-act="mode-school"' + (isSc ? " disabled" : "") + ">แข่งกับโรงเรียนภายนอก</button>" +
+          "</div>" +
+          '<p class="muted" style="margin-top:6px">สลับโหมดจะสลับชุดข้อมูลทั้งหมด (รายการ / ผล / แมตช์) — ข้อมูลอีกชุดถูกเก็บไว้ กลับมาเหมือนเดิมเมื่อสลับกลับ</p>' +
+        "</div>" +
+        '<label class="field" style="max-width:360px;margin-top:12px">ชื่องาน (แสดงบน CG)<input type="text" id="setMeet" value="' + esc(s.meetTitle || "") + '"></label>' +
+        '<label class="field" style="max-width:420px;margin-top:12px">โลโก้ส่วนกลาง (พาธ/URL — เว้นว่าง = ไม่แสดง)' +
           '<input type="text" id="setLogo" value="' + esc(s.logo == null ? "" : s.logo) + '" placeholder="/pictures/logo.png"></label>' +
         '<p class="muted" style="margin-top:4px">วางไฟล์โลโก้ไว้ที่ <code>public/pictures/logo.png</code> — จะขึ้นมุมของ CG ทุกอัน</p>' +
         '<div class="row" style="margin-top:12px">' +
           '<label class="field">ความเร็ว animation (ms)<input type="number" id="setAnim" min="0" step="50" value="' + (s.animMs || 450) + '"></label>' +
         "</div>" +
-        '<h3>สีและชื่อคณะ</h3>' +
-        '<table class="tbl"><thead><tr><th>คีย์</th><th>สี</th><th>ชื่อที่แสดง</th><th>โลโก้ (พาธ — เว้นว่าง = ปิด)</th></tr></thead><tbody>' +
-        houseKeys().map(function (h) {
-          return "<tr><td>" + h + "</td>" +
-            '<td><input type="color" data-hcolor="' + h + '" value="' + toHex(houseColor(h)) + '"></td>' +
-            '<td><input type="text" data-hname="' + h + '" value="' + esc(houseName(h)) + '"></td>' +
-            '<td><input type="text" data-hlogo="' + h + '" value="' + esc(houseLogo(h)) + '" placeholder="/pictures/house-' + h + '.png"></td></tr>';
-        }).join("") + "</tbody></table>" +
-        '<p class="muted" style="margin-top:4px">วางไฟล์โลโก้คณะที่ <code>public/pictures/house-&lt;คีย์&gt;.png</code> — จะขึ้นคู่กับสีตอนโชว์ TOP 3</p>' +
+        (isSc ? schoolEditorHtml(s) : houseEditorHtml()) +
         '<div class="row" style="margin-top:14px">' +
           '<button class="btn ok" data-act="set-save">บันทึกการตั้งค่า</button>' +
           '<span id="dirtyBadge" class="dirty-badge"></span>' +
@@ -929,7 +1001,7 @@
 
       '<div class="card"><h2>หน้าจดคะแนน (แยกคน/แยกกีฬา)</h2>' +
         '<div class="linklist">' +
-          '<a href="/score" target="_blank">/score &nbsp;— กรีฑา (แตะสีคณะเรียงอันดับ)</a>' +
+          '<a href="/score" target="_blank">/score &nbsp;— กรีฑา (แตะ' + compWord() + 'เรียงอันดับ)</a>' +
           (state.sports || []).map(function (sp) {
             return '<a href="/score/' + esc(sp.key) + '" target="_blank">/score/' + esc(sp.key) +
               " &nbsp;— " + esc(sp.name || sp.key) + " (+/- และตั้งคู่สด)</a>";
@@ -938,7 +1010,7 @@
       "</div>" +
 
       '<div class="card"><h2>รีเซ็ต</h2>' +
-        '<p class="muted">คืนค่าข้อมูลทั้งหมดกลับเป็นค่าตั้งต้น (data/state.default.json)</p>' +
+        '<p class="muted">คืนค่าข้อมูลของ<b>โหมดนี้</b>กลับเป็นค่าตั้งต้น (อีกโหมดไม่ถูกแตะ)</p>' +
         '<button class="btn danger" data-act="set-reset" style="margin-top:8px">รีเซ็ตข้อมูลทั้งหมด</button>' +
       "</div>";
   }
@@ -998,7 +1070,11 @@
       scheduleResSave();
     },
     "res-clear": function () { resDraft.rows = []; renderResEditor(); scheduleResSave(); },
-    "res-add-row": function () { resDraft.rows.push(houseKeys()[0]); renderResEditor(); scheduleResSave(); },
+    "res-add-row": function () {
+      var k = houseKeys();
+      if (!k.length) return toast(isSchool() ? "เพิ่มโรงเรียนก่อนในหน้าตั้งค่า" : "ยังไม่มีคณะ", true);
+      resDraft.rows.push(k[0]); renderResEditor(); scheduleResSave();
+    },
 
     "seek-prev": function () { stepEvent(-1); },
     "seek-next": function () { stepEvent(1); },
@@ -1032,22 +1108,39 @@
     },
 
     "set-save": function () {
-      var houses = {}, houseNames = {}, houseLogos = {};
-      [].forEach.call(panel.querySelectorAll("[data-hcolor]"), function (i) { houses[i.dataset.hcolor] = i.value; });
-      [].forEach.call(panel.querySelectorAll("[data-hname]"), function (i) { houseNames[i.dataset.hname] = i.value.trim(); });
-      [].forEach.call(panel.querySelectorAll("[data-hlogo]"), function (i) { houseLogos[i.dataset.hlogo] = i.value.trim(); });
-      cmd({
-        action: "setSettings",
-        settings: {
-          meetTitle: document.getElementById("setMeet").value.trim(),
-          logo: document.getElementById("setLogo").value.trim(),
-          animMs: Number(document.getElementById("setAnim").value) || 450,
-          houses: houses, houseNames: houseNames, houseLogos: houseLogos,
-        },
-      }).then(function (ok) { if (ok) toast("บันทึกการตั้งค่าแล้ว"); });
+      var settings = {
+        meetTitle: document.getElementById("setMeet").value.trim(),
+        logo: document.getElementById("setLogo").value.trim(),
+        animMs: Number(document.getElementById("setAnim").value) || 450,
+      };
+      if (isSchool()) {
+        settings.schools = schoolRowsFromDom().filter(function (s) { return s.name || s.logo; });
+      } else {
+        var houses = {}, houseNames = {}, houseLogos = {};
+        [].forEach.call(panel.querySelectorAll("[data-hcolor]"), function (i) { houses[i.dataset.hcolor] = i.value; });
+        [].forEach.call(panel.querySelectorAll("[data-hname]"), function (i) { houseNames[i.dataset.hname] = i.value.trim(); });
+        [].forEach.call(panel.querySelectorAll("[data-hlogo]"), function (i) { houseLogos[i.dataset.hlogo] = i.value.trim(); });
+        settings.houses = houses; settings.houseNames = houseNames; settings.houseLogos = houseLogos;
+      }
+      cmd({ action: "setSettings", settings: settings }).then(function (ok) { if (ok) toast("บันทึกการตั้งค่าแล้ว"); });
     },
     "set-reset": function () {
-      if (confirm("รีเซ็ตข้อมูลทั้งหมดกลับเป็นค่าตั้งต้น ?")) cmd({ action: "resetState" }).then(function (ok) { if (ok) toast("รีเซ็ตแล้ว"); });
+      if (confirm("รีเซ็ตข้อมูลของโหมดนี้กลับเป็นค่าตั้งต้น ?")) cmd({ action: "resetState" }).then(function (ok) { if (ok) toast("รีเซ็ตแล้ว"); });
+    },
+    "mode-house": function () { switchMode("house"); },
+    "mode-school": function () { switchMode("school"); },
+    "school-add": function () {
+      var tb = document.querySelector("#schoolTbl tbody");
+      if (!tb) return;
+      var e = tb.querySelector("[data-empty]");
+      if (e) e.parentNode.removeChild(e);
+      tb.insertAdjacentHTML("beforeend", schoolRowHtml(null));
+      cmd({ action: "setSettings", settings: { schools: schoolRowsFromDom() } });
+    },
+    "school-rm": function (b) {
+      var tr = b.closest("tr");
+      if (tr) tr.parentNode.removeChild(tr);
+      cmd({ action: "setSettings", settings: { schools: schoolRowsFromDom() } });
     },
     "url-copy": function () {
       var u = document.getElementById("ovUrl");
@@ -1065,6 +1158,7 @@
     "sp-add": function () {
       sportCollectFromDom();
       var k = houseKeys();
+      if (!k.length) return toast(isSchool() ? "เพิ่มโรงเรียนก่อนในหน้าตั้งค่า" : "ยังไม่มีคณะ", true);
       var last = sportDraft.matches[sportDraft.matches.length - 1];
       sportDraft.matches.push({
         id: newMatchId(), level: (last && last.level) || "ป.1", title: "",
@@ -1159,6 +1253,24 @@
     }
     if (inSportEditor() && isSportField(t)) {
       scheduleSportSave();
+      return;
+    }
+    // อัปโหลดโลโก้โรงเรียน (หน้าตั้งค่า โหมด school)
+    if (t.matches && t.matches("[data-slogo-file]")) {
+      var lf = t.files && t.files[0];
+      if (!lf) return;
+      var trow = t.closest("tr");
+      toast("กำลังอัปโหลด…");
+      uploadImage(lf).then(function (url) {
+        var hid = trow.querySelector("[data-slogo]");
+        var img = trow.querySelector(".school-logo-prev");
+        if (hid) hid.value = url;
+        if (img) { img.src = url; img.hidden = false; }
+        t.value = "";
+        // บันทึกทันที กัน URL หายถ้าเปลี่ยนหน้า/มี state ใหม่เข้ามา
+        cmd({ action: "setSettings", settings: { schools: schoolRowsFromDom() } });
+        toast('อัปโหลดโลโก้แล้ว — กด "บันทึกการตั้งค่า" เพื่อยืนยันชื่อ');
+      }).catch(function (err) { toast(String(err.message || err), true); });
       return;
     }
     if (t.id === "eventsFile") {

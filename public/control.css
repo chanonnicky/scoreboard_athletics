@@ -185,6 +185,19 @@ table.tbl .hcell { width: 150px; }
 
 .hswatch { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: middle; margin-right: 6px; }
 
+/* ---- โหมด (สีคณะ / โรงเรียน) ---- */
+.mode-toggle { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.mode-toggle .btn { flex: 1 1 200px; }
+.mode-toggle .btn[disabled] { opacity: 1; cursor: default; }
+.school-tbl td { vertical-align: middle; }
+.school-tbl input[type=text] { width: 100%; max-width: 320px; }
+.school-logo-cell { display: flex; align-items: center; gap: 10px; }
+.school-logo-prev {
+  width: 40px; height: 40px; object-fit: contain; flex: none;
+  background: #fff; border-radius: 6px; padding: 2px;
+}
+.school-logo-cell input[type=file] { font-size: 12px; max-width: 210px; }
+
 /* preview */
 .preview-wrap {
   position: sticky; top: 96px;

@@ -69,17 +69,20 @@
     var rs = Object.keys(r).sort().map(function (k) {
       return k + ":" + (r[k] || []).map(function (x) { return x.rank + "" + x.house; }).join(",");
     }).join("|");
-    return eventsSig(state) + "||" + rs + "||" + (s.meetTitle || "") + "||" + JSON.stringify(s.houseNames || {});
+    return eventsSig(state) + "||" + rs + "||" + (s.meetTitle || "") + "||" + JSON.stringify(s.houseNames || {}) +
+      "||" + (s.mode || "house") + "||" + JSON.stringify(s.schools || []);
   }
   // schedule เปลี่ยนตามรายการ + รายการที่เลือก (ไม่สนผลการแข่ง)
   function schedSig(state, eid) {
-    return (eid || "") + "||" + eventsSig(state) + "||" + ((state.settings || {}).meetTitle || "");
+    var s = state.settings || {};
+    return (eid || "") + "||" + eventsSig(state) + "||" + (s.meetTitle || "") + "||" + (s.mode || "house");
   }
-  // กีฬา: re-render เมื่อข้อมูลกีฬา/ชื่อ-โลโก้คณะ เปลี่ยน
+  // กีฬา: re-render เมื่อข้อมูลกีฬา/ชื่อ-โลโก้คณะ/โหมด/รายชื่อโรงเรียน เปลี่ยน
   function sportSig(state, sportKey) {
     var s = state.settings || {};
     return (sportKey || "") + "||" + JSON.stringify(state.sports || []) +
-      "||" + JSON.stringify(s.houseNames || {}) + "||" + JSON.stringify(s.houseLogos || {});
+      "||" + JSON.stringify(s.houseNames || {}) + "||" + JSON.stringify(s.houseLogos || {}) +
+      "||" + (s.mode || "house") + "||" + JSON.stringify(s.schools || []);
   }
   function isSport(t) { return t === "sportMatches" || t === "sportLive" || t === "sportLower"; }
   // เทมเพลตสกอร์สด (เดินนาฬิกา + เด้งสกอร์เอง): สกอร์บอร์ดเต็มจอ + แถบล่าง
@@ -149,7 +152,8 @@
     var sp = (state.sports || []).find(function (s) { return s.key === sportKey; }) || {};
     var s = state.settings || {};
     return lm.home + "~" + lm.away + "~" + (sp.name || "") + "~" + (sp.icon || "") +
-      "~" + JSON.stringify(s.houseNames || {}) + "~" + JSON.stringify(s.houseLogos || {});
+      "~" + JSON.stringify(s.houseNames || {}) + "~" + JSON.stringify(s.houseLogos || {}) +
+      "~" + (s.mode || "house") + "~" + JSON.stringify(s.schools || []);
   }
   function patchSportbar(bar, html) {
     var tmp = document.createElement("div");

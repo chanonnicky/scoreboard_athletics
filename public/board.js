@@ -140,6 +140,8 @@
       "||" + JSON.stringify(s.houseLogos || {}) +
       "||" + (s.logo || "") +
       "||" + (s.selEventId || "") +     // แถบ "กำลังแข่ง" ใช้รายการที่เลือกอยู่ — ต้องรู้เมื่อเปลี่ยน
+      "||" + (s.mode || "house") +
+      "||" + JSON.stringify(s.schools || []) +
       "||" + JSON.stringify(state.sports || []);
   }
 
