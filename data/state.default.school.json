@@ -14,7 +14,7 @@
     "full": { "template": "results", "eventId": null, "visible": false }
   },
   "sports": [
-    { "key": "futsal", "name": "ฟุตซอล", "icon": "⚽", "currentId": null, "matches": [] },
-    { "key": "basketball", "name": "บาสเกตบอล", "icon": "🏀", "currentId": null, "matches": [] }
+    { "key": "futsal", "name": "ฟุตซอล", "icon": "⚽", "currentId": null, "clockMin": 20, "matches": [] },
+    { "key": "basketball", "name": "บาสเกตบอล", "icon": "🏀", "currentId": null, "clockMin": 10, "matches": [] }
   ]
 }

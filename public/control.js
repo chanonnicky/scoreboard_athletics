@@ -661,6 +661,7 @@
     src = src || { key: key, name: "", icon: "", matches: [] };
     sportDraft = {
       key: src.key, name: src.name || "", icon: src.icon || "", currentId: src.currentId || null,
+      clockMin: Number(src.clockMin) > 0 ? Number(src.clockMin) : 10,
       matches: (src.matches || []).map(function (m) {
         return { id: m.id, level: m.level || "", title: m.title || "",
                  home: m.home, away: m.away, hs: m.hs, as: m.as, done: !!m.done,
@@ -716,10 +717,13 @@
     if (el) { tickSpClock(); spClockTimer = setInterval(tickSpClock, 500); }
   }
 
+  function sportClockMin() { return Number(sportDraft && sportDraft.clockMin) > 0 ? Number(sportDraft.clockMin) : 10; }
   function sportCollectFromDom() {
     if (!sportDraft) return;
     var nm = document.querySelector("[data-spname]"); if (nm) sportDraft.name = nm.value.trim();
     var ic = document.querySelector("[data-spicon]"); if (ic) sportDraft.icon = ic.value.trim();
+    var cm = document.querySelector("[data-spclockmin]");
+    if (cm) { var v = Math.round(Number(cm.value)); sportDraft.clockMin = (v > 0 && v <= 180) ? v : 10; }
     var out = [];
     [].forEach.call(panel.querySelectorAll(".fb-tbl tbody tr[data-i]"), function (tr, i) {
       var g = function (s) { return tr.querySelector(s); };
@@ -744,7 +748,8 @@
   }
   function sportBuild() {
     return { key: sportDraft.key, name: sportDraft.name, icon: sportDraft.icon,
-             currentId: sportDraft.currentId || null, matches: sportDraft.matches };
+             currentId: sportDraft.currentId || null, clockMin: sportClockMin(),
+             matches: sportDraft.matches };
   }
   function curDraftMatch() {
     if (!sportDraft || !sportDraft.currentId) return null;
@@ -787,6 +792,13 @@
     var dl = '<datalist id="lvlList">' + levelOptions().map(function (l) {
       return '<option value="' + esc(l) + '"></option>';
     }).join("") + "</datalist>";
+
+    // ---- ตั้งค่าเวลาเริ่มต้นของกีฬานี้ ----
+    var cfgCard = '<div class="card">' +
+      '<label class="field" style="max-width:320px">เวลาเริ่มต้นต่อครึ่ง / ควอเตอร์ (นาที)' +
+        '<input type="number" min="1" max="180" step="1" data-spclockmin value="' + sportClockMin() + '"></label>' +
+      '<p class="muted" style="margin-top:4px">ใช้เป็นค่าตั้งต้นตอนกด “เพิ่มแมตช์” และตอนกด “รีเซ็ต” นาฬิกา</p>' +
+    "</div>";
 
     // ---- แผงคู่ที่กำลังแข่ง (สด) ----
     var cm = curDraftMatch();
@@ -854,7 +866,7 @@
       "</tr>";
     }).join("");
 
-    panel.innerHTML = dl + liveCard +
+    panel.innerHTML = dl + cfgCard + liveCard +
       '<div class="card"><h2>แมตช์ทั้งหมด</h2>' +
         '<div class="fb-tbl-wrap"><table class="tbl fb-tbl"><thead><tr>' +
           "<th>สด</th><th>ชั้น</th><th>ชื่อ</th><th>เจ้าบ้าน</th><th>สกอร์</th><th></th><th></th><th>ทีมเยือน</th><th>สถานะ</th><th></th>" +
@@ -1163,7 +1175,7 @@
       sportDraft.matches.push({
         id: newMatchId(), level: (last && last.level) || "ป.1", title: "",
         home: k[0], away: k[1] || k[0], hs: 0, as: 0, done: false,
-        clock: { running: false, elapsed: 0, since: 0, dur: CLK_DEFAULT_DUR },
+        clock: { running: false, elapsed: 0, since: 0, dur: sportClockMin() * 60 },
       });
       renderSportScore();
       scheduleSportSave();
@@ -1218,7 +1230,7 @@
       sportCollectFromDom();
       var cm = curDraftMatch();
       if (!cm) return;
-      cm.clock = { running: false, elapsed: 0, since: 0, dur: normClock(cm.clock).dur };
+      cm.clock = { running: false, elapsed: 0, since: 0, dur: sportClockMin() * 60 };
       renderSportScore();
       saveSportNow();
     },
@@ -1285,9 +1297,11 @@
 
   // อยู่ในหน้าจดคะแนนกีฬา (/score/<sport>) หรือไม่
   function inSportEditor() { return MODE === "score" && !!SCORE_SPORT; }
-  // ฟิลด์ในตารางแมตช์ -> บันทึกอัตโนมัติ (debounce)
+  // ฟิลด์ในตารางแมตช์ + ตั้งค่าเวลาเริ่มต้น -> บันทึกอัตโนมัติ (debounce)
   function isSportField(t) {
-    return !!(t && t.closest && t.closest(".fb-tbl"));
+    if (!t || !t.closest) return false;
+    if (t.closest(".fb-tbl")) return true;
+    return !!(t.matches && t.matches("[data-spclockmin],[data-spname],[data-spicon]"));
   }
   panel.addEventListener("input", function (e) {
     if (inSportEditor() && isSportField(e.target)) scheduleSportSave();

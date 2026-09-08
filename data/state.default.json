@@ -39,7 +39,7 @@
   "sports": [
     {
       "key": "futsal", "name": "ฟุตซอล", "icon": "⚽",
-      "currentId": "fb_live",
+      "currentId": "fb_live", "clockMin": 20,
       "matches": [
         { "id": "fb_p6_1", "level": "ป.6", "title": "ชาย", "home": "red", "away": "blue", "hs": 2, "as": 1, "done": true },
         { "id": "fb_p6_2", "level": "ป.6", "title": "หญิง", "home": "green", "away": "yellow", "hs": 0, "as": 3, "done": true },
@@ -50,7 +50,7 @@
     },
     {
       "key": "basketball", "name": "บาสเกตบอล", "icon": "🏀",
-      "currentId": "bb_live",
+      "currentId": "bb_live", "clockMin": 10,
       "matches": [
         { "id": "bb_p6_1", "level": "ป.6", "title": "ชาย", "home": "red", "away": "yellow", "hs": 32, "as": 28, "done": true },
         { "id": "bb_m6_1", "level": "ม.6", "title": "ชาย", "home": "blue", "away": "green", "hs": 45, "as": 41, "done": true },

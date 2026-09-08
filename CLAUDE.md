@@ -226,13 +226,15 @@ editor mints `sc_<base36ts><rand>` and stores `{key,name,logo}`.
 ### Sports module (generic, multi-sport)
 
 Separate from athletics results. `state.sports` is an ordered list; each sport is
-`{ key, name, icon, currentId, matches:[{id, level, title, home, away, hs, as, done, clock}] }`.
+`{ key, name, icon, currentId, clockMin, matches:[{id, level, title, home, away, hs, as, done, clock}] }`.
 Matches divide by `level` (grade — the picker offers ป.1–ม.6, free text). `currentId` points to the
-match "playing now". There is **no standings/bracket** (removed by request) — only the match list and
+match "playing now". `clockMin` (minutes, default 10; seeds: futsal 20 / basketball 10) is the
+per-sport default period length — editable on `/score/<sport>`, applied to a new match's `clock.dur`
+and to "รีเซ็ต". There is **no standings/bracket** (removed by request) — only the match list and
 the live scoreboard. Add a sport by adding a list entry, not new code.
 
 `match.clock = { running, elapsed, since, dur }` is a **count-down clock** (missing = stopped, full
-`dur` remaining; `dur` missing = 600s = 10:00). Internally it's still a count-up: `elapsed`/`since`
+`dur` remaining; `dur` missing → `sport.clockMin·60`, else 600s = 10:00). Internally it's still a count-up: `elapsed`/`since`
 track time run (`since` stamped by the control client via `Date.now()`, tolerates small skew, no
 server change); displayed value = `max(0, dur − (elapsed + (running ? (now − since)/1000 : 0)))`.
 At 0 it holds `00:00` and gets a `.ended` class (red). Helpers `T.remainSec` (tick from `data-*`

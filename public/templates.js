@@ -93,14 +93,19 @@ window.T = (function () {
      เวลาที่โชว์ = max(0, dur − เวลาที่เดินไปแล้ว) · ไม่มี clock = หยุดที่ dur เต็ม
      ผู้บริโภค (board/overlay/control) tick เองทุกครึ่งวินาที */
   var CLOCK_DEFAULT_DUR = 600;
+  // เวลาตั้งต้นต่อครึ่ง/ควอเตอร์ ของกีฬานั้น (sport.clockMin นาที — ไม่ตั้ง = 10:00)
+  function sportDurSec(sport) {
+    var m = Number(sport && sport.clockMin);
+    return (m > 0 ? m : 10) * 60;
+  }
   function clockValue(clock) {            // เวลาที่เดินไปแล้ว (นับขึ้น) — ใช้ภายใน
     if (!clock) return 0;
     var el = Number(clock.elapsed) || 0;
     if (!clock.running) return el;
     return el + Math.max(0, (Date.now() - (Number(clock.since) || 0)) / 1000);
   }
-  function clockDur(clock) {
-    if (!clock || clock.dur == null) return CLOCK_DEFAULT_DUR;
+  function clockDur(clock, fallbackSec) {
+    if (!clock || clock.dur == null) return fallbackSec != null ? fallbackSec : CLOCK_DEFAULT_DUR;
     return Math.max(0, Number(clock.dur) || 0);
   }
   function clockRemain(clock) {           // เวลาที่เหลือ (นับถอยหลัง)
@@ -425,7 +430,7 @@ window.T = (function () {
     var ckRun = !!ck.running && !m.done;
     var ckEl = Number(ck.elapsed) || 0;
     var ckSince = Number(ck.since) || 0;
-    var ckDur = clockDur(ck);
+    var ckDur = clockDur(ck, sportDurSec(sport));
     var ckRemain = remainSec(ckEl, ckSince, ckDur, ckRun);
     var clockHtml = '<div class="live-clock' + (ckRun ? " run" : " paused") + (ckRemain <= 0 ? " ended" : "") +
       '" data-run="' + (ckRun ? 1 : 0) + '" data-el="' + ckEl + '" data-since="' + ckSince +
@@ -475,7 +480,7 @@ window.T = (function () {
     var ckRun = !!ck.running && !m.done;
     var ckEl = Number(ck.elapsed) || 0;
     var ckSince = Number(ck.since) || 0;
-    var ckDur = clockDur(ck);
+    var ckDur = clockDur(ck, sportDurSec(sport));
     var ckRemain = remainSec(ckEl, ckSince, ckDur, ckRun);
     var clockHtml = '<div class="live-clock sportbar-clock' + (ckRun ? " run" : " paused") +
       (ckRemain <= 0 ? " ended" : "") +
