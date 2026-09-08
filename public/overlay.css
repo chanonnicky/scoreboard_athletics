@@ -509,27 +509,30 @@ body.is-offline #offline { opacity: 1; }
    overlay.js แก้สกอร์/นาฬิกา/สถานะในที่ (patchSportbar) — ไม่วูบ ไม่มีเด้ง
    จอดล่าง + แอนิเมชันเลื่อนขึ้น มาจาก .slot-lower / .slot-lower .cg อยู่แล้ว   */
 .sportbar {
-  display: inline-flex; flex-direction: column; align-items: center; gap: 8px;
-  padding: 0 20px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  width: 1500px;
   font-variant-numeric: tabular-nums;
   text-shadow: 0 2px 10px rgba(0,0,0,.75), 0 0 3px rgba(0,0,0,.6);
 }
+/* 1fr | auto | 1fr — ทีมสองข้างกว้างเท่ากันเสมอ สกอร์ตรงกลางเป๊ะ ไม่ว่าชื่อคณะยาวไม่เท่ากัน */
 .sportbar-row {
-  display: flex; align-items: center; justify-content: center; gap: 44px;
+  display: grid; grid-template-columns: 1fr auto 1fr;
+  align-items: center; gap: 40px; width: 100%;
 }
 
 /* ปลายทั้งสองข้าง: ทีมคณะสี (ขีดเส้นใต้สีคณะ ไม่มีกล่องพื้นหลัง) */
 .sportbar-team {
-  display: flex; align-items: center; gap: 18px;
+  display: flex; align-items: center; gap: 18px; min-width: 0;
   padding-bottom: 8px;
   border-bottom: 6px solid var(--house, #888);
 }
-.sportbar-home { text-align: right; }
-.sportbar-away { text-align: left; }
+.sportbar-home { justify-self: end; }
+.sportbar-away { justify-self: start; }
 .sportbar-team.win { border-bottom-width: 8px; }
 .sportbar-team.trail { opacity: .5; }
 .sportbar-name {
-  font-size: 32px; font-weight: 800; line-height: 1; white-space: nowrap;
+  font-size: 32px; font-weight: 800; line-height: 1;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .sportbar-team.win .sportbar-name {
   text-shadow: 0 0 26px var(--house, #fff), 0 3px 12px rgba(0,0,0,.75);
