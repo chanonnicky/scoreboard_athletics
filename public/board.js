@@ -232,7 +232,15 @@
     var cg = board.querySelector(".cg");
     if (!cg) { showCard(cardIdx); return; }
     cg.innerHTML = cards[cardIdx] || "";
-    startPager();
+    var ps = apages();
+    if (ps.length > 1) {
+      startPager();               // หลายหน้าย่อย -> วน .apage ตามปกติ
+    } else {
+      // หน้าเดียว: โชว์ทันทีแบบ "อัปเดตในที่" — ไม่ strip/re-add .show จึงไม่ replay
+      // แอนิเมชันสไลด์แถวเข้าใหม่ (DOM เพิ่งสร้าง + add .show ในเฟรมเดียว = ไม่มี transition)
+      stopPager();
+      if (ps[0]) ps[0].classList.add("show");
+    }
   }
 
   // ---- connection (SSE + poll fallback) -------------------------- //

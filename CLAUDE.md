@@ -124,7 +124,10 @@ image data URL (png/jpg/webp/gif/svg, ≤2MB; base64, *not* multipart, so `serve
 it) — writes `data/uploads/<id>.<ext>` and returns `{url:"/uploads/<file>"}`. `GET /uploads/*`
 serves that dir (traversal-guarded, before the `public/` static fallback). `data/uploads/` is
 gitignored. The `/control` school editor uploads a school logo through this and stores the
-returned URL in `settings.schools[].logo`.
+returned URL in `settings.schools[].logo`. `uploadImage()` in `control.js` **auto-shrinks raster
+logos client-side before upload** — anything over 640px or ~1.6MB is redrawn on a canvas at a
+smaller size, PNG first then WebP (both keep alpha), stepping down until it fits; SVG and
+already-small files pass through untouched, and the server's 2MB cap stays as the backstop.
 
 `onair` still has two slots, `lower` and `full` (kept so templates/overlay stay slot-addressed and
 `/live?slot=lower|full` works), but **only one shows at a time**: the `show` command sets its slot
@@ -158,8 +161,11 @@ state and one operator control:
 | `/scoreboard/<sport>` | board.html | **Scoreboard type 2** — live single-match scoreboard of that sport's `currentId` |
 
 The rotate-all screen only re-renders the visible card when it must (card count changes, or a
-single-card view); on a plain data change it updates `cards[]` silently and lets the rotator pick
-up the new content on its next tick — so it never flashes/resets mid-cycle. `sigOf()` must include
+single-card view); on a plain data change with 2+ cards it updates `cards[]` silently and lets the
+rotator pick up the new content on its next tick — so it never flashes/resets mid-cycle. With a
+**single card** it patches the visible card in place (`refreshCurrentCard()`): swap `cg.innerHTML`
+with **no** `boardIn` and, when the card is one `.apage` (or none), add `.show` synchronously so
+the row slide-in does **not** replay — the values/status just update. `sigOf()` must include
 every field any card reads (it covers `settings.selEventId`, see below) — a plain equality/JSON
 check, not a deep diff, so a field left out silently stops updating.
 
