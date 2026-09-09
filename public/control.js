@@ -1048,12 +1048,18 @@
     // อย่า re-render ทับถ้ากำลังพิมพ์ช่องพอร์ตอยู่
     var ae = document.activeElement;
     if (ae && ae.getAttribute && ae.getAttribute("data-act") === "relay-port" && box.contains(ae)) return;
+    var s = state.settings || {};
+    var pubPort = Number(s.relayPublicPort) > 0 ? Number(s.relayPublicPort)
+      : ((d && (d.publicPort || d.ingestPort)) || 1935);
+    var portField =
+      '<label class="field" style="max-width:260px">พอร์ตภายนอก (ตาม port-forward)' +
+        '<input type="number" min="1" max="65535" data-act="relay-port" value="' + pubPort + '"></label>' +
+      '<p class="muted" style="margin-top:4px">ใส่เลขที่ forward มาจากภายนอก (ค่านี้เก็บในเว็บ ไม่แตะ mediamtx.yml)</p>';
     if (!d || !d.configured) {
-      box.innerHTML = '<p class="muted">ยังไม่ได้ตั้งค่า relay — รัน <code>get-relay.ps1</code> แล้วแก้ <code>mediamtx.yml</code> (ดู README)</p>';
+      box.innerHTML = portField +
+        '<p class="muted" style="margin-top:8px">ยังไม่ได้ติดตั้ง relay บนเครื่องนี้ — รัน <code>get-relay.ps1</code> แล้ว <code>start.bat</code> · จากนั้นการ์ดจะโชว์ URL สำหรับ OBS ทั้งสองตัว (ดู README)</p>';
       return;
     }
-    var s = state.settings || {};
-    var pubPort = Number(s.relayPublicPort) > 0 ? Number(s.relayPublicPort) : (d.publicPort || d.ingestPort);
     var base = "rtmp://" + location.hostname + ":" + pubPort;
     var warn = function (t) { return '<p class="relay-warn">⚠ ' + esc(t) + "</p>"; };
     var urlRow = function (label, id, val) {
@@ -1067,10 +1073,7 @@
     else st = '<span class="relay-pill on">● กำลังรับสัญญาณ</span> <span class="muted">— ' + esc(fmtBytes(d.live.bytesReceived)) +
       " · OBS ปลายทางต่ออยู่ " + (d.live.readers || 0) + "</span>";
     box.innerHTML =
-      '<label class="field" style="max-width:260px">พอร์ตภายนอก (ตาม port-forward)' +
-        '<input type="number" min="1" max="65535" data-act="relay-port" value="' + pubPort + '"></label>' +
-      '<p class="muted" style="margin-top:4px">MediaMTX ฟังที่ ' + (d.ingestPort || 1935) +
-        ' — ใส่เลขที่ forward มาจากภายนอก (ค่านี้เก็บในเว็บ ไม่แตะ mediamtx.yml)</p>' +
+      portField +
 
       '<h3 style="margin:16px 0 0">1) OBS หน้างาน — ส่งเข้า</h3>' +
       '<p class="muted">Settings → Stream → Service = Custom</p>' +
