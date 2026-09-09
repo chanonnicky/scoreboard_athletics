@@ -612,67 +612,77 @@ body.is-offline #offline { opacity: 1; }
 }
 
 /* ==== score bug — กราฟิกเล็กมุมบนซ้าย โชว์คะแนน + นาฬิกานับถอยหลังตลอดเวลา ====
-   ช่อง slot-bug (อิสระ ค้างจอ) · แก้ค่าในที่ (patchScoreBug) จุด LIVE ไม่รีสตาร์ต    */
+   ช่อง slot-bug (อิสระ ค้างจอ) · แก้ค่าในที่ (patchScoreBug) จุด LIVE ไม่รีสตาร์ต
+   สีทุกอย่างอิงตัวแปรธีม: พื้น var(--panel), เส้น var(--stroke), ข้อความ = สืบทอด
+   สีฐานของธีม, คะแนน = ชิปสีทีม var(--house)/--ink (จับคู่คอนทราสต์มาแล้ว)
+   -> อ่านออกทั้งธีมสว่างและมืด · ห้ามฮาร์ดโค้ดสีข้อความสว่าง                          */
 .scorebug {
-  width: 420px;
+  width: 404px;
   background: var(--panel);
-  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 16px 44px rgba(0, 0, 0, .5);
+  box-shadow: 0 22px 55px -14px rgba(0, 0, 0, .6);
   font-variant-numeric: tabular-nums;
 }
+/* แถบสองสีบนสุด = สีของสองทีม (บอกว่าใครแข่งกับใคร) — ตั้งจาก inline --sb-home/away */
+.scorebug::before {
+  content: ""; display: block; height: 4px;
+  background: linear-gradient(90deg,
+    var(--sb-home, #888) 0 50%, var(--sb-away, #888) 50% 100%);
+}
 .scorebug-head {
-  padding: 8px 18px;
-  font-size: 18px; font-weight: 700; letter-spacing: 1px;
-  background: rgba(255, 255, 255, .08);
+  padding: 9px 16px 7px;
+  font-size: 14px; font-weight: 800; letter-spacing: 2px; opacity: .7;
   border-bottom: 1px solid var(--stroke);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .scorebug-team {
-  display: flex; align-items: center; gap: 14px;
-  padding: 12px 18px;
-  border-left: 8px solid var(--house, #666);
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 13px;
+  padding: 11px 15px;
+  border-left: 5px solid var(--house, #666);
 }
 .scorebug-team + .scorebug-team { border-top: 1px solid var(--stroke); }
-.scorebug-team.trail { opacity: .55; }
-.scorebug-logo { width: 42px; height: 42px; object-fit: contain; flex: none; }
+.scorebug-team.trail { opacity: .5; }
+.scorebug-logo {
+  width: 38px; height: 38px; object-fit: contain; flex: none;
+  background: #fff; border-radius: 9px; padding: 3px;
+}
 .scorebug-name {
-  flex: 1; min-width: 0;
-  font-size: 26px; font-weight: 700; line-height: 1.05;
+  min-width: 0;
+  font-size: 24px; font-weight: 800; line-height: 1.1;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.scorebug-team.win .scorebug-name { color: var(--house, #fff); }
-.h-yellow.scorebug-team.win .scorebug-name { color: #ffd54a; }
-.comp-lightbg.scorebug-team.win .scorebug-name { color: #ffd54a; }
 .scorebug-score {
-  flex: none; font-size: 34px; font-weight: 800; line-height: 1;
-  min-width: 44px; text-align: right;
+  flex: none; min-width: 46px;
+  padding: 3px 11px; border-radius: 10px;
+  font-size: 27px; font-weight: 800; line-height: 1.15; text-align: center;
+  background: var(--house, #666); color: var(--ink, #fff);
 }
-.scorebug-team.win .scorebug-score { color: #ffd54a; }
+.scorebug-team.win .scorebug-score { box-shadow: 0 3px 16px -3px var(--house, #666); }
 .scorebug-foot {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 9px 18px;
-  background: rgba(0, 0, 0, .28);
+  padding: 8px 15px;
   border-top: 1px solid var(--stroke);
 }
 .scorebug-status {
-  display: inline-flex; align-items: center; gap: 8px;
-  font-size: 16px; font-weight: 800; letter-spacing: 1.5px; color: #ff6a6a;
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 13px; font-weight: 800; letter-spacing: 2.5px;
 }
+.scorebug-status .live-dot { width: 9px; height: 9px; }
 .scorebug-done-word { display: none; }
 .scorebug[data-done="1"] .live-dot,
 .scorebug[data-done="1"] .scorebug-live-word { display: none; }
 .scorebug[data-done="1"] .scorebug-done-word { display: inline; }
-.scorebug[data-done="1"] .scorebug-status { color: #cfd6df; }
+.scorebug[data-done="1"] .scorebug-status { opacity: .5; }
 .scorebug .live-clock {
-  font-size: 24px; font-weight: 800; letter-spacing: 1px;
-  padding: 2px 12px; border-radius: 8px;
-  background: rgba(255, 255, 255, .08); border: 1px solid var(--stroke);
+  font-size: 21px; font-weight: 800; letter-spacing: 1px; color: inherit;
+  padding: 3px 12px; border-radius: 8px;
+  background: rgba(128, 128, 128, .16); border: 1px solid var(--stroke);
 }
-.scorebug .live-clock.run { color: #eafff2; border-color: rgba(120, 235, 170, .4); }
-.scorebug .live-clock.ended {
-  color: #ff6a6a; border-color: rgba(233, 60, 60, .5); background: rgba(233, 60, 60, .16);
-}
+.scorebug .live-clock.run { border-color: rgba(46, 157, 84, .55); }
+.scorebug .live-clock.paused { opacity: .5; }
+.scorebug .live-clock.ended { color: #fff; background: #e5342b; border-color: transparent; }
 
 /* ==== chart — กราฟเหรียญรางวัล (นับ 🥇🥈🥉 ต่อคณะ/โรงเรียน) ==============
    สีแท่ง = สี competitor (var(--house)/--ink เหมือน .rchip) — โหมด house จาก .h-<key>,

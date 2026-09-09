@@ -556,7 +556,10 @@ window.T = (function () {
       "</div>";
     }
 
-    return '<div class="scorebug" data-done="' + (m.done ? 1 : 0) + '">' +
+    var sbStyle = ' style="--sb-home:' + comp(state, m.home).color +
+      ";--sb-away:" + comp(state, m.away).color + '"';
+
+    return '<div class="scorebug" data-done="' + (m.done ? 1 : 0) + '"' + sbStyle + ">" +
       '<div class="scorebug-head">' + esc(sportNm) + "</div>" +
       teamRow("home", m.home, hw, aw) +
       teamRow("away", m.away, aw, hw) +
