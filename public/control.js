@@ -441,8 +441,9 @@
     var nEv = (state.events || []).length;
     var lo = (state.onair && state.onair.lower) || {};
     var fu = (state.onair && state.onair.full) || {};
+    var bg = (state.onair && state.onair.bug) || {};
     var top3On = !!(lo.visible && lo.template === "top3");
-    var sportBarOn = !!(lo.visible && lo.template === "sportLower");
+    var bugSport = (bg.visible && bg.template === "sportLower") ? bg.sport : null;
     var schedOn = !!(fu.visible && fu.template === "schedule");
     var resOn = !!(fu.visible && fu.template === "results");
     var sportOn = !!(fu.visible && fu.template === "sportMatches");
@@ -466,11 +467,10 @@
         cmdBtn("show-full-sportlive", onLive, "สด " + nm, dataSport) +
       "</div>";
     }).join("");
-    // แถบล่าง: ปุ่มสกอร์สดของแต่ละกีฬา (คู่ที่ตั้ง "สด" อยู่) — ขึ้นพร้อมเต็มจอได้
-    var barBtns = (state.sports || []).map(function (sp) {
+    // Score bug: แถบสกอร์สดต่อกีฬา — ช่องอิสระ ค้างจอพร้อมกับแถบล่าง/เต็มจอได้ (ทีละ 1 กีฬา)
+    var bugBtns = (state.sports || []).map(function (sp) {
       var nm = esc((sp.icon ? sp.icon + " " : "") + (sp.name || sp.key));
-      var on = !!(lo.visible && lo.template === "sportLower" && lo.sport === sp.key);
-      return cmdBtn("show-lower-sportbar", on, "สด " + nm, ' data-sport="' + esc(sp.key) + '"');
+      return cmdBtn("show-bug", bugSport === sp.key, "สด " + nm, ' data-sport="' + esc(sp.key) + '"');
     }).join("");
 
     panel.innerHTML =
@@ -484,6 +484,7 @@
           '<div class="onair-slots">' +
             onairSlotHtml("lower", "แถบล่าง") +
             onairSlotHtml("full", "เต็มจอ") +
+            onairSlotHtml("bug", "Score bug") +
           "</div>" +
         "</div>" +
 
@@ -505,12 +506,11 @@
 
         '<div class="card">' +
           '<h2 style="margin:0 0 4px">สั่งขึ้นจอ</h2>' +
-          '<p class="muted" style="margin:0 0 10px">แถบล่างกับเต็มจอขึ้นพร้อมกันได้ — ในช่องเดียวกัน ขึ้นอันใหม่ อันเก่าจะลงเอง</p>' +
+          '<p class="muted" style="margin:0 0 10px">“แถบล่าง” กับ “เต็มจอ” ขึ้นได้ทีละอันเดียว (ขึ้นอันใหม่ อันเดิมลงเอง) · “Score bug” เป็นช่องอิสระ ค้างจอพร้อมกันได้</p>' +
           "<h3>แถบล่าง</h3>" +
           '<div class="cmd-grid">' +
             cmdBtn("show-lower-top3", top3On, "อันดับ 1–3", ' style="min-width:170px"') +
-            barBtns +
-            '<button class="btn" data-act="hide-lower"' + (top3On || sportBarOn ? "" : " disabled") + ">ซ่อนแถบล่าง</button>" +
+            '<button class="btn" data-act="hide-lower"' + (top3On ? "" : " disabled") + ">ซ่อนแถบล่าง</button>" +
           "</div>" +
           "<h3>เต็มจอ</h3>" +
           '<div class="cmd-grid">' +
@@ -521,6 +521,14 @@
           '<div class="row" style="margin-top:10px">' +
             '<button class="btn" data-act="hide-full"' + (schedOn || resOn || sportOn || sportLiveOn ? "" : " disabled") + ">■ ซ่อนเต็มจอ</button>" +
           "</div>" +
+          ((state.sports || []).length
+            ? "<h3>Score bug (แถบสกอร์สด — ค้างจอ)</h3>" +
+              '<p class="muted" style="margin:-4px 0 8px">เลือกกีฬาที่จะโชว์สกอร์สดค้างไว้ (ทีละ 1 กีฬา · กดกีฬาเดิมซ้ำ = ปิด) — ต้องตั้ง “สด” ให้คู่นั้นในหน้าจดคะแนนก่อน</p>' +
+              '<div class="cmd-grid">' +
+                bugBtns +
+                '<button class="btn" data-act="hide-bug"' + (bugSport ? "" : " disabled") + ">ซ่อน Score bug</button>" +
+              "</div>"
+            : "") +
         "</div>" +
 
         '<div class="card">' +
@@ -1135,10 +1143,17 @@
       if (!eid) return toast("เลือกรายการก่อน", true);
       cmd({ action: "show", slot: "lower", template: "top3", eventId: eid });
     },
-    "show-lower-sportbar": function (b) {
-      cmd({ action: "show", slot: "lower", template: "sportLower", eventId: null, sport: b.dataset.sport });
+    "show-bug": function (b) {
+      var k = b.dataset.sport;
+      var cur = (state.onair && state.onair.bug) || {};
+      if (cur.visible && cur.template === "sportLower" && cur.sport === k) {
+        cmd({ action: "hide", slot: "bug" });           // กดกีฬาเดิมซ้ำ = ปิด score bug
+      } else {
+        cmd({ action: "show", slot: "bug", template: "sportLower", eventId: null, sport: k });
+      }
     },
-    "hide-lower": function () { cmd({ action: "hideAll" }); },
+    "hide-bug": function () { cmd({ action: "hide", slot: "bug" }); },
+    "hide-lower": function () { cmd({ action: "hideMain" }); },
     "show-full-results": function () {
       cmd({ action: "show", slot: "full", template: "results", eventId: null });
     },
@@ -1151,7 +1166,7 @@
     "show-full-schedule": function () {
       cmd({ action: "show", slot: "full", template: "schedule", eventId: selectedEventId() });
     },
-    "hide-full": function () { cmd({ action: "hideAll" }); },
+    "hide-full": function () { cmd({ action: "hideMain" }); },
 
     "preview-toggle": function () {
       var c = localStorage.getItem("cg_preview_collapsed") === "1";

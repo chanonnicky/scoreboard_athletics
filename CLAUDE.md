@@ -77,7 +77,8 @@ there are no automated tests. Two reliable checks:
 Windows default) are independent reimplementations of the *same* HTTP API and behavior. Any
 change to routes, command handling, or the state model must be made in **both** files, or Windows
 and macOS deployments diverge. They are currently in parity (routes incl. `/board`, `/uploads/*`;
-commands incl. `setSport`/`deleteSport`/`setMode`; `POST /api/upload`; the id-dedupe +
+commands incl. `setSport`/`deleteSport`/`setMode`/`hideMain` + `show`'s lower⇄full mutual
+exclusion; `POST /api/upload`; the id-dedupe +
 `football`→`sports` + `football`→`futsal` rename migration on load, incl. forcing the sport's
 display name to `ฟุตซอล`, plus defaulting `settings.mode` to `"house"`; and the **uploads GC** —
 `setSettings` (when it touches `schools`/`logo`/`houseLogos`) and `resetState` snapshot the
@@ -133,11 +134,16 @@ logos client-side before upload** — anything over 640px or ~1.6MB is redrawn o
 smaller size, PNG first then WebP (both keep alpha), stepping down until it fits; SVG and
 already-small files pass through untouched, and the server's 2MB cap stays as the backstop.
 
-`onair` still has two slots, `lower` and `full` (kept so templates/overlay stay slot-addressed and
-`/live?slot=lower|full` works), but **only one shows at a time**: the `show` command sets its slot
-`visible` *and forces every other slot hidden* (both `server.py` and `server.ps1`). Pushing a new
-template into a slot replaces whatever that slot held; `hideAll` clears both. On `/control` every
-hide button (`hide-lower`, `hide-full`, `hide-all`) sends `hideAll`.
+`onair` has three slots: `lower`, `full`, and `bug` (score bug). **`lower` and `full` are the
+"main graphics" and only one shows at a time** — the `show` command, when `slot` is `lower`/`full`,
+forces the *other* of the two hidden (both `server.py` and `server.ps1`); pushing a new template
+into a slot still replaces whatever that slot held. **`bug` is independent and persistent** — it
+stays up alongside a main graphic, and `show`/`hide` on `bug` (or a main slot) never disturbs the
+other. `bug` always carries `template:"sportLower"` + a `sport` key; it renders in its own
+`#slot-bug` (`overlay.js` `SLOTS` + `.slot-bug` at the bottom edge). `hideMain` clears just
+`lower`+`full`; `hideAll` clears all three. On `/control`: `hide-lower`/`hide-full` → `hideMain`,
+`hide-all` (■ ลงจอทั้งหมด) → `hideAll`, the per-sport score-bug buttons toggle the `bug` slot
+(click the active sport again to hide it), `hide-bug` → `hide {slot:"bug"}`.
 
 Because the whole blob round-trips, a running server holds authoritative state in memory and will
 **overwrite `data/state.json` on the next command**. Editing `state.json` by hand while a server
@@ -289,9 +295,10 @@ control.js): match CRUD, "ตั้งสด" to set `currentId`, and +/- / numb
 via the `setSport` command (whole-sport upsert; debounced or immediate for +/-). Live/Scoreboard read
 it: `onair[slot].sport` carries the key on Live's `show`; both `sportMatches` and `sportLive` are
 pushable to `/live`'s full slot (`renderLive()`'s per-sport button pair, `show-full-sport` /
-`show-full-sportlive`), `sportLower` is pushable to Live's **lower** slot (`renderLive()`'s
-per-sport `show-lower-sportbar` buttons; like every slot it's mutually exclusive with the full
-slot now — see the `onair` note above), and `/scoreboard/<sport>` always renders `sportLive`. `load_state` migrates a legacy `state.football`
+`show-full-sportlive`), `sportLower` is the **score bug** — pushed to Live's independent
+persistent `bug` slot via `renderLive()`'s per-sport `show-bug` buttons (one sport at a time,
+stays up with a main graphic — see the `onair` note above), and `/scoreboard/<sport>` always
+renders `sportLive`. `load_state` migrates a legacy `state.football`
 object into `state.sports[0]`, and renames the old `football` sport (key + name + `onair` refs) to
 `futsal` / ฟุตซอล (name forced even when the key is already `futsal`).
 

@@ -29,7 +29,7 @@
   var stage = document.getElementById("stage");
   stage.style.transform = "scale(" + scale + ")";
 
-  var SLOTS = ["full", "lower"];
+  var SLOTS = ["full", "lower", "bug"];
   var last = {}; // slot -> { template, eventId, visible, sig }
 
   // ---- เทมเพลตแบบแบ่งหน้า (results): สลับ .apage อัตโนมัติทุก 10 วิ ---- //

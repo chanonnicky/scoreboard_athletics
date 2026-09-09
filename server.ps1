@@ -211,12 +211,21 @@ $Lib = {
           $d = New-Dict
           $d["template"] = $cmd["template"]; $d["eventId"] = $cmd["eventId"]; $d["sport"] = $cmd["sport"]; $d["visible"] = $true
           $onair[$slot] = $d
-          # show one slot at a time: bringing up this slot hides the other (hideAll clears both)
-          foreach ($k in @($onair.Keys)) { if ($k -ne $slot) { $onair[$k]["visible"] = $false } }
+          # main graphics (lower/full) show one at a time; 'bug' (score bug) is an independent
+          # persistent slot (hideAll still clears everything)
+          if ($slot -eq "lower" -or $slot -eq "full") {
+            foreach ($k in @($onair.Keys)) {
+              if (($k -eq "lower" -or $k -eq "full") -and $k -ne $slot) { $onair[$k]["visible"] = $false }
+            }
+          }
         }
         "hide" {
           $slot = [string]$cmd["slot"]
           if ($onair.ContainsKey($slot)) { $onair[$slot]["visible"] = $false }
+        }
+        "hideMain" {
+          # hide only the main graphics (lower/full) - the score bug stays up
+          foreach ($k in @("lower", "full")) { if ($onair.ContainsKey($k)) { $onair[$k]["visible"] = $false } }
         }
         "hideAll" {
           foreach ($k in @($onair.Keys)) { $onair[$k]["visible"] = $false }

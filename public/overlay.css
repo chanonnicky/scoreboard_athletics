@@ -56,6 +56,8 @@ body.board, body.board * {
 .slot { position: absolute; }
 .slot-full { inset: 0; }
 .slot-lower { left: 0; right: 0; bottom: 96px; }
+/* score bug — ช่องอิสระ ค้างจอได้พร้อมกับ full/lower (ชิดล่างสุด) */
+.slot-bug { left: 0; right: 0; bottom: 28px; }
 
 #offline {
   position: fixed; left: 14px; bottom: 12px;
@@ -96,13 +98,16 @@ body.is-offline #offline { opacity: 1; }
 
 /* แถบล่าง: ทุก .cg ซ้อนตำแหน่งเดียวกัน (กลางแนวนอน ชิดล่าง) — ตอนสลับเนื้อหา
    อันเก่ากับอันใหม่จึง cross-fade ทับกัน ไม่เลื่อนไปอยู่ข้าง ๆ กัน */
-.slot-lower .cg {
+.slot-lower .cg,
+.slot-bug .cg {
   position: absolute; left: 50%; bottom: 0;
   opacity: 0; transform: translate(-50%, 40px);
   transition: opacity var(--anim) ease, transform var(--anim) cubic-bezier(.2,.7,.2,1);
 }
-.slot-lower .cg.in  { opacity: 1; transform: translate(-50%, 0); }
-.slot-lower .cg.out { opacity: 0; transform: translate(-50%, 40px); }
+.slot-lower .cg.in,
+.slot-bug .cg.in  { opacity: 1; transform: translate(-50%, 0); }
+.slot-lower .cg.out,
+.slot-bug .cg.out { opacity: 0; transform: translate(-50%, 40px); }
 
 /* full screen: การ์ดทั้งสอง (schedule / results) วางทับกันกลางจอ
    ตอนสลับจึงเป็น cross-fade ลื่น ๆ ไม่มี layout กระโดด */

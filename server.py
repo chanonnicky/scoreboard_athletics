@@ -220,15 +220,23 @@ def apply_command(cmd):
                 "sport": cmd.get("sport"),
                 "visible": True,
             }
-            # แสดงได้ทีละช่องเดียว — ขึ้นช่องนี้ = ซ่อนช่องอื่น (hideAll เคลียร์ทั้งหมด)
-            for s_key, s_val in onair.items():
-                if s_key != slot and isinstance(s_val, dict):
-                    s_val["visible"] = False
+            # กราฟิกหลัก (lower/full) แสดงได้ทีละช่องเดียว — ขึ้นช่องนี้ = ซ่อนอีกช่อง
+            # 'bug' (score bug) เป็นช่องอิสระ ค้างจอพร้อมกันได้ (hideAll เคลียร์ทั้งหมด)
+            if slot in ("lower", "full"):
+                for s_key, s_val in onair.items():
+                    if s_key in ("lower", "full") and s_key != slot and isinstance(s_val, dict):
+                        s_val["visible"] = False
 
         elif action == "hide":
             slot = cmd["slot"]
             if slot in onair:
                 onair[slot]["visible"] = False
+
+        elif action == "hideMain":
+            # ซ่อนเฉพาะกราฟิกหลัก (lower/full) — score bug ค้างต่อ
+            for k in ("lower", "full"):
+                if isinstance(onair.get(k), dict):
+                    onair[k]["visible"] = False
 
         elif action == "hideAll":
             for s in onair.values():
