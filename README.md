@@ -157,8 +157,11 @@ OBS (หน้างาน) ──RTMP push──► เครื่องรี
      · SRT: เปลี่ยน `-f flv rtmp://...` เป็น `-f mpegts srt://ROOM_HOST:9000?streamid=KEY&latency=200000`
      (ทนแพ็กเก็ตหายบน WAN ดีกว่า RTMP · ห้ามใส่ยัติภังค์/เว้นวรรค — MediaMTX ไม่ผ่าน shell)
    - จะอัดไฟล์สำรองด้วย: `record: false` → `true` (ได้ไฟล์ใน `data\rec\` ~3.6 GB/ชม. ที่ 8 Mbps)
+   - ถ้า forward พอร์ตภายนอกเป็นเลขอื่น (เช่น 7445 → เครื่องนี้ 1935): แก้บรรทัดคอมเมนต์
+     `# cglive-public-rtmp-port: 1935` ให้เป็นเลขภายนอก — การ์ด RTMP relay ใน `/control`
+     จะโชว์เลขนั้นให้ OBS หน้างาน (MediaMTX ยังฟังที่ `rtmpAddress` เหมือนเดิม)
 3. `setup.bat` — เปิด firewall พอร์ต **1935** ให้ด้วยแล้ว (รันครั้งเดียว) + ทำ **port-forward
-   1935/tcp** ที่เราเตอร์/cloud มายังเครื่องนี้
+   มาที่ 1935/tcp ของเครื่องนี้** ที่เราเตอร์/cloud (พอร์ตภายนอกจะเป็นเลขอะไรก็ได้)
 4. `start.bat` — ถ้าเจอ `bin\mediamtx\mediamtx.exe` จะเปิด relay ในหน้าต่าง "CG Relay" ให้เอง
    (ปิด relay = ปิดหน้าต่างนั้น)
 
@@ -168,7 +171,7 @@ OBS (หน้างาน) ──RTMP push──► เครื่องรี
 > โชว์อยู่ในหน้า **`/control` → แท็บ "ตั้งค่า" → การ์ด "RTMP relay"** กดคัดลอกได้เลย
 
 Settings → Stream → Service **Custom**
-- Server: `rtmp://<ip-รีโมต>:1935`   (ไม่มี `/live` ต่อท้าย)
+- Server: `rtmp://<ip-รีโมต>:<พอร์ตภายนอก>`   (ไม่มี `/live` ต่อท้าย · ก๊อปจากการ์ดใน `/control` ได้เลย)
 - Stream Key: `live?user=publish&pass=<รหัสที่ตั้งใน mediamtx.yml>`
 
 Settings → Output (โหมด Advanced)

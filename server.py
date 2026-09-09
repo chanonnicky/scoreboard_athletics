@@ -189,6 +189,8 @@ def _relay_config():
         return None
     m = re.search(r"^\s*rtmpAddress:\s*\S*?:(\d+)", txt, re.M)
     port = int(m.group(1)) if m else 1935
+    pm = re.search(r"^\s*#\s*cglive-public-rtmp-port:\s*(\d+)", txt, re.M)
+    public_port = int(pm.group(1)) if pm else port
     um = re.search(r"user:\s*(\S+)\s*\n\s*pass:\s*([^\s#]*)", txt)
     user = um.group(1) if um else "publish"
     pw = um.group(2) if um else ""
@@ -197,6 +199,7 @@ def _relay_config():
     return {
         "configured": True,
         "ingestPort": port,
+        "publicPort": public_port,
         "publishUser": user,
         "publishPass": pw,
         "publishKey": "live?user=%s&pass=%s" % (user, pw),

@@ -1049,7 +1049,7 @@
       box.innerHTML = '<p class="muted">ยังไม่ได้ตั้งค่า relay — รัน <code>get-relay.ps1</code> แล้วแก้ <code>mediamtx.yml</code> (ดู README)</p>';
       return;
     }
-    var ingest = "rtmp://" + location.hostname + ":" + d.ingestPort;
+    var ingest = "rtmp://" + location.hostname + ":" + (d.publicPort || d.ingestPort);
     var warn = function (t) { return '<p class="relay-warn">⚠ ' + esc(t) + "</p>"; };
     var urlRow = function (label, id, val) {
       return '<div class="field" style="margin-top:8px">' + esc(label) +

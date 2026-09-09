@@ -620,6 +620,8 @@ $Lib = {
     $txt = [System.IO.File]::ReadAllText($yml, [System.Text.Encoding]::UTF8)
     $port = 1935
     if ($txt -match '(?m)^\s*rtmpAddress:\s*\S*?:(\d+)') { $port = [int]$Matches[1] }
+    $publicPort = $port
+    if ($txt -match '(?m)^\s*#\s*cglive-public-rtmp-port:\s*(\d+)') { $publicPort = [int]$Matches[1] }
     $user = 'publish'; $pass = ''
     if ($txt -match 'user:\s*(\S+)\s*\r?\n\s*pass:\s*([^\s#]*)') { $user = $Matches[1]; $pass = $Matches[2] }
     $dest = ''
@@ -629,6 +631,7 @@ $Lib = {
       running       = $false
       live          = $null
       ingestPort    = $port
+      publicPort    = $publicPort
       publishUser   = $user
       publishPass   = $pass
       publishKey    = ("live?user={0}&pass={1}" -f $user, $pass)

@@ -14,6 +14,13 @@
 # >>> destination URL  (3) optionally flip record: to true                     <<<
 ###############################################################################
 
+# Public port the venue OBS actually connects to. MediaMTX still listens on the
+# rtmpAddress port below; set this only if the router forwards a DIFFERENT
+# external port to it (e.g. external 7445 -> this box :1935). The /control
+# "RTMP relay" card shows this number. Leave equal to the rtmpAddress port if
+# there is no port remap. (Comment line - MediaMTX ignores it.)
+# cglive-public-rtmp-port: 1935
+
 logLevel: info
 logDestinations: [stdout]
 
