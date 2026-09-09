@@ -45,6 +45,25 @@
     return t === "sportMatches" || t === "sportLive" || t === "sportLower";
   }
 
+  // ธีมแสดงผล (สกินพื้นผิว บนจอ Live / Scoreboard) — เลือกในแท็บ "ตั้งค่า"
+  var THEME_OPTS = [
+    ["default", "ปกติ (ทึบ)"],
+    ["glass", "🧊 Liquid Glass"],
+    ["clay", "🟤 Claymorphism"],
+    ["neu", "⚪ Neumorphism"],
+    ["retro", "🌆 Retro-Futurism"],
+    ["editorial", "📰 Editorial / Magazine"],
+    ["broken", "📐 Asymmetrical / Broken Grid"],
+    ["bauhaus", "🔺 Bauhaus"],
+    ["techno", "🖤 Dark Techno / Techwear"],
+    ["popart", "💥 Pop Art"],
+    ["illustrative", "✏️ Illustrative"],
+  ];
+  function themeLabel(slug) {
+    for (var i = 0; i < THEME_OPTS.length; i++) if (THEME_OPTS[i][0] === slug) return THEME_OPTS[i][1];
+    return slug;
+  }
+
   // ---- token ------------------------------------------------------- //
   tokenInput.value = localStorage.getItem("cg_token") || "";
   tokenInput.addEventListener("input", function () {
@@ -425,7 +444,7 @@
     var sportOn = !!(fu.visible && fu.template === "sportMatches");
     var sportLiveOn = !!(fu.visible && fu.template === "sportLive");
     var collapsed = localStorage.getItem("cg_preview_collapsed") === "1";
-    var glassPrev = (state.settings && state.settings.theme) === "glass";
+    var curTheme = (state.settings && state.settings.theme) || "default";
 
     function cmdBtn(act, on, label, extra) {
       return '<button class="btn primary' + (on ? " is-live" : "") + '" data-act="' + act + '"' + (extra || "") + ">" +
@@ -511,13 +530,12 @@
         '<div class="row" style="justify-content:space-between;align-items:center">' +
           '<div class="preview-label">พรีวิว overlay (โปร่งใส = ลายตาราง)</div>' +
           '<div class="row" style="gap:6px">' +
-            '<button class="btn sm' + (glassPrev ? " is-live" : "") + '" data-act="theme-toggle" title="สลับธีมทั้งงาน (ปกติ / liquid glass)">' + (glassPrev ? "🧊 แก้ว" : "ปกติ") + "</button>" +
             '<button class="btn sm" data-act="preview-toggle">' + (collapsed ? "แสดงพรีวิว" : "ซ่อนพรีวิว") + "</button>" +
           "</div>" +
         "</div>" +
         (collapsed ? "" :
-          '<div class="preview"><iframe src="/live?transport=poll' + (glassPrev ? "&theme=glass" : "&theme=default") + '" title="preview"></iframe></div>' +
-          '<div class="preview-label">มุมมองนี้อัปเดตสดเหมือนที่ออกใน OBS/vMix' + (glassPrev ? " · ธีม 🧊 แก้ว" : "") + "</div>") +
+          '<div class="preview"><iframe src="/live?transport=poll&theme=' + encodeURIComponent(curTheme) + '" title="preview"></iframe></div>' +
+          '<div class="preview-label">มุมมองนี้อัปเดตสดเหมือนที่ออกใน OBS/vMix' + (curTheme !== "default" ? " · ธีม " + esc(themeLabel(curTheme)) : "") + " · เปลี่ยนธีมที่แท็บตั้งค่า</div>") +
       "</div>" +
 
       "</div>";
@@ -966,7 +984,7 @@
     var s = state.settings || {};
     var origin = location.origin;
     var isSc = isSchool();
-    var isGlass = s.theme === "glass";
+    var themeVal = s.theme || "default";
     panel.innerHTML =
       '<div class="card"><h2>ตั้งค่าทั่วไป</h2>' +
         '<div class="field" style="max-width:560px">โหมดการแข่งขัน' +
@@ -976,13 +994,14 @@
           "</div>" +
           '<p class="muted" style="margin-top:6px">สลับโหมดจะสลับชุดข้อมูลทั้งหมด (รายการ / ผล / แมตช์) — ข้อมูลอีกชุดถูกเก็บไว้ กลับมาเหมือนเดิมเมื่อสลับกลับ</p>' +
         "</div>" +
-        '<div class="field" style="max-width:560px;margin-top:12px">ธีมแสดงผล (ทุกจอ Live / Scoreboard)' +
-          '<div class="mode-toggle">' +
-            '<button class="btn' + (isGlass ? "" : " is-live") + '" data-act="theme-default"' + (isGlass ? "" : " disabled") + ">ปกติ</button>" +
-            '<button class="btn' + (isGlass ? " is-live" : "") + '" data-act="theme-glass"' + (isGlass ? " disabled" : "") + ">🧊 Liquid Glass</button>" +
-          "</div>" +
-          '<p class="muted" style="margin-top:6px">มีผลกับทุกจอทันที · ธีมแก้วต้องใช้ OBS / vMix รุ่นใหม่ (backdrop-filter) · เติม <code>?theme=glass</code> หรือ <code>?theme=default</code> ต่อท้าย URL เพื่อบังคับเฉพาะจอนั้น</p>' +
-        "</div>" +
+        '<label class="field" style="max-width:420px;margin-top:12px">ธีมแสดงผล (ทุกจอ Live / Scoreboard)' +
+          '<select id="setTheme" data-act="theme-set">' +
+            THEME_OPTS.map(function (o) {
+              return '<option value="' + o[0] + '"' + (o[0] === themeVal ? " selected" : "") + ">" + esc(o[1]) + "</option>";
+            }).join("") +
+          "</select>" +
+          '<p class="muted" style="margin-top:6px">มีผลกับทุกจอ Live / Scoreboard ทันที (หน้าคุม/จดคะแนนไม่เปลี่ยน) · 🧊 Liquid Glass ต้องใช้ OBS / vMix รุ่นใหม่ (backdrop-filter) ธีมอื่นไม่ต้อง · เติม <code>?theme=&lt;ชื่อธีม&gt;</code> หรือ <code>?theme=default</code> ต่อท้าย URL เพื่อบังคับเฉพาะจอนั้น</p>' +
+        "</label>" +
         '<label class="field" style="max-width:360px;margin-top:12px">ชื่องาน (แสดงบน CG)<input type="text" id="setMeet" value="' + esc(s.meetTitle || "") + '"></label>' +
         '<label class="field" style="max-width:420px;margin-top:12px">โลโก้ส่วนกลาง (พาธ/URL — เว้นว่าง = ไม่แสดง)' +
           '<input type="text" id="setLogo" value="' + esc(s.logo == null ? "" : s.logo) + '" placeholder="/pictures/logo.png"></label>' +
@@ -1005,10 +1024,9 @@
           '<a href="/live?slot=lower" target="_blank">/live?slot=lower &nbsp;— เฉพาะแถบล่าง</a>' +
           '<a href="/live?slot=full" target="_blank">/live?slot=full &nbsp;— เฉพาะเต็มจอ</a>' +
           '<a href="/live?transport=poll" target="_blank">/live?transport=poll &nbsp;— ถ้าเน็ตบล็อก SSE</a>' +
-          '<a href="/live?theme=glass" target="_blank">/live?theme=glass &nbsp;— บังคับธีม 🧊 แก้ว (ดูเทียบ ไม่แตะค่าที่ตั้งไว้)</a>' +
-          '<a href="/live?theme=default" target="_blank">/live?theme=default &nbsp;— บังคับธีมปกติ</a>' +
+          '<a href="/live?theme=' + encodeURIComponent(themeVal === "default" ? "glass" : "default") + '" target="_blank">/live?theme=… &nbsp;— บังคับธีมเฉพาะจอนี้ (ดูเทียบ ไม่แตะค่าที่ตั้งไว้)</a>' +
         "</div>" +
-        '<p class="muted" style="margin-top:10px">ตั้งขนาด Browser Source / Web Input เป็น 1920×1080 · ธีมใช้ตามที่ตั้งไว้ด้านบน — <code>?theme=glass</code>/<code>?theme=default</code> ต่อท้าย URL = บังคับเฉพาะจอนั้น</p>' +
+        '<p class="muted" style="margin-top:10px">ตั้งขนาด Browser Source / Web Input เป็น 1920×1080 · ธีมใช้ตามที่ตั้งไว้ด้านบน — เติม <code>?theme=&lt;ชื่อธีม&gt;</code> หรือ <code>?theme=default</code> ต่อท้าย URL = บังคับเฉพาะจอนั้น</p>' +
       "</div>" +
 
       '<div class="card"><h2>จอ Scoreboard (เปิดค้างที่จอในงาน)</h2>' +
@@ -1021,7 +1039,7 @@
             return '<a href="/scoreboard/' + esc(sp.key) + '" target="_blank">/scoreboard/' + esc(sp.key) +
               ' &nbsp;— สกอร์สด ' + esc(sp.name || sp.key) + " 🔴</a>";
           }).join("") +
-          '<a href="/scoreboard?view=all&theme=glass" target="_blank">/scoreboard?view=all&amp;theme=glass &nbsp;— บังคับธีม 🧊 แก้ว</a>' +
+          '<a href="/scoreboard?view=all&theme=default" target="_blank">/scoreboard?view=all&amp;theme=… &nbsp;— เติม ?theme=&lt;ชื่อธีม&gt; บังคับเฉพาะจอนี้</a>' +
         "</div>" +
         '<p class="muted" style="margin-top:10px">เปิดเต็มจอ (F11) — จอสด (/scoreboard/&lt;กีฬา&gt;) โชว์คู่ที่ตั้ง “สด” จากหน้าจดคะแนน</p>' +
       "</div>" +
@@ -1084,18 +1102,6 @@
       localStorage.setItem("cg_preview_collapsed", c ? "0" : "1");
       render();
     },
-    "theme-toggle": function () {
-      var g = (state.settings && state.settings.theme) === "glass";
-      cmd({ action: "setSettings", settings: { theme: g ? "default" : "glass" } })
-        .then(function (ok) { if (ok) toast(g ? "ธีม: ปกติ" : "ธีม: 🧊 แก้ว"); });
-    },
-    "theme-default": function () {
-      cmd({ action: "setSettings", settings: { theme: "default" } }).then(function (ok) { if (ok) toast("ธีม: ปกติ"); });
-    },
-    "theme-glass": function () {
-      cmd({ action: "setSettings", settings: { theme: "glass" } }).then(function (ok) { if (ok) toast("ธีม: 🧊 แก้ว"); });
-    },
-
     "res-tap": function (b) {
       if (!selectedEventId()) return toast("เลือกรายการก่อน", true);
       resDraft.rows.push(b.dataset.house);
@@ -1278,6 +1284,12 @@
     if (t.dataset && t.dataset.act === "res-set") {
       resDraft.rows[Number(t.dataset.i)] = t.value;
       scheduleResSave();
+      return;
+    }
+    if (t.dataset && t.dataset.act === "theme-set") {
+      var tv = t.value;
+      cmd({ action: "setSettings", settings: { theme: tv } })
+        .then(function (ok) { if (ok) toast("ธีม: " + tv); });
       return;
     }
     // ติ๊ก "จบการแข่งขัน" ในแผงคู่สด

@@ -194,12 +194,22 @@ slots), `control.js` (control + score pages, with live preview via the same `T.*
 (Scoreboard).
 
 `overlay.css` holds the shared card/house/animation styles (loaded by both overlay and board);
-`board.css` only overrides background and sizing. `glass.css` (loaded after both) is an optional
-**"liquid glass"** skin — every rule scoped under `.glass`, applied to `<html>` by `overlay.js` /
-`board.js` when `settings.theme === "glass"` (or URL `?theme=glass`; `?theme=default` forces it
-off). It overrides surfaces only (translucent + `backdrop-filter`), not layout/animation/HTML, so
-`sigOf` doesn't track it — `applyTheme(state)` runs at the top of `apply()` before the sig
-early-return. Default (no setting) = the original opaque look, byte-identical.
+`board.css` only overrides background and sizing. On top of those, **theme skins** — one CSS file
+each, every rule scoped under `.<slug>` (and `:root.<slug>` for var-only blocks), all loaded after
+`overlay.css`/`board.css` in `overlay.html` + `board.html` (never in `control.html`, so the
+control/score pages are inherently un-themed): `glass.css` (liquid glass), `clay.css`
+(Claymorphism — light), `neu.css` (Neumorphism — dark), `retro.css` (Retro-Futurism),
+`editorial.css` (Editorial/Magazine), `broken.css` (Asymmetrical/Broken Grid), `bauhaus.css`,
+`techno.css` (Dark Techno/Techwear), `popart.css` (Pop Art), `illustrative.css`. `applyTheme(state)`
+in `overlay.js` / `board.js` picks **one** class for `<html>` from the `THEMES[]` list by
+`settings.theme` (`"default"` / absent = none); URL `?theme=<slug>` forces one screen, `?theme=default`
+(or `classic`) forces none, legacy `?glass=1` still means glass. Skins override surfaces /
+typography / decoration only — not the main layout, animations, HTML, or `templates.js` — so
+`sigOf` doesn't track the theme and `applyTheme` runs before the sig early-return
+(`board.js` ~160, `overlay.js` ~310). `glass` is the only skin that uses `backdrop-filter`; none
+use `color-mix()` (old OBS/vMix CEF). Default (no setting) = the original opaque look,
+byte-identical. The theme is chosen from a `<select>` in `/control` → settings
+(`data-act="theme-set"` → `setSettings {theme}`).
 
 In **house mode**, colors are CSS variables
 (`--red`/`--green`/`--yellow`/`--blue`) pushed from `settings.houses` at runtime; `.h-red`/`.h-green`/…

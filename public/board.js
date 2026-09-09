@@ -16,14 +16,18 @@
   var transport = params.get("transport") || "sse";
   var VIEW = (params.get("view") || "results").toLowerCase();
   var INTERVAL = (parseFloat(params.get("page") || "9") || 9) * 1000;
-  // ธีม "liquid glass": URL ?theme=glass|default บังคับ; ไม่ใส่ = ตาม settings.theme
+  // ธีมแสดงผล (สกินพื้นผิว): URL ?theme=<slug> บังคับเฉพาะจอ; ไม่ใส่ = ตาม settings.theme
+  // ?theme=default (หรือ classic) = ปิดทุกสกิน · ?glass=1 = ทางลัดเก่าของ glass
+  var THEMES = ["glass", "clay", "neu", "retro", "editorial",
+                "broken", "bauhaus", "techno", "popart", "illustrative"];
   var themeParam = params.get("theme");
   function applyTheme(state) {
-    var glass;
-    if (themeParam === "glass" || params.get("glass") === "1") glass = true;
-    else if (themeParam === "default" || themeParam === "classic") glass = false;
-    else glass = !!(state && state.settings && state.settings.theme === "glass");
-    document.documentElement.classList.toggle("glass", glass);
+    var t = themeParam;
+    if (t === "classic") t = "default";
+    if (!t && params.get("glass") === "1") t = "glass";
+    if (!t) t = (state && state.settings && state.settings.theme) || "default";
+    var el = document.documentElement;
+    THEMES.forEach(function (name) { el.classList.toggle(name, t === name); });
   }
   applyTheme(null);
 
