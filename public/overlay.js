@@ -104,9 +104,9 @@
       "||" + JSON.stringify(s.houseNames || {}) + "||" + JSON.stringify(s.houseLogos || {}) +
       "||" + (s.mode || "house") + "||" + JSON.stringify(s.schools || []);
   }
-  function isSport(t) { return t === "sportMatches" || t === "sportLive" || t === "sportLower"; }
-  // เทมเพลตสกอร์สด (เดินนาฬิกา + เด้งสกอร์เอง): สกอร์บอร์ดเต็มจอ + แถบล่าง
-  function isLiveSport(t) { return t === "sportLive" || t === "sportLower"; }
+  function isSport(t) { return t === "sportMatches" || t === "sportLive" || t === "sportLower" || t === "scoreBug"; }
+  // เทมเพลตสกอร์สด (เดินนาฬิกา + เด้งสกอร์เอง): สกอร์บอร์ดเต็มจอ + แถบล่าง + score bug มุมจอ
+  function isLiveSport(t) { return t === "sportLive" || t === "sportLower" || t === "scoreBug"; }
 
   // ---- นาฬิกาแมตช์ (นับถอยหลัง) + สกอร์เด้ง สำหรับ sportLive บนจอ Live ---- //
   var clockTimers = {};  // slot -> interval id
@@ -175,10 +175,11 @@
       "~" + JSON.stringify(s.houseNames || {}) + "~" + JSON.stringify(s.houseLogos || {}) +
       "~" + (s.mode || "house") + "~" + JSON.stringify(s.schools || []);
   }
-  function patchSportbar(bar, html) {
+  // แก้ค่าในที่ให้ทั้ง .sportbar (แถบล่าง) และ .scorebug (มุมจอ) — โครงสร้างต่างกันแค่ prefix
+  function patchLiveBar(bar, html, rootSel, homeSel, awaySel) {
     var tmp = document.createElement("div");
     tmp.innerHTML = html;
-    var next = tmp.querySelector(".sportbar");
+    var next = tmp.querySelector(rootSel);
     if (!bar || !next) return false;
     function txt(sel) {
       var a = bar.querySelector(sel), b = next.querySelector(sel);
@@ -189,7 +190,7 @@
       if (a && b && a.className !== b.className) a.className = b.className;
     }
     txt(".ls-h"); txt(".ls-a");
-    cls(".sportbar-home"); cls(".sportbar-away");
+    cls(homeSel); cls(awaySel);
     var oc = bar.querySelector(".live-clock"), nc = next.querySelector(".live-clock");
     if (oc && nc) {
       if (oc.className !== nc.className) oc.className = nc.className;
@@ -202,6 +203,12 @@
     var d = next.getAttribute("data-done") || "0";
     if (bar.getAttribute("data-done") !== d) bar.setAttribute("data-done", d);
     return true;
+  }
+  function patchSportbar(bar, html) {
+    return patchLiveBar(bar, html, ".sportbar", ".sportbar-home", ".sportbar-away");
+  }
+  function patchScoreBug(bar, html) {
+    return patchLiveBar(bar, html, ".scorebug", ".scorebug-home", ".scorebug-away");
   }
 
   function animMs(state) {
@@ -222,6 +229,7 @@
       case "sportMatches": return T.sportMatches(state, conf.sport);
       case "sportLive": return T.sportLive(state, conf.sport);
       case "sportLower": return T.sportLower(state, conf.sport);
+      case "scoreBug": return T.scoreBug(state, conf.sport);
       default:         return null;
     }
   }
@@ -264,13 +272,15 @@
     var sameShell = (cont && isPaged) || (cur && prev.visible && prev.template === conf.template &&
       (isSport(conf.template) ? prev.sport === conf.sport : (prev.eventId === conf.eventId || conf.template === "schedule")));
 
-    // แถบล่างสกอร์สด: ถ้าคู่/ชื่อคณะ/โลโก้/ชื่อกีฬาไม่เปลี่ยน -> แก้เฉพาะจุด (สกอร์/นาฬิกา/สถานะ)
-    // จุด LIVE ไม่รีสตาร์ตกะพริบ โลโก้ไม่โหลดใหม่ ไม่มีวูบ
-    var shell = conf.template === "sportLower" ? sportbarShell(state, conf.sport) : null;
-    if (sameShell && conf.template === "sportLower" &&
+    // แถบล่างสกอร์สด (sportLower) / score bug มุมจอ (scoreBug): ถ้าคู่/ชื่อคณะ/โลโก้/ชื่อกีฬา
+    // ไม่เปลี่ยน -> แก้เฉพาะจุด (สกอร์/นาฬิกา/สถานะ) จุด LIVE ไม่รีสตาร์ต โลโก้ไม่โหลดใหม่ ไม่มีวูบ
+    var isBar = conf.template === "sportLower" || conf.template === "scoreBug";
+    var barSel = conf.template === "scoreBug" ? ".scorebug" : ".sportbar";
+    var shell = isBar ? sportbarShell(state, conf.sport) : null;
+    if (sameShell && isBar &&
         prev.shell != null && prev.shell === shell &&
-        cur.querySelector(".sportbar")) {
-      patchSportbar(cur.querySelector(".sportbar"), html);
+        cur.querySelector(barSel)) {
+      (conf.template === "scoreBug" ? patchScoreBug : patchSportbar)(cur.querySelector(barSel), html);
     } else if (sameShell) {
       // อัปเดตข้อมูลสด ไม่ต้อง re-animate
       cur.innerHTML = html;

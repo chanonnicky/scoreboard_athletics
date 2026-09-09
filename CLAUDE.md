@@ -139,11 +139,14 @@ already-small files pass through untouched, and the server's 2MB cap stays as th
 forces the *other* of the two hidden (both `server.py` and `server.ps1`); pushing a new template
 into a slot still replaces whatever that slot held. **`bug` is independent and persistent** — it
 stays up alongside a main graphic, and `show`/`hide` on `bug` (or a main slot) never disturbs the
-other. `bug` always carries `template:"sportLower"` + a `sport` key; it renders in its own
-`#slot-bug` (`overlay.js` `SLOTS` + `.slot-bug` at the bottom edge). `hideMain` clears just
-`lower`+`full`; `hideAll` clears all three. On `/control`: `hide-lower`/`hide-full` → `hideMain`,
-`hide-all` (■ ลงจอทั้งหมด) → `hideAll`, the per-sport score-bug buttons toggle the `bug` slot
-(click the active sport again to hide it), `hide-bug` → `hide {slot:"bug"}`.
+other. `bug` always carries `template:"scoreBug"` + a `sport` key — `T.scoreBug` renders a small
+top-left corner graphic (two teams, live score, countdown clock, LIVE dot) that stays on the whole
+game; it lives in its own `#slot-bug` (`overlay.js` `SLOTS`, `.slot-bug` anchored top-left).
+`hideMain` clears just `lower`+`full`; `hideAll` clears all three. On `/control`:
+`hide-lower`/`hide-full` → `hideMain`, `hide-all` (■ ลงจอทั้งหมด) → `hideAll`, the per-sport
+score-bug buttons toggle the `bug` slot (click the active sport again to hide it), `hide-bug` →
+`hide {slot:"bug"}`. The full-width `sportLower` bar is a separate thing — an option in the
+**`lower`** slot (`show-lower-sportbar`, mutually exclusive with `full`), alongside `top3`.
 
 Because the whole blob round-trips, a running server holds authoritative state in memory and will
 **overwrite `data/state.json` on the next command**. Editing `state.json` by hand while a server
@@ -207,7 +210,9 @@ the on-air `schedule` window when the pointer moves) is gated to `/control`.
 `public/templates.js` (`window.T`) renders every CG as an HTML string. Templates: `top3`, `results`,
 `schedule` (athletics); `chart` (medal-count data graphic, see below); `sportMatches` (per-sport
 match list grouped by grade level); `sportLive` (single current-match scoreboard); `sportLower`
-(the current match as a compact lower-third bar — Live overlay only, `null` when no current match).
+(the current match as a compact full-width lower-third bar); `scoreBug` (the current match as a
+small top-left corner bug — score + countdown clock + LIVE dot, meant to stay on the whole game).
+`sportLower`/`scoreBug` are Live overlay only and return `null` when there's no current match.
 Consumers: `overlay.js` (Live, `state.onair` slots), `control.js` (control + score pages, with
 live preview via the same `T.*`), `board.js` (Scoreboard).
 
@@ -308,10 +313,13 @@ control.js): match CRUD, "ตั้งสด" to set `currentId`, and +/- / numb
 via the `setSport` command (whole-sport upsert; debounced or immediate for +/-). Live/Scoreboard read
 it: `onair[slot].sport` carries the key on Live's `show`; both `sportMatches` and `sportLive` are
 pushable to `/live`'s full slot (`renderLive()`'s per-sport button pair, `show-full-sport` /
-`show-full-sportlive`), `sportLower` is the **score bug** — pushed to Live's independent
-persistent `bug` slot via `renderLive()`'s per-sport `show-bug` buttons (one sport at a time,
-stays up with a main graphic — see the `onair` note above), and `/scoreboard/<sport>` always
-renders `sportLive`. `load_state` migrates a legacy `state.football`
+`show-full-sportlive`); `sportLower` (full-width lower bar) goes in the `lower` slot
+(`show-lower-sportbar`); `scoreBug` (top-left corner bug, live score + countdown, always on) goes
+in the independent persistent `bug` slot via `renderLive()`'s per-sport `show-bug` buttons — one
+sport at a time, stays up with a main graphic (see the `onair` note above). `/scoreboard/<sport>`
+always renders `sportLive`. `overlay.js` in-place patching: `patchLiveBar(bar,html,root,home,away)`
+backs both `patchSportbar` (`.sportbar`) and `patchScoreBug` (`.scorebug`) — score/clock/status
+update without re-creating the LIVE dot or logos. `load_state` migrates a legacy `state.football`
 object into `state.sports[0]`, and renames the old `football` sport (key + name + `onair` refs) to
 `futsal` / ฟุตซอล (name forced even when the key is already `futsal`).
 

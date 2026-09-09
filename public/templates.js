@@ -521,6 +521,56 @@ window.T = (function () {
     "</div>";
   }
 
+  /* ---- score bug — กราฟิกเล็กมุมบนซ้าย โชว์คะแนน + นาฬิกานับถอยหลัง "ตลอดเวลา" -----
+     ช่องอิสระ (slot "bug") ค้างจอพร้อมกราฟิกหลักได้ · ทีละ 1 กีฬา
+     overlay.js แก้สกอร์/นาฬิกา/สถานะในที่ (patchScoreBug) — จุด LIVE ไม่รีสตาร์ต โลโก้ไม่โหลดใหม่
+     ไม่มีคู่ที่กำลังแข่ง (currentId) -> คืน null                                       */
+  function scoreBug(state, key) {
+    var sport = getSport(state, key);
+    if (!sport) return null;
+    var m = currentMatch(sport);
+    if (!m) return null;
+
+    var sportNm = (sport.icon ? sport.icon + " " : "") + (sport.name || "กีฬา");
+    var hs = Number(m.hs) || 0, as = Number(m.as) || 0;
+    var tied = hs === as;
+    var hw = !tied && hs > as, aw = !tied && as > hs;
+
+    var ck = m.clock || {};
+    var ckRun = !!ck.running && !m.done;
+    var ckEl = Number(ck.elapsed) || 0;
+    var ckSince = Number(ck.since) || 0;
+    var ckDur = clockDur(ck, sportDurSec(sport));
+    var ckRemain = remainSec(ckEl, ckSince, ckDur, ckRun);
+    var clockHtml = '<div class="live-clock scorebug-clock' + (ckRun ? " run" : " paused") +
+      (ckRemain <= 0 ? " ended" : "") +
+      '" data-run="' + (ckRun ? 1 : 0) + '" data-el="' + ckEl + '" data-since="' + ckSince +
+      '" data-dur="' + ckDur + '">' + fmtClock(ckRemain) + "</div>";
+
+    function teamRow(cls, k, win, trail) {
+      return '<div class="scorebug-team scorebug-' + cls + " " + compCls(state, k) +
+        (win ? " win" : trail ? " trail" : "") + '"' + compStyle(state, k) + ">" +
+        houseLogoImg(state, k, "scorebug-logo") +
+        '<span class="scorebug-name">' + esc(houseName(state, k)) + "</span>" +
+        '<span class="ls ls-' + cls.charAt(0) + ' scorebug-score">' + esc(cls === "home" ? hs : as) + "</span>" +
+      "</div>";
+    }
+
+    return '<div class="scorebug" data-done="' + (m.done ? 1 : 0) + '">' +
+      '<div class="scorebug-head">' + esc(sportNm) + "</div>" +
+      teamRow("home", m.home, hw, aw) +
+      teamRow("away", m.away, aw, hw) +
+      '<div class="scorebug-foot">' +
+        '<span class="scorebug-status">' +
+          '<span class="live-dot"></span>' +
+          '<span class="scorebug-live-word">LIVE</span>' +
+          '<span class="scorebug-done-word">จบแล้ว</span>' +
+        "</span>" +
+        clockHtml +
+      "</div>" +
+    "</div>";
+  }
+
   /* ================= กราฟ / Data Graphic =============================
      นับเหรียญ (🥇🥈🥉) ต่อคณะ/โรงเรียน จาก state.results ของทุกรายการ แล้ววาดเป็นกราฟ
      - settings.chartEnabled : สวิตช์เปิด/ปิด (ปิด = chart() คืน null -> ไม่มีการ์ด)
@@ -611,7 +661,7 @@ window.T = (function () {
   return {
     top3: top3, results: results, schedule: schedule,
     sportMatches: sportMatches, sportLive: sportLive, sportLower: sportLower,
-    chart: chart, medalTally: medalTally,
+    scoreBug: scoreBug, chart: chart, medalTally: medalTally,
     esc: esc, clockValue: clockValue, clockDur: clockDur, clockRemain: clockRemain,
     remainSec: remainSec, fmtClock: fmtClock,
     comp: comp, compMode: compMode, compKeys: compKeys,

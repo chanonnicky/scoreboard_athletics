@@ -56,8 +56,8 @@ body.board, body.board * {
 .slot { position: absolute; }
 .slot-full { inset: 0; }
 .slot-lower { left: 0; right: 0; bottom: 96px; }
-/* score bug — ช่องอิสระ ค้างจอได้พร้อมกับ full/lower (ชิดล่างสุด) */
-.slot-bug { left: 0; right: 0; bottom: 28px; }
+/* score bug — ช่องอิสระ ค้างจอได้พร้อมกับ full/lower · กราฟิกเล็กมุมบนซ้าย */
+.slot-bug { left: 56px; top: 48px; right: auto; bottom: auto; }
 
 #offline {
   position: fixed; left: 14px; bottom: 12px;
@@ -98,16 +98,22 @@ body.is-offline #offline { opacity: 1; }
 
 /* แถบล่าง: ทุก .cg ซ้อนตำแหน่งเดียวกัน (กลางแนวนอน ชิดล่าง) — ตอนสลับเนื้อหา
    อันเก่ากับอันใหม่จึง cross-fade ทับกัน ไม่เลื่อนไปอยู่ข้าง ๆ กัน */
-.slot-lower .cg,
-.slot-bug .cg {
+.slot-lower .cg {
   position: absolute; left: 50%; bottom: 0;
   opacity: 0; transform: translate(-50%, 40px);
   transition: opacity var(--anim) ease, transform var(--anim) cubic-bezier(.2,.7,.2,1);
 }
-.slot-lower .cg.in,
-.slot-bug .cg.in  { opacity: 1; transform: translate(-50%, 0); }
-.slot-lower .cg.out,
-.slot-bug .cg.out { opacity: 0; transform: translate(-50%, 40px); }
+.slot-lower .cg.in  { opacity: 1; transform: translate(-50%, 0); }
+.slot-lower .cg.out { opacity: 0; transform: translate(-50%, 40px); }
+
+/* score bug: มุมบนซ้าย — เลื่อนเข้าจากซ้ายเบา ๆ + เฟด (ทุก .cg ซ้อนที่เดิม) */
+.slot-bug .cg {
+  position: absolute; left: 0; top: 0;
+  opacity: 0; transform: translateX(-24px);
+  transition: opacity var(--anim) ease, transform var(--anim) cubic-bezier(.2,.7,.2,1);
+}
+.slot-bug .cg.in  { opacity: 1; transform: none; }
+.slot-bug .cg.out { opacity: 0; transform: translateX(-24px); }
 
 /* full screen: การ์ดทั้งสอง (schedule / results) วางทับกันกลางจอ
    ตอนสลับจึงเป็น cross-fade ลื่น ๆ ไม่มี layout กระโดด */
@@ -603,6 +609,69 @@ body.is-offline #offline { opacity: 1; }
 /* ชื่อกีฬา — ล่างสุดของแถบ */
 .sportbar-foot {
   font-size: 21px; font-weight: 700; letter-spacing: 1.5px; opacity: .95;
+}
+
+/* ==== score bug — กราฟิกเล็กมุมบนซ้าย โชว์คะแนน + นาฬิกานับถอยหลังตลอดเวลา ====
+   ช่อง slot-bug (อิสระ ค้างจอ) · แก้ค่าในที่ (patchScoreBug) จุด LIVE ไม่รีสตาร์ต    */
+.scorebug {
+  width: 420px;
+  background: var(--panel);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, .5);
+  font-variant-numeric: tabular-nums;
+}
+.scorebug-head {
+  padding: 8px 18px;
+  font-size: 18px; font-weight: 700; letter-spacing: 1px;
+  background: rgba(255, 255, 255, .08);
+  border-bottom: 1px solid var(--stroke);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.scorebug-team {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 18px;
+  border-left: 8px solid var(--house, #666);
+}
+.scorebug-team + .scorebug-team { border-top: 1px solid var(--stroke); }
+.scorebug-team.trail { opacity: .55; }
+.scorebug-logo { width: 42px; height: 42px; object-fit: contain; flex: none; }
+.scorebug-name {
+  flex: 1; min-width: 0;
+  font-size: 26px; font-weight: 700; line-height: 1.05;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.scorebug-team.win .scorebug-name { color: var(--house, #fff); }
+.h-yellow.scorebug-team.win .scorebug-name { color: #ffd54a; }
+.comp-lightbg.scorebug-team.win .scorebug-name { color: #ffd54a; }
+.scorebug-score {
+  flex: none; font-size: 34px; font-weight: 800; line-height: 1;
+  min-width: 44px; text-align: right;
+}
+.scorebug-team.win .scorebug-score { color: #ffd54a; }
+.scorebug-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 9px 18px;
+  background: rgba(0, 0, 0, .28);
+  border-top: 1px solid var(--stroke);
+}
+.scorebug-status {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 16px; font-weight: 800; letter-spacing: 1.5px; color: #ff6a6a;
+}
+.scorebug-done-word { display: none; }
+.scorebug[data-done="1"] .live-dot,
+.scorebug[data-done="1"] .scorebug-live-word { display: none; }
+.scorebug[data-done="1"] .scorebug-done-word { display: inline; }
+.scorebug[data-done="1"] .scorebug-status { color: #cfd6df; }
+.scorebug .live-clock {
+  font-size: 24px; font-weight: 800; letter-spacing: 1px;
+  padding: 2px 12px; border-radius: 8px;
+  background: rgba(255, 255, 255, .08); border: 1px solid var(--stroke);
+}
+.scorebug .live-clock.run { color: #eafff2; border-color: rgba(120, 235, 170, .4); }
+.scorebug .live-clock.ended {
+  color: #ff6a6a; border-color: rgba(233, 60, 60, .5); background: rgba(233, 60, 60, .16);
 }
 
 /* ==== chart — กราฟเหรียญรางวัล (นับ 🥇🥈🥉 ต่อคณะ/โรงเรียน) ==============

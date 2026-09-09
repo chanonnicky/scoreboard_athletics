@@ -40,10 +40,10 @@
     top3: "อันดับ 1–3", results: "ผลการแข่งขัน", schedule: "ตารางการแข่งขัน",
     chart: "กราฟเหรียญรางวัล",
     sportMatches: "กีฬา · ผลแมตช์", sportLive: "กีฬา · สกอร์สด",
-    sportLower: "แถบล่าง · สกอร์สด",
+    sportLower: "แถบล่าง · สกอร์สด", scoreBug: "Score bug",
   };
   function isSportTpl(t) {
-    return t === "sportMatches" || t === "sportLive" || t === "sportLower";
+    return t === "sportMatches" || t === "sportLive" || t === "sportLower" || t === "scoreBug";
   }
 
   // ธีมแสดงผล (สกินพื้นผิว บนจอ Live / Scoreboard) — เลือกในแท็บ "ตั้งค่า"
@@ -444,7 +444,8 @@
     var fu = (state.onair && state.onair.full) || {};
     var bg = (state.onair && state.onair.bug) || {};
     var top3On = !!(lo.visible && lo.template === "top3");
-    var bugSport = (bg.visible && bg.template === "sportLower") ? bg.sport : null;
+    var sportBarOn = !!(lo.visible && lo.template === "sportLower");
+    var bugSport = (bg.visible && bg.template === "scoreBug") ? bg.sport : null;
     var schedOn = !!(fu.visible && fu.template === "schedule");
     var resOn = !!(fu.visible && fu.template === "results");
     var sportOn = !!(fu.visible && fu.template === "sportMatches");
@@ -470,10 +471,16 @@
         cmdBtn("show-full-sportlive", onLive, "สด " + nm, dataSport) +
       "</div>";
     }).join("");
-    // Score bug: แถบสกอร์สดต่อกีฬา — ช่องอิสระ ค้างจอพร้อมกับแถบล่าง/เต็มจอได้ (ทีละ 1 กีฬา)
+    // แถบล่าง: แถบสกอร์สดเต็มความกว้างต่อกีฬา (คู่ที่ตั้ง "สด") — อยู่ช่อง lower ทีละอันเดียวกับเต็มจอ
+    var sportBarBtns = (state.sports || []).map(function (sp) {
+      var nm = esc((sp.icon ? sp.icon + " " : "") + (sp.name || sp.key));
+      var on = !!(lo.visible && lo.template === "sportLower" && lo.sport === sp.key);
+      return cmdBtn("show-lower-sportbar", on, "สด " + nm, ' data-sport="' + esc(sp.key) + '"');
+    }).join("");
+    // Score bug: กราฟิกเล็กมุมบนซ้าย โชว์คะแนน+นาฬิกาตลอดเวลา — ช่องอิสระ ค้างจอ (ทีละ 1 กีฬา)
     var bugBtns = (state.sports || []).map(function (sp) {
       var nm = esc((sp.icon ? sp.icon + " " : "") + (sp.name || sp.key));
-      return cmdBtn("show-bug", bugSport === sp.key, "สด " + nm, ' data-sport="' + esc(sp.key) + '"');
+      return cmdBtn("show-bug", bugSport === sp.key, nm, ' data-sport="' + esc(sp.key) + '"');
     }).join("");
 
     panel.innerHTML =
@@ -513,7 +520,8 @@
           "<h3>แถบล่าง</h3>" +
           '<div class="cmd-grid">' +
             cmdBtn("show-lower-top3", top3On, "อันดับ 1–3", ' style="min-width:170px"') +
-            '<button class="btn" data-act="hide-lower"' + (top3On ? "" : " disabled") + ">ซ่อนแถบล่าง</button>" +
+            sportBarBtns +
+            '<button class="btn" data-act="hide-lower"' + (top3On || sportBarOn ? "" : " disabled") + ">ซ่อนแถบล่าง</button>" +
           "</div>" +
           "<h3>เต็มจอ</h3>" +
           '<div class="cmd-grid">' +
@@ -526,8 +534,8 @@
             '<button class="btn" data-act="hide-full"' + (schedOn || resOn || sportOn || sportLiveOn || chartOn ? "" : " disabled") + ">■ ซ่อนเต็มจอ</button>" +
           "</div>" +
           ((state.sports || []).length
-            ? "<h3>Score bug (แถบสกอร์สด — ค้างจอ)</h3>" +
-              '<p class="muted" style="margin:-4px 0 8px">เลือกกีฬาที่จะโชว์สกอร์สดค้างไว้ (ทีละ 1 กีฬา · กดกีฬาเดิมซ้ำ = ปิด) — ต้องตั้ง “สด” ให้คู่นั้นในหน้าจดคะแนนก่อน</p>' +
+            ? "<h3>Score bug (มุมบนซ้าย — คะแนน+นาฬิกา ค้างจอตลอด)</h3>" +
+              '<p class="muted" style="margin:-4px 0 8px">กราฟิกเล็กมุมจอ โชว์สกอร์สด + เวลานับถอยหลังตลอดเวลา ค้างพร้อมกราฟิกอื่นได้ (ทีละ 1 กีฬา · กดกีฬาเดิมซ้ำ = ปิด) — ต้องตั้ง “สด” ให้คู่นั้นในหน้าจดคะแนนก่อน</p>' +
               '<div class="cmd-grid">' +
                 bugBtns +
                 '<button class="btn" data-act="hide-bug"' + (bugSport ? "" : " disabled") + ">ซ่อน Score bug</button>" +
@@ -1164,13 +1172,16 @@
       if (!eid) return toast("เลือกรายการก่อน", true);
       cmd({ action: "show", slot: "lower", template: "top3", eventId: eid });
     },
+    "show-lower-sportbar": function (b) {
+      cmd({ action: "show", slot: "lower", template: "sportLower", eventId: null, sport: b.dataset.sport });
+    },
     "show-bug": function (b) {
       var k = b.dataset.sport;
       var cur = (state.onair && state.onair.bug) || {};
-      if (cur.visible && cur.template === "sportLower" && cur.sport === k) {
+      if (cur.visible && cur.template === "scoreBug" && cur.sport === k) {
         cmd({ action: "hide", slot: "bug" });           // กดกีฬาเดิมซ้ำ = ปิด score bug
       } else {
-        cmd({ action: "show", slot: "bug", template: "sportLower", eventId: null, sport: k });
+        cmd({ action: "show", slot: "bug", template: "scoreBug", eventId: null, sport: k });
       }
     },
     "hide-bug": function () { cmd({ action: "hide", slot: "bug" }); },
