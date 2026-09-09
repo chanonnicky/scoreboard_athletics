@@ -694,10 +694,11 @@
       (m.l2 ? '<label class="field" style="margin-top:8px">' + esc(m.l2) +
         '<input type="text" id="genL2" value="' + esc(genUI.l2 || "") + '" placeholder="' + esc(m.ph2 || "") + '"></label>' : "");
 
-    // --- รายการพรีเซ็ต (คลิกทั้งแถว = ขึ้นจอ) ---
+    // --- รายการพรีเซ็ต (คลิกแถว = ขึ้นจอ · ปุ่ม ■ ลงจอ อยู่ที่หัวการ์ด) ---
+    var liveP = lowers.filter(function (p) { return genIsLive(p.kind, p.line1, p.line2); })[0];
     var presetRows = lowers.length ? lowers.map(function (p) {
       var pm = GEN_KINDS[p.kind] || GEN_KINDS.name;
-      var live = genIsLive(p.kind, p.line1, p.line2);
+      var live = liveP && p.id === liveP.id;
       var sub = pm.l2 && p.line2 ? ' <span class="muted">· ' + esc(p.line2) + "</span>" : "";
       return '<div class="preset-row' + (live ? " is-live" : "") + (p.id === genUI.editId ? " is-edit" : "") +
           '" data-act="preset-air" data-id="' + esc(p.id) + '" title="คลิกเพื่อขึ้นจอ">' +
@@ -739,10 +740,11 @@
         "</div>" +
 
         '<div class="card">' +
-          '<div class="row" style="justify-content:space-between;align-items:baseline">' +
+          '<div class="row" style="justify-content:space-between;align-items:center">' +
             '<h2 style="margin:0">พรีเซ็ต (rundown)</h2>' +
-            '<span class="muted" style="font-size:13px">คลิกแถว = ขึ้นจอทันที</span>' +
+            '<button class="btn danger" data-act="preset-hide"' + (liveP ? "" : " disabled") + ">■ ลงจอ</button>" +
           "</div>" +
+          '<p class="muted" style="margin:2px 0 0;font-size:13px">คลิกแถว = ขึ้นจอทันที · “■ ลงจอ” = เอาพรีเซ็ตที่กำลังออกลง</p>' +
           '<div class="preset-list" style="margin-top:10px">' + presetRows + "</div>" +
         "</div>" +
 
@@ -1521,6 +1523,13 @@
       if (!p) return;
       var m = GEN_KINDS[p.kind] || GEN_KINDS.name;
       cmd({ action: "show", slot: m.slot, template: m.template, line1: p.line1 || "", line2: p.line2 || "" });
+    },
+    "preset-hide": function () {
+      // เอาพรีเซ็ตที่กำลังออกจอลง (มีได้ทีละอัน — เทียบ kind+ข้อความกับ onair)
+      var p = (state.lowers || []).filter(function (x) { return genIsLive(x.kind, x.line1, x.line2); })[0];
+      if (!p) return toast("ไม่มีพรีเซ็ตที่กำลังออกจอ", true);
+      var m = GEN_KINDS[p.kind] || GEN_KINDS.name;
+      cmd({ action: "hide", slot: m.slot });
     },
     "preset-load": function (b) {
       var p = (state.lowers || []).filter(function (x) { return x.id === b.dataset.id; })[0];
