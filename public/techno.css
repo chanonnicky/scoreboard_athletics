@@ -1,0 +1,267 @@
+/* ============================================================================
+   techno.css — ธีมทดลอง "Dark Techno / Techwear" (อุตสาหกรรม เกือบดำ เส้นเฉียบ)
+   ----------------------------------------------------------------------------
+   เปิดใช้:  ตั้งที่หน้า /control แท็บ "ตั้งค่า" -> settings.theme = "techno"
+            (overlay.js / board.js เติม class .techno ที่ <html> ทุกจอ)
+            หรือบังคับเฉพาะจอ: URL ?theme=techno / ?theme=default (ทับค่าที่ตั้งไว้)
+   ค่าเริ่มต้น / settings.theme ไม่ใช่ "techno" = สไตล์เดิมทุกอย่าง
+   ไฟล์นี้ทั้งไฟล์ scope ใต้ .techno  (:root.techno ใช้ประกาศตัวแปรเท่านั้น)
+
+   โหลดต่อจาก overlay.css / board.css — override เฉพาะพื้นผิว (พื้นหลัง/ขอบ/เงา/ฟอนต์)
+   ไม่แตะ layout / grid / flex / position ของกล่องจริง / ขนาดเวที / transform / keyframes
+   ทำงานได้ทั้งโหมดสีคณะและโหมดโรงเรียน — ใช้ var(--house)/var(--ink) ไม่ฮาร์ดโค้ดสีคณะ
+   เลี่ยง color-mix() และ backdrop-filter เพื่อให้ CEF รุ่นเก่าของ OBS/vMix ยังใช้ได้
+   หลักคิด: แผงแมตต์เกือบดำ · ขอบผมเส้นเดียว · มุมตัดบาง ๆ เฉพาะป้ายเล็ก ·
+            แถวที่ "กำลังแข่ง" = แถบเตือนสีเหลืองฉกรรจ์ (hazard) · เน้นสี cyan เย็น
+   ============================================================================ */
+
+:root.techno {
+  --panel:   #111316;
+  --panel-2: rgba(180, 190, 200, 0.05);
+  --stroke:  rgba(180, 190, 200, 0.14);
+  --tk-ground: #0a0b0d;
+  --tk-hair:   rgba(180, 190, 200, 0.14);
+  --tk-cool:   #4dd0e1;
+  --tk-warn:   #e8b923;
+}
+
+/* ---- ฉากเต็มจอ: จอประชาสัมพันธ์ (ทึบ) — กริดเทคนิคจาง ๆ ------------------- */
+.techno body.board {
+  background: #0a0b0d;
+  background-color: #0a0b0d;
+}
+.techno body.board::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg,  rgba(180,190,200,0.04) 0 1px, rgba(180,190,200,0) 1px 80px),
+    repeating-linear-gradient(90deg, rgba(180,190,200,0.04) 0 1px, rgba(180,190,200,0) 1px 80px);
+}
+/* /live โปร่งใส (ซ้อนวิดีโอ) — ไม่มีฉากเต็มจอ ธีมเฉพาะการ์ด */
+.techno body.overlay { background: transparent; }
+
+/* ---- ฟอนต์หัวข้อ: โมโน/อุตสาหกรรม ตัวพิมพ์ใหญ่ ระยะห่างอักษรกว้าง ---------- */
+.techno .card-title,
+.techno .card-kicker,
+.techno .fblv-h,
+.techno .fbsub,
+.techno .live-name,
+.techno .sportbar-name,
+.techno .sportbar-foot {
+  font-family: "DIN Alternate", "Bahnschrift", ui-monospace, "Cascadia Code",
+               "LINE Seed Sans TH", "Kanit", "Leelawadee UI", sans-serif;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.techno .card-title { letter-spacing: 1.5px; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
+.techno .card-sub   { color: rgba(255, 255, 255, 0.8); letter-spacing: 0.5px; }
+
+/* ---- การ์ดหลัก (results / schedule / sportMatches / sportLive) ------------
+   แผงแมตต์ #111316 · รัศมีเล็ก 6px · ขอบผมเส้นเดียว · เงาน้อย + เส้นในคม ๆ */
+.techno .card {
+  background: #111316;
+  background-image: none;
+  border: 1px solid rgba(180, 190, 200, 0.14);
+  border-radius: 6px;
+  box-shadow:
+      0 20px 50px rgba(0, 0, 0, 0.6),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+/* ขีดเทคนิคสั้น ๆ มุมบนซ้าย (อยู่ใน overflow:hidden — ไม่ล้น) */
+.techno .card::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 46px;
+  height: 2px;
+  background: var(--tk-cool, #4dd0e1);
+  pointer-events: none;
+}
+.techno .card-head {
+  background: #0d0f11;
+  border-bottom: 1px solid var(--tk-cool, #4dd0e1);
+}
+.techno .card-kicker {
+  color: var(--tk-cool, #4dd0e1);
+  border-left: 3px solid var(--tk-cool, #4dd0e1);
+  padding-left: 10px;
+  letter-spacing: 3px;
+  opacity: 0.9;
+}
+
+/* ---- แถวในลิสต์: ผลกรีฑา / แมตช์ / ตารางแข่ง ---------------------------- */
+.techno .rrow2,
+.techno .fbm,
+.techno .srow {
+  background: #0e1013;
+  border: 1px solid rgba(180, 190, 200, 0.14);
+  border-left: 3px solid var(--house, #4dd0e1);
+  border-radius: 3px;
+  box-shadow: none;
+}
+.techno .fbt-row {
+  background: #0e1013;
+  border: 1px solid rgba(180, 190, 200, 0.14);
+  border-radius: 3px;
+  box-shadow: inset 3px 0 0 var(--house, transparent);
+}
+/* แถวรายการที่กำลังแข่ง — แถบเตือนเฉียง (hazard) + ขอบเหลืองทึบ อ่านเด่นกว่าแถวปกติชัด */
+.techno .rrow2.cur,
+.techno .fbm.cur,
+.techno .srow.cur {
+  background: repeating-linear-gradient(45deg,
+      rgba(232, 185, 35, 0.16) 0 14px,
+      rgba(232, 185, 35, 0.05) 14px 28px);
+  border: 1px solid #e8b923;
+  box-shadow: none;
+}
+.techno .rrow2.cur .rno,
+.techno .srow.cur .smark { color: #e8b923; opacity: 1; }
+.techno .rrow2.cur .rtitle,
+.techno .srow.cur .stitle { text-shadow: 0 0 10px rgba(232, 185, 35, 0.4); }
+.techno .fbm.cur .fbm-live { color: #e8b923; }
+.techno .rres.rlive { color: var(--tk-cool, #4dd0e1); text-shadow: 0 0 10px rgba(77, 208, 225, 0.5); }
+.techno .fbm-live   { color: var(--tk-warn, #e8b923); }
+
+/* ---- ชิปอันดับ / ป้าย var(--house) — เหลี่ยม + มุมตัดบาง ๆ --------------- */
+.techno .rchip,
+.techno .pill {
+  background: var(--house, #666);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 3px;
+  -webkit-clip-path: polygon(0 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%);
+          clip-path: polygon(0 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%);
+}
+.techno .rchip b { background: rgba(255, 255, 255, 0.45); border-radius: 2px; }
+
+/* ---- แถบล่าง TOP 3 — แผงเทคโนทึบ ------------------------------------- */
+.techno .t3 {
+  background: #111316;
+  border: 1px solid rgba(180, 190, 200, 0.14);
+  border-radius: 6px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+.techno .t3-head {
+  background: #0d0f11;
+  border-right-color: rgba(180, 190, 200, 0.14);
+}
+.techno .t3-title-text { letter-spacing: 1px; }
+.techno .t3-house { letter-spacing: 0.5px; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
+.techno .t3-item + .t3-item { border-left-color: rgba(180, 190, 200, 0.14); }
+/* เหรียญ — คงเนื้อโลหะเดิม แค่รัดเส้นขอบให้บางสว่างพอดีอ่านบนแผงเข้ม */
+.techno .t3-medal {
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: inset 0 -4px 8px rgba(0, 0, 0, 0.42), 0 2px 8px rgba(0, 0, 0, 0.55);
+}
+
+/* ---- โมดูลกีฬา: หัวข้อระดับชั้น / ตารางคะแนน --------------------------- */
+.techno .fblv-h {
+  border-left-color: var(--tk-cool, #4dd0e1);
+  border-bottom-color: rgba(180, 190, 200, 0.14);
+  letter-spacing: 2px;
+}
+.techno .fbsub {
+  border-left-color: rgba(77, 208, 225, 0.5);
+  color: #7f8b95;
+  letter-spacing: 2px;
+}
+.techno .fbm-name { letter-spacing: 0.3px; }
+.techno .fbm-score { color: #eaf6f8; letter-spacing: 1px; }
+.techno .fbm-vs { letter-spacing: 3px; color: var(--tk-cool, #4dd0e1); opacity: 0.6; }
+.techno .fbbr-champ {
+  background: #0e1013;
+  border: 1px solid rgba(180, 190, 200, 0.14);
+  box-shadow: inset 6px 0 0 var(--house, #4dd0e1);
+}
+.techno .fbbr-champ-k { color: var(--tk-cool, #4dd0e1); letter-spacing: 3px; }
+.techno .fbt-row.lead {
+  background: #12151a;
+  box-shadow: inset 5px 0 0 var(--house, #4dd0e1), inset 0 0 0 1px rgba(77, 208, 225, 0.22);
+}
+
+/* ---- สกอร์บอร์ดคู่สด (เต็มจอ) --------------------------------------- */
+.techno .live-team {
+  background: #111316;
+  border: 1px solid rgba(180, 190, 200, 0.14);
+  border-radius: 6px;
+  box-shadow: inset 0 -8px 0 var(--house, #666), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+/* ทีมที่นำ — เส้นขอบสีคณะเฉียบ 2px แทนกรอบเรือง ๆ ของธีมพื้นฐาน + คงแถบล่าง */
+.techno .live-team.win {
+  background: #14171b;
+  box-shadow:
+      inset 0 -8px 0 var(--house, #666),
+      0 0 0 2px var(--house, #fff),
+      0 20px 50px rgba(0, 0, 0, 0.6);
+}
+.techno .live-team.trail { opacity: 0.4; }
+.techno .live-name { text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7); }
+.techno .live-score { text-shadow: 0 4px 14px rgba(0, 0, 0, 0.6); }
+.techno .live-clock {
+  font-family: ui-monospace, "Cascadia Code", "Bahnschrift", "DIN Alternate", monospace;
+  background: #0a0b0d;
+  border: 1px solid rgba(180, 190, 200, 0.22);
+  border-radius: 4px;
+  letter-spacing: 2px;
+}
+.techno .live-clock.run { color: #d6f6fa; border-color: var(--tk-cool, #4dd0e1); }
+.techno .live-clock.ended {
+  color: #ff5a5a;
+  background: rgba(233, 60, 60, 0.14);
+  border-color: rgba(233, 60, 60, 0.7);
+}
+/* LIVE = ป้ายเตือนเหลืองบนดำ + มุมตัด · จบแล้ว = เทาเย็น */
+.techno .live-status {
+  background: #0a0b0d;
+  color: var(--tk-warn, #e8b923);
+  border: 1px solid var(--tk-warn, #e8b923);
+  border-radius: 3px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  -webkit-clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%);
+          clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%);
+}
+.techno .live-status.done {
+  color: #9aa4ae;
+  border-color: rgba(154, 164, 174, 0.5);
+  background: #0d0f11;
+}
+.techno .live-wait { border-radius: 6px; background: rgba(180, 190, 200, 0.03); }
+
+/* ---- แถบล่างสกอร์สด (sportbar — เดิมโปร่ง; ใส่แผงเทคโนให้เกาะบนวิดีโอ) ---
+   คงตัวหนังสือขาว + text-shadow เดิมไว้ให้อ่านออกบนวิดีโอทุกสี */
+.techno .sportbar {
+  background: rgba(17, 19, 22, 0.9);
+  border: 1px solid rgba(180, 190, 200, 0.14);
+  border-radius: 6px;
+  padding: 22px 44px 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85), 0 0 3px rgba(0, 0, 0, 0.7);
+}
+.techno .sportbar-team { border-bottom-color: var(--house, #888); }
+.techno .sportbar-team.win .sportbar-name {
+  text-shadow: 0 0 18px var(--house, #fff), 0 3px 12px rgba(0, 0, 0, 0.8);
+}
+.techno .sportbar-name { letter-spacing: 1px; }
+.techno .sportbar-score { color: #eaf6f8; letter-spacing: 2px; }
+.techno .sportbar .live-clock {
+  background: #000;
+  border: 1px solid rgba(180, 190, 200, 0.28);
+  border-radius: 3px;
+}
+.techno .sportbar .live-clock.run { border-color: var(--tk-cool, #4dd0e1); }
+.techno .sportbar .live-clock.ended {
+  background: rgba(233, 60, 60, 0.3);
+  border-color: rgba(233, 60, 60, 0.7);
+}
+.techno .sportbar-status { color: var(--tk-warn, #e8b923); letter-spacing: 2px; }
+.techno .sportbar[data-done="1"] .sportbar-status { color: #9aa4ae; }
+.techno .sportbar-foot {
+  color: var(--tk-cool, #4dd0e1);
+  letter-spacing: 3px;
+  opacity: 0.9;
+}

@@ -1,0 +1,196 @@
+/* ============================================================================
+   neu.css — ธีมทดลอง "neumorphism" (soft UI / นูน-กด โทนมืดสีเดียว)
+   ----------------------------------------------------------------------------
+   เปิดใช้:  ตั้งที่หน้า /control แท็บ "ตั้งค่า" -> settings.theme = "neu"
+            (overlay.js / board.js เติม class .neu ที่ <html> ทุกจอ)
+            หรือบังคับเฉพาะจอ: URL ?theme=neu / ?theme=default (ทับค่าที่ตั้งไว้)
+   ค่าเริ่มต้น / settings.theme ไม่ใช่ "neu" = สไตล์เดิมทุกอย่าง
+   ไฟล์นี้ทั้งไฟล์ scope ใต้ .neu  (:root.neu ใช้ประกาศตัวแปรเท่านั้น)
+
+   โหลดต่อจาก overlay.css / board.css — override เฉพาะพื้นผิว (พื้นหลัง/ขอบ/เงา)
+   ไม่แตะ layout / กริด / ตำแหน่ง / แอนิเมชัน / ฟอนต์ / การไฮไลต์ผู้นำ
+   หลักคิด: พื้น + การ์ด "สีเดียวกัน" การ์ดดูเหมือนถูกปั๊มนูนขึ้นมาจากพื้น
+            เงาคู่นุ่ม ๆ — สว่างมุมบนซ้าย + มืดมุมล่างขวา  แถวในลิสต์ = กดจม
+   เลี่ยง color-mix() / backdrop-filter เพื่อให้ CEF รุ่นเก่าของ OBS/vMix ยังใช้ได้
+   ============================================================================ */
+
+:root.neu {
+  --panel:   #161a21;
+  --panel-2: rgba(255, 255, 255, 0.04);
+  --stroke:  rgba(255, 255, 255, 0.05);
+}
+
+/* ---- พื้นจอ Scoreboard: โทนมืดแบน ๆ เกือบสม่ำเสมอ ----------------------- */
+.neu body.board {
+  background-color: #161a21;
+  background-image: radial-gradient(1400px 900px at 50% -8%,
+      rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0) 60%);
+}
+
+/* ---- การ์ดหลัก (results / schedule / sportMatches / sportLive) ------------
+   สีเดียวกับพื้น + เงาคู่นุ่ม = ดูนูนออกมา ไม่ลอย  ขอบแทบมองไม่เห็น */
+.neu .card {
+  background: #161a21;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 22px;
+  box-shadow:
+      -10px -10px 24px rgba(255, 255, 255, 0.045),
+       10px  10px 24px rgba(0, 0, 0, 0.55);
+}
+.neu .card-head {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(0, 0, 0, 0.10));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* ---- แถวในลิสต์: ผลกรีฑา / แมตช์ / ตารางแข่ง — ดูเหมือนกดจมลงในการ์ด ----
+   เงา inset คู่: มืดบนซ้าย + สว่างล่างขวา  สีพื้นเท่าการ์ด ไม่มีขอบ */
+.neu .rrow2,
+.neu .fbm,
+.neu .srow {
+  background: #161a21;
+  border: 0;
+  border-radius: 14px;
+  box-shadow:
+      inset  6px  6px 13px rgba(0, 0, 0, 0.50),
+      inset -6px -6px 13px rgba(255, 255, 255, 0.04);
+}
+
+/* ---- แถวที่ "กำลังแข่ง" (settings.selEventId / sport.currentId) ----------
+   คงเอกลักษณ์สีอำพัน แต่เป็นแสงเรือง inset + วงแหวนบาง ๆ  แยกจากแถวปกติชัด */
+.neu .rrow2.cur,
+.neu .fbm.cur,
+.neu .srow.cur {
+  background: rgba(255, 213, 74, 0.07);
+  box-shadow:
+      inset 0 0 24px rgba(255, 213, 74, 0.22),
+      inset 0 0 0 2px rgba(255, 213, 74, 0.42),
+      inset 5px 5px 12px rgba(0, 0, 0, 0.35);
+}
+
+/* ---- ชิปอันดับ / ป้ายสีคณะ — ปุ่มปั๊มนูน เคลือบไฮไลต์บาง ๆ ------------- */
+.neu .rchip,
+.neu .pill {
+  background: var(--house, #666);
+  border: 0;
+  box-shadow:
+      -4px -4px 10px rgba(255, 255, 255, 0.05),
+       4px  4px 10px rgba(0, 0, 0, 0.50),
+      inset 0 1px 0 rgba(255, 255, 255, 0.28),
+      inset 0 -2px 4px rgba(0, 0, 0, 0.22);
+}
+.neu .rchip b {
+  background: rgba(255, 255, 255, 0.26);
+  box-shadow:
+      inset 2px 2px 4px rgba(0, 0, 0, 0.42),
+      inset -2px -2px 4px rgba(255, 255, 255, 0.16);
+}
+.neu .dot {
+  box-shadow:
+      -2px -2px 5px rgba(255, 255, 255, 0.06),
+       2px  2px 5px rgba(0, 0, 0, 0.55),
+      inset 0 1px 1px rgba(255, 255, 255, 0.25);
+}
+
+/* ---- แถบล่าง TOP 3 — แผงมืดปั๊มนูน ------------------------------------- */
+.neu .t3 {
+  background: #161a21;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 20px;
+  box-shadow:
+      -10px -10px 22px rgba(255, 255, 255, 0.04),
+       10px  10px 22px rgba(0, 0, 0, 0.58);
+}
+.neu .t3-head {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(0, 0, 0, 0.12));
+  border-right-color: rgba(255, 255, 255, 0.04);
+}
+.neu .t3-item + .t3-item { border-left-color: rgba(255, 255, 255, 0.04); }
+.neu .t3-item::before { opacity: 0.14; }
+.neu .t3-r1::before { opacity: 0.26; }
+
+/* ---- สกอร์บอร์ดคู่สด (เต็มจอ) ---------------------------------------- */
+.neu .live-team {
+  background: #161a21;
+  border: 0;
+  border-radius: 20px;
+  box-shadow:
+      inset 0 -6px 0 var(--house, #666),
+      -10px -10px 24px rgba(255, 255, 255, 0.045),
+       10px  10px 24px rgba(0, 0, 0, 0.55);
+}
+/* ทีมที่นำ — ยกนูนแรงขึ้น + เรืองสีคณะใต้กล่อง แทนกรอบแข็งของธีมพื้นฐาน */
+.neu .live-team.win {
+  background: #171c24;
+  box-shadow:
+      inset 0 -6px 0 var(--house, #666),
+      -13px -13px 30px rgba(255, 255, 255, 0.055),
+       15px  15px 32px rgba(0, 0, 0, 0.62),
+       0 20px 46px -10px var(--house, #000);
+}
+.neu .live-score {
+  text-shadow:
+      -2px -2px 5px rgba(255, 255, 255, 0.06),
+       3px  3px 7px rgba(0, 0, 0, 0.62);
+}
+.neu .live-clock {
+  background: #161a21;
+  border: 0;
+  box-shadow:
+      inset  3px  3px 8px rgba(0, 0, 0, 0.55),
+      inset -3px -3px 8px rgba(255, 255, 255, 0.045);
+}
+.neu .live-clock.run { border: 0; }
+.neu .live-clock.ended {
+  background: rgba(233, 60, 60, 0.16);
+  border: 0;
+  box-shadow:
+      inset 3px 3px 8px rgba(0, 0, 0, 0.42),
+      inset 0 0 0 1px rgba(233, 60, 60, 0.55);
+}
+.neu .live-status {
+  border: 0;
+  box-shadow:
+      -3px -3px 8px rgba(255, 255, 255, 0.04),
+       3px  3px 8px rgba(0, 0, 0, 0.50);
+}
+.neu .live-wait {
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.015);
+  box-shadow:
+      inset  6px  6px 14px rgba(0, 0, 0, 0.45),
+      inset -6px -6px 14px rgba(255, 255, 255, 0.03);
+}
+
+/* ---- แถบล่างสกอร์สด (sportbar — เดิมไม่มีพื้นหลัง; ใส่แผงมืดให้ทอดเงาได้) ---
+   คงตัวหนังสือขาว + text-shadow เดิมไว้ให้อ่านออกบนวิดีโอ */
+.neu .sportbar {
+  background: rgba(22, 26, 33, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 22px;
+  padding: 22px 44px 20px;
+  box-shadow:
+      -10px -10px 24px rgba(255, 255, 255, 0.04),
+       12px  12px 28px rgba(0, 0, 0, 0.62);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85), 0 0 3px rgba(0, 0, 0, 0.7);
+}
+.neu .sportbar-team { border-bottom-color: var(--house, #888); }
+.neu .sportbar .live-clock {
+  background: rgba(0, 0, 0, 0.5);
+  border: 0;
+  box-shadow:
+      inset 2px 2px 6px rgba(0, 0, 0, 0.65),
+      inset -2px -2px 5px rgba(255, 255, 255, 0.04);
+}
+.neu .sportbar .live-clock.ended {
+  background: rgba(233, 60, 60, 0.30);
+  box-shadow: inset 2px 2px 6px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(233, 60, 60, 0.6);
+}
+
+/* ---- ป้ายเล็ก ๆ / chip อื่น ๆ ที่ใช้ var(--house) --------------------- */
+.neu .fbbr-champ,
+.neu .fbt-row.lead {
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow:
+      -6px -6px 16px rgba(255, 255, 255, 0.035),
+       6px  6px 16px rgba(0, 0, 0, 0.5);
+}

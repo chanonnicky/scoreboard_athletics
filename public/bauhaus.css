@@ -1,0 +1,220 @@
+/* ============================================================================
+   bauhaus.css — ธีมทดลอง "Bauhaus" (โมเดิร์นเรขาคณิต สีแม่สี แดง/น้ำเงิน/เหลือง)
+   ----------------------------------------------------------------------------
+   เปิดใช้:  ตั้งที่หน้า /control แท็บ "ตั้งค่า" -> settings.theme = "bauhaus"
+            (overlay.js / board.js เติม class .bauhaus ที่ <html> ทุกจอ)
+            หรือบังคับเฉพาะจอ: URL ?theme=bauhaus / ?theme=default (ทับค่าที่ตั้งไว้)
+   ค่าเริ่มต้น / settings.theme ไม่ใช่ "bauhaus" = สไตล์เดิมทุกอย่าง
+   ไฟล์นี้ทั้งไฟล์ scope ใต้ .bauhaus  (:root.bauhaus ใช้เฉพาะประกาศตัวแปร)
+
+   โหลดต่อจาก overlay.css / board.css — override เฉพาะพื้นผิว
+   (พื้นหลัง/ขอบ/มุมโค้ง/เงา/สีตัวอักษร/ฟอนต์เวท/รูปทรงประดับ ::before/::after)
+   ไม่แตะ layout / grid / flex / position ของกล่อง / ขนาดเวที / แอนิเมชัน
+   ธีมนี้เป็น "โทนสว่าง": /scoreboard พื้นครีม + รูปทรงแบน ๆ ใหญ่ ๆ ที่ขอบจอ,
+   /live ยังโปร่งใสเหมือนเดิม (แค่การ์ด/แถบเป็นแผ่นครีมทึบ ตัวอักษรดำ)
+   เลี่ยง color-mix() / backdrop-filter เพื่อให้ CEF รุ่นเก่าของ OBS/vMix ยังใช้ได้
+   ============================================================================ */
+
+:root.bauhaus {
+  --bh-red:    #e2231a;
+  --bh-blue:   #1b3a93;
+  --bh-yellow: #f2c200;
+  --bh-black:  #111;
+  --bh-paper:  #f4f1e8;
+
+  --panel:   #f4f1e8;
+  --panel-2: #e9e5d8;
+  --stroke:  #111;
+}
+
+/* ---- โทนสว่าง: ตัวอักษรดำ; จอ scoreboard พื้นครีม + รูปทรงเรขาที่ขอบ --------- */
+.bauhaus body.overlay { color: #111; }          /* /live ยังโปร่งใส — ไม่ตั้ง background */
+.bauhaus body.board {
+  color: #111;
+  background: #f4f1e8;
+  background-color: #f4f1e8;
+}
+/* รูปทรงแบนใหญ่ ๆ คีย์ต่ำ ๆ ที่ขอบจอ: วงกลมน้ำเงิน + เสี้ยววงกลมแดง + แถบเหลือง
+   รวมไว้ใน ::before ตัวเดียว (fixed เต็ม viewport, อยู่หลัง #stage เสมอตามลำดับ tree) */
+.bauhaus body.board::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .16;
+  background:
+    radial-gradient(circle at -70px -90px, var(--bh-blue) 0 340px, transparent 341px),
+    radial-gradient(circle at 100% 100%, var(--bh-red) 0 260px, transparent 261px),
+    linear-gradient(var(--bh-yellow) 0 0);
+  background-repeat: no-repeat;
+  background-size: auto, auto, 100% 44px;
+  background-position: top left, bottom right, left top;
+}
+.bauhaus .board-empty { color: #111; }
+.bauhaus .live-wait { color: #111; background: #f4f1e8; border: 3px solid #111; }
+
+/* ---- การ์ดหลัก (results / schedule / sportMatches / sportLive) ------------- */
+.bauhaus .card {
+  background: #f4f1e8;
+  border: 3px solid #111;
+  border-radius: 0;
+  box-shadow: 6px 6px 0 #111;
+}
+.bauhaus .card-head {
+  background: var(--bh-blue);
+  color: #f4f1e8;
+  border-bottom: 3px solid #111;
+}
+/* เครื่องหมายเรขาประดับที่มุมหัวการ์ด — วางในช่องว่าง padding ซ้าย ไม่ทับข้อความ */
+.bauhaus .card-head::before {
+  content: ""; position: absolute; left: 14px; top: 24px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--bh-yellow); border: 2px solid #111;
+  transform: rotate(45deg);
+}
+.bauhaus .card-kicker {
+  background: #111; color: #f4f1e8;
+  opacity: 1; padding: 2px 12px;
+  letter-spacing: 3px; text-transform: uppercase; font-weight: 800;
+}
+.bauhaus .card-title,
+.bauhaus .t3-title-text,
+.bauhaus .live-name,
+.bauhaus .sportbar-name,
+.bauhaus .t3-house {
+  font-weight: 800; text-transform: uppercase; letter-spacing: .5px;
+}
+
+/* ---- แถวในลิสต์: ผลกรีฑา / แมตช์ / ตารางแข่ง ---------------------------- */
+.bauhaus .rrow2,
+.bauhaus .fbm,
+.bauhaus .srow {
+  background: #f4f1e8;
+  border-radius: 0;
+  border-left: 8px solid var(--house, #111);
+  border-bottom: 1px solid #111;
+  box-shadow: none;
+}
+.bauhaus .rrow2:nth-child(even) { background: #e9e5d8; }
+.bauhaus .fbt-row { background: #f4f1e8; border-radius: 0; box-shadow: inset 5px 0 0 var(--house, transparent); }
+.bauhaus .fbt-head { background: transparent; box-shadow: none; }
+.bauhaus .fbt-row.lead,
+.bauhaus .fbbr-champ { background: var(--bh-yellow); }
+
+/* แถวของรายการ/คู่ที่กำลังแข่ง — บล็อกเหลืองทึบ + กรอบดำ (แทน amber โปร่งของเดิม) */
+.bauhaus .rrow2.cur,
+.bauhaus .fbm.cur,
+.bauhaus .srow.cur {
+  background: var(--bh-yellow);
+  color: #111;
+  border: 3px solid #111;
+  border-left-width: 8px;
+  box-shadow: none;
+}
+.bauhaus .rrow2.cur .rno,
+.bauhaus .rrow2.cur .rtitle,
+.bauhaus .srow.cur .smark,
+.bauhaus .srow.cur .stitle,
+.bauhaus .rres.rlive,
+.bauhaus .fbm-live { color: #111; }
+
+/* ---- accent ที่เดิมเป็นสีทองบนพื้นเข้ม — เปลี่ยนเป็นดำ/แดงบนพื้นสว่าง -------- */
+.bauhaus .fblv-h {
+  color: #111;
+  border-left: 6px solid var(--bh-red);
+  border-bottom: 1px solid #111;
+}
+.bauhaus .fbsub { color: #111; opacity: .7; border-left-color: #111; }
+.bauhaus .fbm-team.win .fbm-name { color: var(--house, #111); }
+.bauhaus .h-yellow.fbm-team.win .fbm-name,
+.bauhaus .comp-lightbg.fbm-team.win .fbm-name { color: #111; }
+
+/* ---- ชิปอันดับ / pill — สี่เหลี่ยม กรอบดำ คงพื้นสีคณะ ---------------------- */
+.bauhaus .rchip,
+.bauhaus .pill {
+  background: var(--house, #666);
+  color: var(--ink, #fff);
+  border-radius: 0;
+  border: 2px solid #111;
+}
+.bauhaus .rchip b {
+  background: #f4f1e8; color: #111;
+  border-radius: 0; border: 2px solid #111;
+}
+.bauhaus .rchip-logo,
+.bauhaus .dot { border-radius: 0; }
+
+/* ---- แถบล่าง TOP 3 ------------------------------------------------------- */
+.bauhaus .t3 {
+  background: #f4f1e8;
+  color: #111;
+  border: 3px solid #111;
+  border-radius: 0;
+  box-shadow: 6px 6px 0 #111;
+  text-shadow: none;
+}
+.bauhaus .t3-head {
+  background: var(--bh-blue);
+  color: #f4f1e8;
+  border-right: 3px solid #111;
+}
+.bauhaus .t3-item + .t3-item { border-left: 3px solid #111; }
+.bauhaus .t3-item::before { opacity: .2; }
+.bauhaus .t3-medal {
+  border: 3px solid #111;
+  box-shadow: none;
+  color: #111;
+}
+.bauhaus .t3-medal-1 { background: var(--bh-yellow); }
+.bauhaus .t3-medal-2 { background: #f4f1e8; }
+.bauhaus .t3-medal-3 { background: var(--bh-red); color: #fff; }
+
+/* ---- สกอร์บอร์ดคู่สด (เต็มจอ) ------------------------------------------- */
+.bauhaus .live-team {
+  background: #f4f1e8;
+  border: 3px solid #111;
+  border-radius: 0;
+  box-shadow: 6px 6px 0 #111, inset 0 -10px 0 var(--house, #111);
+}
+.bauhaus .live-team.win {
+  background: #fff;
+  box-shadow: 8px 8px 0 var(--house, #111), inset 0 -10px 0 var(--house, #111);
+}
+.bauhaus .live-team.win .live-name { text-shadow: none; }
+.bauhaus .live-name,
+.bauhaus .live-score { color: #111; text-shadow: none; }
+.bauhaus .live-clock,
+.bauhaus .live-clock.run {
+  background: #111; color: var(--bh-yellow);
+  border: 2px solid #111; border-radius: 0;
+}
+.bauhaus .live-clock.ended {
+  background: var(--bh-red); color: #fff; border-color: #111; opacity: 1;
+}
+.bauhaus .live-status {
+  background: var(--bh-red); color: #fff;
+  border: 3px solid #111; border-radius: 0;
+}
+.bauhaus .live-status.done { background: #111; color: #f4f1e8; }
+.bauhaus .live-dot { background: #e2231a; border-radius: 0; }
+
+/* ---- แถบล่างสกอร์สด (sportbar / sportLower) — แผ่นครีมทึบ ตัวอักษรดำ ------ */
+.bauhaus .sportbar {
+  background: #f4f1e8;
+  color: #111;
+  border: 3px solid #111;
+  border-radius: 0;
+  box-shadow: 6px 6px 0 #111;
+  padding: 22px 44px 20px;
+  text-shadow: none;
+}
+.bauhaus .sportbar-name,
+.bauhaus .sportbar-team.win .sportbar-name,
+.bauhaus .sportbar-score { text-shadow: none; color: #111; }
+.bauhaus .sportbar-foot {
+  color: #111; opacity: 1;
+  letter-spacing: 2px; text-transform: uppercase;
+}
+.bauhaus .sportbar .live-clock {
+  background: #111; color: var(--bh-yellow);
+  border: 2px solid #111; border-radius: 0;
+}
+.bauhaus .sportbar .live-clock.ended { background: var(--bh-red); color: #fff; border-color: #111; }
+.bauhaus .sportbar-status { color: var(--bh-red); }
+.bauhaus .sportbar[data-done="1"] .sportbar-status { color: #111; }

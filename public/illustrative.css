@@ -1,0 +1,246 @@
+/* ============================================================================
+   illustrative.css — ธีมทดลอง "hand-drawn / storybook" (กระดาษอุ่น หมึกวาดมือ)
+   ----------------------------------------------------------------------------
+   เปิดใช้:  ตั้งที่หน้า /control แท็บ "ตั้งค่า" -> settings.theme = "illustrative"
+            (overlay.js / board.js เติม class .illustrative ที่ <html> ทุกจอ)
+            หรือบังคับเฉพาะจอ: URL ?theme=illustrative / ?theme=default (ทับค่าที่ตั้งไว้)
+   ค่าเริ่มต้น / settings.theme ไม่ใช่ "illustrative" = สไตล์เดิมทุกอย่าง
+   ไฟล์นี้ทั้งไฟล์ scope ใต้ .illustrative
+
+   โหลดต่อจาก overlay.css / board.css — override เฉพาะพื้นผิว
+   (พื้นหลัง/ขอบ/เงา/สีตัวอักษร/decoration ผ่าน ::before ::after)
+   ไม่แตะ layout / grid / flex / position ของกล่องจริง / transform ของกล่อง /
+   ขนาดเวที / keyframes / ฟอนต์
+   ธีมนี้ "สว่าง": กระดาษครีมอุ่น หมึกน้ำตาลเข้ม — ของเดิมออกแบบมาสำหรับพื้นเข้ม/ตัวขาว
+   จึงรีเซ็ต accent สีทอง/ขาว เป็นหมึก/ส้มอิฐ และไฮไลต์ "กำลังแข่ง" เป็นปากกาไฮไลต์อำพัน
+   "วาดมือ" แบบไม่ใช้ SVG: ขอบหมึกคู่ + รัศมีมุมไม่เท่ากันทุกมุม + เงาแข็งเยื้อง
+   เลี่ยง color-mix() + backdrop-filter เพื่อให้ CEF รุ่นเก่าของ OBS/vMix ยังใช้ได้
+   ============================================================================ */
+
+:root.illustrative {
+  --panel: #fffdf7;
+  --panel-2: #fdfaf1;
+  --stroke: #33302a;
+  --ink: #33302a;
+}
+
+/* ---- พื้นจอ + หมึกฐาน (base = color:#fff จึงต้องรีเซ็ตเป็นหมึกเข้ม) ---------- */
+.illustrative body.overlay { color: #33302a; }
+.illustrative body.board {
+  color: #33302a;
+  background-color: #f7f1e3;
+  background-image:
+    repeating-linear-gradient(102deg, rgba(51,48,42,.022) 0 2px, rgba(255,255,255,0) 2px 5px),
+    radial-gradient(1400px 900px at 50% 0%, #fbf6ea 0%, #f7f1e3 55%, #efe6d0 100%);
+}
+/* ขอบมืดนุ่ม ๆ (vignette) หลังเนื้อหา — เต็มจอ ไม่ทับการ์ด (pseudo เท่านั้น) */
+.illustrative body.board::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  -webkit-box-shadow: inset 0 0 260px rgba(51,48,42,.14);
+          box-shadow: inset 0 0 260px rgba(51,48,42,.14);
+}
+.illustrative .board-empty { color: #8a8172; }
+
+/* ---- การ์ดหลัก (results / schedule / sportMatches / sportLive) ------------ */
+.illustrative .card {
+  background: #fffdf7;
+  border: 2.5px solid #33302a;
+  border-radius: 22px 30px 20px 28px;
+  box-shadow:
+      3px 3px 0 rgba(51,48,42,.9),
+      0 0 0 6px #f7f1e3 inset,
+      0 10px 24px rgba(51,48,42,.14);
+}
+.illustrative .card-head {
+  padding-bottom: 22px;
+  background: none;
+  border-bottom: 3px solid #33302a;
+  border-radius: 14px 18px 0 0;
+}
+/* เส้นใต้หัวการ์ดแบบขีดมือ — แท่งสั้นเอียงนิด ๆ ใต้เส้นหลัก */
+.illustrative .card-head::after {
+  content: ""; position: absolute; left: 40px; bottom: -8px; width: 190px; height: 4px;
+  background: #b5651d;
+  border-radius: 3px 6px 4px 7px;
+  -webkit-transform: rotate(-1deg); transform: rotate(-1deg);
+}
+.illustrative .card-title { text-shadow: 1.5px 1.5px 0 rgba(51,48,42,.15); }
+.illustrative .card-kicker {
+  display: inline-block; color: #33302a; opacity: .9;
+  padding: 2px 12px; margin-bottom: 2px;
+  border: 2px dashed #33302a;
+  border-radius: 10px 14px 9px 13px;
+  letter-spacing: 2px;
+}
+
+/* ---- แถวในลิสต์: ผลกรีฑา / แมตช์ / ตารางแข่ง ---------------------------- */
+.illustrative .rrow2,
+.illustrative .fbm,
+.illustrative .srow,
+.illustrative .fbt-row {
+  background: #fdfaf1;
+  border: 2px solid #33302a;
+  border-radius: 12px 16px 10px 15px;
+  box-shadow: 2px 2px 0 rgba(51,48,42,.28);
+}
+.illustrative .rrow2:nth-child(even),
+.illustrative .fbm:nth-child(even),
+.illustrative .srow:nth-child(even) { background: #fbf4e4; }
+.illustrative .fbt-head { background: none; border: 0; box-shadow: none; }
+
+/* ไฮไลต์แถว/คู่ที่กำลังแข่ง — ปากกาไฮไลต์อำพัน (ของเดิม rgba(255,213,74,.18) หายบนครีม) */
+.illustrative .rrow2.cur,
+.illustrative .fbm.cur,
+.illustrative .srow.cur {
+  background: #ffe9a8;
+  border: 3px solid #33302a;
+  border-radius: 13px 18px 11px 16px;
+  box-shadow: 3px 3px 0 rgba(51,48,42,.5), inset 0 0 0 1px rgba(181,101,29,.4);
+}
+.illustrative .rrow2.cur .rno,
+.illustrative .srow.cur .smark { color: #b5651d; opacity: 1; }
+.illustrative .rrow2.cur .rtitle,
+.illustrative .srow.cur .stitle { text-shadow: 1px 1px 0 rgba(51,48,42,.12); }
+
+/* หมึก accent สีทอง/ขาว ที่ออกแบบมาสำหรับพื้นเข้ม -> ส้มอิฐ / หมึก */
+.illustrative .rres.rlive,
+.illustrative .fbm-live { color: #b5651d; }
+.illustrative .fblv-h {
+  border-left: 6px solid #b5651d;
+  border-bottom: 1px solid rgba(51,48,42,.25);
+  text-shadow: 1.5px 1.5px 0 rgba(51,48,42,.15);
+}
+.illustrative .fbsub { border-left-color: rgba(51,48,42,.3); }
+.illustrative .fbm-team.win .fbm-name { text-shadow: 1px 1px 0 rgba(51,48,42,.14); }
+.illustrative .h-yellow.fbm-team.win .fbm-name,
+.illustrative .comp-lightbg.fbm-team.win .fbm-name { color: #b5651d; }
+.illustrative .fbt-row.lead {
+  background: #fdeecb;
+  border-color: #33302a;
+}
+.illustrative .fbbr-champ {
+  background: #fdeecb;
+  border: 2.5px solid #33302a;
+  border-radius: 14px 20px 12px 18px;
+  box-shadow: inset 6px 0 0 var(--house, #b5651d), 3px 3px 0 rgba(51,48,42,.4);
+}
+
+/* ---- ชิปอันดับ (ผลกรีฑา) + pill — เนื้อสีคณะ กรอบหมึก มุมเบี้ยว --------- */
+.illustrative .rchip,
+.illustrative .pill {
+  background-color: var(--house, #666);
+  border: 2px solid #33302a;
+  border-radius: 999px 999px 999px 999px;
+  box-shadow: 1.5px 1.5px 0 rgba(51,48,42,.55), inset 0 2px 0 rgba(255,255,255,.28);
+}
+.illustrative .rchip { border-radius: 999px 14px 999px 16px; }
+.illustrative .rchip b {
+  background: #fffdf7;
+  border: 2px solid #33302a;
+  border-radius: 50% 55% 48% 52%;
+  color: #33302a;
+}
+
+/* ---- เหรียญ TOP 3 — คงเนื้อโลหะ เพิ่มวงหมึกให้ลอยบนกระดาษ -------------- */
+.illustrative .t3-medal-1,
+.illustrative .t3-medal-2,
+.illustrative .t3-medal-3 {
+  border: 2.5px solid #33302a;
+  box-shadow: 1.5px 1.5px 0 rgba(51,48,42,.5), inset 0 -4px 8px rgba(0,0,0,.24);
+}
+
+/* ---- แถบล่าง TOP 3 — แผ่นกระดาษทึบ (ของเดิมตัวขาวบนวิดีโอ) ------------- */
+.illustrative .t3 {
+  background: #fffdf7;
+  color: #33302a;
+  text-shadow: none;
+  border: 2.5px solid #33302a;
+  border-radius: 16px 24px 14px 22px;
+  box-shadow: 3px 3px 0 rgba(51,48,42,.9), 0 10px 24px rgba(51,48,42,.16);
+}
+.illustrative .t3-head {
+  background: #fbf4e4;
+  border-right: 2px solid #33302a;
+}
+.illustrative .t3-title-text { text-shadow: 1px 1px 0 rgba(51,48,42,.14); }
+.illustrative .t3-item + .t3-item { border-left: 2px solid rgba(51,48,42,.2); }
+.illustrative .t3-item::before { opacity: .2; }
+.illustrative .t3-r1::before { opacity: .34; }
+.illustrative .t3-house { text-shadow: 1px 1px 0 rgba(51,48,42,.12); }
+
+/* ---- สกอร์บอร์ดคู่สด (เต็มจอ) ----------------------------------------- */
+.illustrative .live-team {
+  background: #fffdf7;
+  border: 2.5px solid #33302a;
+  border-radius: 18px 26px 16px 24px;
+  box-shadow:
+      inset 0 -8px 0 var(--house, #666),
+      3px 3px 0 rgba(51,48,42,.5),
+      0 10px 24px rgba(51,48,42,.14);
+}
+.illustrative .live-team.win {
+  background: #fffef9;
+  box-shadow:
+      inset 0 -8px 0 var(--house, #666),
+      0 0 0 3px var(--house, #b5651d),
+      3px 3px 0 rgba(51,48,42,.5),
+      0 16px 34px rgba(51,48,42,.2);
+}
+.illustrative .live-team.win .live-name,
+.illustrative .live-name,
+.illustrative .live-score { text-shadow: 1.5px 1.5px 0 rgba(51,48,42,.14); }
+.illustrative .live-clock {
+  background: #fdf6e6;
+  color: #33302a;
+  border: 2px solid #33302a;
+  border-radius: 10px 14px 9px 13px;
+}
+.illustrative .live-clock.run { color: #4a7a32; border-color: #33302a; }
+.illustrative .live-clock.ended {
+  color: #c1443b; opacity: 1;
+  background: #fbe4e1; border-color: #33302a;
+}
+.illustrative .live-status {
+  background: #fbe4e1; color: #c1443b;
+  border: 2px solid #33302a;
+  border-radius: 999px 999px 999px 999px;
+}
+.illustrative .live-status.done { background: #efe6d0; color: #8a8172; }
+.illustrative .live-wait {
+  color: #8a8172;
+  border-radius: 20px;
+  background: #fbf4e4;
+}
+
+/* ---- แถบล่างสกอร์สด (sportbar — เดิมโปร่ง ตัวขาว; ทำเป็นแผ่นกระดาษ) ---- */
+.illustrative .sportbar {
+  color: #33302a;
+  text-shadow: none;
+  background: #fffdf7;
+  border: 2.5px solid #33302a;
+  border-radius: 18px 26px 16px 24px;
+  padding: 22px 44px 20px;
+  box-shadow: 3px 3px 0 rgba(51,48,42,.9), 0 10px 24px rgba(51,48,42,.16);
+}
+.illustrative .sportbar-name,
+.illustrative .sportbar-score,
+.illustrative .sportbar-team.win .sportbar-name { text-shadow: 1.5px 1.5px 0 rgba(51,48,42,.15); }
+.illustrative .sportbar-team { border-bottom-color: var(--house, #888); }
+.illustrative .sportbar .live-clock {
+  background: #fdf6e6;
+  color: #33302a;
+  border: 2px solid #33302a;
+  border-radius: 8px 12px 7px 11px;
+}
+.illustrative .sportbar .live-clock.ended {
+  background: #fbe4e1; border-color: #33302a;
+}
+.illustrative .sportbar-status { color: #c1443b; }
+.illustrative .sportbar[data-done="1"] .sportbar-status { color: #8a8172; }
+
+/* ---- จุดกะพริบ LIVE — คงพัลส์ เปลี่ยนเป็นแดงอุ่น -------------------- */
+.illustrative .live-dot {
+  background: #c1443b;
+  -webkit-box-shadow: 0 0 0 0 rgba(193,68,59,.6);
+          box-shadow: 0 0 0 0 rgba(193,68,59,.6);
+}

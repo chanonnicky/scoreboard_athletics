@@ -1,0 +1,174 @@
+/* ============================================================================
+   broken.css — ธีมทดลอง "Asymmetrical / Broken Grid" (ตารางเบี้ยว/หลุดแนว)
+   ----------------------------------------------------------------------------
+   เปิดใช้:  ตั้งที่หน้า /control แท็บ "ตั้งค่า" -> settings.theme = "broken"
+            (overlay.js / board.js เติม class .broken ที่ <html> ทุกจอ)
+            หรือบังคับเฉพาะจอ: URL ?theme=broken / ?theme=default (ทับค่าที่ตั้งไว้)
+   ค่าเริ่มต้น / settings.theme ไม่ใช่ "broken" = สไตล์เดิมทุกอย่าง
+   ไฟล์นี้ทั้งไฟล์ scope ใต้ .broken
+
+   โหลดต่อจาก overlay.css / board.css — override เฉพาะ "ทัศนคติของเลย์เอาต์":
+   หมุนการ์ดเล็กน้อยคนละองศา, มุมโค้งไม่สมมาตร, เงา/ขอบเยื้องไปข้างเดียว,
+   หัวการ์ด/หัวข้อ "หลุด" ออกจากตัว, แถวในลิสต์เยื้องซ้าย-ขวาสลับกัน
+   ไม่แตะ: สีตัวอักษร (ยังขาว), เลย์เอาต์ (display/grid/flex/position), แอนิเมชัน
+   ไม่ใช้ color-mix() / backdrop-filter เพื่อให้ CEF รุ่นเก่าของ OBS/vMix ยังใช้ได้
+
+   กฎการหมุน: ไม่แตะ .cg (ตัว wrapper ที่ทำแอนิเมชัน) และไม่แตะ #stage
+   การ์ดเต็มจอหมุนรวม <= 1.4deg และห้ามดันหลุดเวที 1920x1080
+   แถวที่มีแอนิเมชันอยู่แล้ว (.rrow2 / .srow / .fbm / .fblv-h) ใช้ margin/ขอบ
+   สลับ ไม่ใส่ transform ที่ selector หลัก (จะตีกับ transform ของแอนิเมชัน)
+   ============================================================================ */
+
+:root.broken {
+  --brk-shadow: rgba(255, 255, 255, 0.06);
+  --brk-edge:   rgba(255, 255, 255, 0.22);
+  --brk-amber:  rgba(255, 213, 74, 0.30);
+}
+
+/* ---- การ์ดหลัก (results / schedule / sportMatches / sportLive) ------------
+   .card overflow: visible เพื่อให้ .card-head ที่หมุนสวนทาง "โผล่หลุด" ออกมาได้
+   — body ของหน้าที่แบ่งหน้ายังมี overflow:hidden ของตัวเองอยู่ (ไม่แตะ)          */
+.broken .card {
+  border-radius: 26px 8px 26px 8px;
+  border-left: 6px solid var(--brk-edge);
+  box-shadow: -12px 12px 0 var(--brk-shadow), 0 30px 80px rgba(0, 0, 0, 0.5);
+  overflow: visible;
+  transform: rotate(-1.2deg);
+}
+.broken .card-head {
+  margin-left: -13px;
+  border-radius: 8px 20px 4px 18px;
+  border-bottom: 1px solid var(--brk-edge);
+  box-shadow: 11px -8px 0 var(--brk-shadow);
+  transform: rotate(0.9deg);
+}
+
+/* การ์ดเต็มจอ — หมุนรวม <= 1.4deg (ทับค่า -1.2deg ด้านบนให้ปลอดภัยและต่างองศากัน) */
+.broken .tpl-results-card { transform: rotate(-0.8deg); }
+.broken .tpl-sched-card   { transform: rotate(-1deg); }
+.broken .tpl-fb-card      { transform: rotate(-1.1deg); }
+.broken .tpl-live-card    { transform: rotate(0.7deg); }
+
+/* ---- หัวข้อ/คิกเกอร์ — เอียงออกจากแกน + ขีดเส้นใต้กว้างเกินตัวอักษรและเยื้อง ---- */
+.broken .card-kicker {
+  letter-spacing: 5px;
+  padding-bottom: 4px;
+  transform: rotate(-1deg) translateX(-4px);
+}
+.broken .card-kicker::after {
+  content: ""; display: block;
+  width: calc(100% + 46px); height: 3px;
+  margin: 6px 0 0 -30px;
+  background: rgba(255, 213, 74, 0.7);
+  transform: rotate(-0.6deg);
+}
+.broken .card-title { letter-spacing: 0.5px; }
+.broken .fblv-h {
+  letter-spacing: 2px;
+  margin-left: 10px;
+  border-left-width: 7px;
+}
+.broken .fblv-h::after {
+  content: ""; display: block;
+  width: calc(100% + 60px); height: 3px;
+  margin: 8px 0 0 -24px;
+  background: var(--house, #ffd54a); opacity: 0.5;
+}
+.broken .fbsub {
+  letter-spacing: 3px;
+  transform: rotate(0.7deg) translateX(6px);
+}
+
+/* ---- แถวในลิสต์: ผลกรีฑา / แมตช์ / ตารางแข่ง ----------------------------
+   ไม่ใส่ transform ที่ selector หลัก — ใช้ margin เยื้องซ้าย-ขวาสลับ,
+   มุมโค้งสลับด้าน, ขอบหนาสีคณะสลับซ้าย-ขวา (อยู่รอดแม้แอนิเมชันเลื่อนแถว)     */
+.broken .rrow2:nth-child(odd),
+.broken .fbm:nth-child(odd),
+.broken .srow:nth-child(odd) {
+  margin-left: 0; margin-right: 24px;
+  border-radius: 14px 4px 14px 4px;
+  border-left: 6px solid var(--house, #666);
+  background: rgba(255, 255, 255, 0.06);
+}
+.broken .rrow2:nth-child(even),
+.broken .fbm:nth-child(even),
+.broken .srow:nth-child(even) {
+  margin-left: 24px; margin-right: 0;
+  border-radius: 4px 14px 4px 14px;
+  border-right: 6px solid var(--house, #666);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* ไฮไลต์ "กำลังแข่ง" (.cur) — คงสีอำพัน แต่จงใจวางกล่องให้เยื้อง มุมนึงคม */
+.broken .rrow2.cur,
+.broken .srow.cur,
+.broken .fbm.cur {
+  margin-left: 10px;
+  border-left: 4px solid #ffd54a;
+  border-radius: 16px 16px 16px 2px;
+  box-shadow: -7px 7px 0 var(--brk-amber), inset 0 0 0 2px rgba(255, 213, 74, 0.7);
+}
+
+/* ---- ชิป (อันดับผลกรีฑา / pill) — หมุนสลับเล็กน้อย + มุมโค้งไม่สมมาตร ------- */
+.broken .rchip:nth-child(odd) {
+  border-radius: 999px 6px 999px 6px;
+  transform: rotate(-1.5deg);
+}
+.broken .rchip:nth-child(even) {
+  border-radius: 6px 999px 6px 999px;
+  transform: rotate(1.5deg);
+}
+.broken .pill {
+  border-radius: 999px 8px 999px 8px;
+  transform: rotate(-1deg);
+}
+
+/* ---- แถบล่าง TOP 3 — หมุนทั้งแถบ, หัวสวนทาง, 3 ช่องดู "ไม่เท่ากัน" -------- */
+.broken .t3 {
+  border-radius: 20px 6px 20px 6px;
+  box-shadow: 12px 12px 0 var(--brk-shadow), 0 18px 48px rgba(0, 0, 0, 0.42);
+  transform: rotate(0.8deg);
+}
+.broken .t3-head {
+  border-right: 1px solid var(--brk-edge);
+  transform: rotate(-0.8deg);
+}
+.broken .t3-item:nth-child(odd) {
+  padding-left: 20px; padding-right: 28px;
+  margin-top: 4px;
+}
+.broken .t3-item:nth-child(even) {
+  padding-left: 30px; padding-right: 18px;
+  margin-top: -4px;
+}
+/* หมุนที่เหรียญ (ไม่ใช่ตัว flex item) เพื่อไม่กวนเลย์เอาต์ — <= 2deg */
+.broken .t3-item:nth-child(odd) .t3-medal  { transform: rotate(-2deg); }
+.broken .t3-item:nth-child(even) .t3-medal { transform: rotate(2deg); }
+.broken .t3-r1 .t3-house { letter-spacing: 0.5px; }
+
+/* ---- สกอร์บอร์ดคู่สด (เต็มจอ) — สองทีมเอียงคนละองศา, มุมโค้งไม่สมมาตร ------ */
+.broken .live-team {
+  border-radius: 22px 6px 22px 6px;
+  box-shadow: inset 0 -8px 0 var(--house, #666), -10px 10px 0 var(--brk-shadow);
+}
+.broken .live-team:first-child { transform: rotate(-1deg); }
+.broken .live-team:last-child  { transform: rotate(1.1deg); }
+.broken .live-clock { border-radius: 14px 4px 14px 4px; transform: rotate(-0.8deg); }
+.broken .live-status { border-radius: 999px 8px 999px 8px; }
+
+/* ---- แถบล่างสกอร์สด (sportbar — Live overlay เท่านั้น) ------------------- */
+.broken .sportbar {
+  border-radius: 20px 6px 20px 6px;
+  transform: rotate(-0.6deg);
+}
+.broken .sportbar-home { transform: rotate(0.9deg); }
+.broken .sportbar-away { transform: rotate(-0.9deg); }
+.broken .sportbar-foot { letter-spacing: 3px; transform: rotate(0.6deg); }
+.broken .sportbar .live-clock { border-radius: 9px 3px 9px 3px; }
+
+/* ---- โมดูลกีฬา: กล่องแชมป์ / ป้ายนำ — เยื้องเล็กน้อยให้เข้าชุด ------------- */
+.broken .fbbr-champ {
+  border-radius: 14px 4px 14px 4px;
+  box-shadow: inset 6px 0 0 var(--house, #f4c020), -9px 9px 0 var(--brk-shadow);
+  transform: rotate(-0.7deg);
+}

@@ -1,0 +1,202 @@
+/* ============================================================================
+   editorial.css — ธีมทดลอง "Editorial / Magazine" (กระดาษครีม · หมึกเข้ม · เส้นบาง)
+   ----------------------------------------------------------------------------
+   เปิดใช้:  ตั้งที่หน้า /control แท็บ "ตั้งค่า" -> settings.theme = "editorial"
+            (overlay.js / board.js เติม class .editorial ที่ <html> ทุกจอ)
+            หรือบังคับเฉพาะจอ: URL ?theme=editorial / ?theme=default (ทับค่าที่ตั้งไว้)
+   ค่าเริ่มต้น / settings.theme ไม่ใช่ "editorial" = สไตล์เดิมทุกอย่าง
+   ไฟล์นี้ทั้งไฟล์ scope ใต้ .editorial
+
+   โหลดต่อจาก overlay.css / board.css — override เฉพาะพื้นผิว/ตัวอักษร
+   (พื้นหลัง/ขอบ/มุม/เงา/ฟอนต์/สี/ระยะขอบการ์ด) ไม่แตะ layout / ตำแหน่ง /
+   ขนาดเวที / transform / overflow / keyframes
+   เลี่ยง color-mix() และ backdrop-filter (CEF รุ่นเก่าของ OBS/vMix)
+
+   อารมณ์: นิตยสารพิมพ์ — พื้นกระดาษอุ่น หมึกเข้ม หัวข้อเซอริฟ การ์ดเป็นแผ่น
+   เกือบเหลี่ยม ขอบเส้นเดียว เงาแทบไม่มี · แถวลิสต์ไม่มีกล่อง คั่นด้วยเส้นบาง
+   ทองสด (#ffd54a) มองไม่เห็นบนกระดาษ -> เปลี่ยนเป็นหมึกเข้ม / แดงเลือดหมู
+   (#8a1f1f) และแดงจอสด -> แดงสำนักพิมพ์ที่สุขุม (#9b2226)
+   ============================================================================ */
+
+:root.editorial {
+  --panel:   #fffdf8;   /* กระดาษขาวนวล (พื้นการ์ด) */
+  --panel-2: #f0ece1;
+  --stroke:  #c9c2b4;   /* เส้นขอบบางสีกระดาษ */
+}
+
+/* ---- พื้น/หมึกรวม ------------------------------------------------------- */
+.editorial body.overlay,
+.editorial body.board { color: #1c1a17; }
+.editorial body.board { background: #f6f3ec; background-color: #f6f3ec; }
+
+/* ---- หัวข้อ = เซอริฟ (ตัวพิมพ์แบบนิตยสาร) · ป้ายกำกับ/ตัวเลขคงแซนส์เดิม -- */
+.editorial .card-title,
+.editorial .card-sub,
+.editorial .t3-title-text,
+.editorial .t3-house,
+.editorial .live-name,
+.editorial .fbm-name,
+.editorial .sportbar-name,
+.editorial .fblv-h {
+  font-family: Georgia, "Times New Roman", "Noto Serif", serif;
+}
+
+/* ---- การ์ดหลัก (results / schedule / sportMatches / sportLive) ---------- */
+.editorial .card {
+  background: #fffdf8;
+  border: 1px solid #1c1a17;
+  border-radius: 3px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.editorial .card-head {
+  background: #fffdf8;
+  border-bottom: 3px double #1c1a17;   /* เส้นคู่แบบหัวคอลัมน์นิตยสาร */
+}
+.editorial .card-kicker {           /* eyebrow: ตัวเล็ก พิมพ์ใหญ่ ระยะห่างกว้าง หมึกจาง */
+  color: #8a8272;
+  opacity: 1;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.editorial .card-title { color: #1c1a17; }
+.editorial .card-sub {
+  color: #6b6459;
+  opacity: 1;
+  font-style: italic;               /* deck แบบเอียง */
+}
+
+/* ---- แถวในลิสต์: ผลกรีฑา / แมตช์ / ตารางแข่ง — ไม่มีกล่อง คั่นด้วยเส้นบาง -- */
+.editorial .rrow2,
+.editorial .fbm,
+.editorial .srow {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #d8d1c2;
+  border-radius: 0;
+  box-shadow: none;
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+/* แถวรายการที่กำลังแข่ง — เส้นซ้ายหนา + ล้างพื้นอุ่นบาง ๆ (สุขุม ไม่แสบตา) */
+.editorial .rrow2.cur,
+.editorial .fbm.cur,
+.editorial .srow.cur {
+  background: #f0e9d8;
+  border-bottom-color: #d8d1c2;
+  box-shadow: inset 3px 0 0 #8a1f1f;
+}
+.editorial .rrow2.cur .rno,
+.editorial .srow.cur .smark { color: #8a1f1f; opacity: 1; }
+
+/* ---- accent ทอง (#ffd54a) มองไม่เห็นบนกระดาษ -> หมึกเข้ม / แดงเลือดหมู --- */
+.editorial .rres.rlive,
+.editorial .fbm-live { color: #8a1f1f; }
+.editorial .fblv-h {
+  color: #1c1a17;
+  border-left-color: #8a1f1f;
+  border-bottom-color: #d8d1c2;
+}
+.editorial .fbsub {
+  color: #8a8272;
+  border-left-color: #c9c2b4;
+}
+/* ชื่อทีมผู้ชนะสีเหลือง/พื้นสว่าง เดิมย้อมทอง -> หมึกเข้มให้อ่านออกบนกระดาษ */
+.editorial .h-yellow.fbm-team.win .fbm-name,
+.editorial .comp-lightbg.fbm-team.win .fbm-name { color: #1c1a17; }
+
+/* ---- ชิปอันดับ / pill — คง var(--house) + --ink ไว้ในตัว แค่ทำให้เหลี่ยม --- */
+.editorial .rchip,
+.editorial .pill {
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.28);
+}
+.editorial .rchip b { border-radius: 3px; background: rgba(255, 255, 255, 0.6); }
+.editorial .rchip-logo { border-radius: 3px; }
+
+/* ---- แถบล่าง TOP 3 — แผ่นกระดาษ หมึกเข้ม ไม่มีเงาวิดีโอ ------------------ */
+.editorial .t3 {
+  background: #fffdf8;
+  color: #1c1a17;
+  border: 1px solid #1c1a17;
+  border-radius: 3px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.editorial .t3-head {
+  background: #fffdf8;
+  border-right-color: #d8d1c2;
+}
+.editorial .t3-item + .t3-item { border-left-color: #d8d1c2; }
+
+/* ---- สกอร์บอร์ดคู่สด (เต็มจอ) ----------------------------------------- */
+.editorial .live-team {
+  background: #fbf9f3;
+  border: 1px solid #c9c2b4;
+  border-radius: 3px;
+  box-shadow: inset 0 -6px 0 var(--house, #999);
+}
+.editorial .live-team.win {
+  background: #fffdf8;
+  box-shadow:
+      inset 0 -6px 0 var(--house, #999),
+      0 0 0 2px var(--house, #1c1a17),
+      0 2px 8px rgba(0, 0, 0, 0.10);
+}
+.editorial .live-team.win .live-name { text-shadow: none; }
+.editorial .live-score { text-shadow: none; }
+.editorial .live-clock {
+  background: #fff;
+  color: #1c1a17;
+  border: 1px solid #c9c2b4;
+}
+.editorial .live-clock.run { color: #1c1a17; border-color: #1c1a17; }
+.editorial .live-clock.paused { color: #6b6459; }
+.editorial .live-clock.ended {
+  color: #9b2226;
+  background: #f7e3e1;
+  border-color: #9b2226;
+}
+.editorial .live-status {
+  background: #f7e3e1;
+  color: #9b2226;
+}
+.editorial .live-status.done {
+  background: #efece3;
+  color: #6b6459;
+}
+.editorial .live-wait { color: #6b6459; background: #fffdf8; border: 1px solid #c9c2b4; border-radius: 3px; }
+.editorial .live-dot { background: #9b2226; }
+
+/* ---- แถบล่างสกอร์สด (sportbar — เดิมโปร่ง/ขาวบนวิดีโอ -> แผ่นกระดาษ) ---- */
+.editorial .sportbar {
+  background: #fffdf8;
+  color: #1c1a17;
+  border: 1px solid #1c1a17;
+  border-radius: 3px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  text-shadow: none;
+  padding: 20px 40px;
+}
+.editorial .sportbar-score,
+.editorial .sportbar-name,
+.editorial .sportbar-team.win .sportbar-name { text-shadow: none; }
+.editorial .sportbar .live-clock {
+  background: #fff;
+  color: #1c1a17;
+  border: 1px solid #c9c2b4;
+}
+.editorial .sportbar .live-clock.ended {
+  background: #f7e3e1;
+  border-color: #9b2226;
+  color: #9b2226;
+}
+.editorial .sportbar-status { color: #9b2226; }
+.editorial .sportbar[data-done="1"] .sportbar-status { color: #6b6459; }
+
+/* ---- ตารางคะแนน / สายน็อกเอาต์ (พื้นไล่สีขาวเดิมจางบนกระดาษ) ----------- */
+.editorial .fbt-head { color: #8a8272; opacity: 1; }
+.editorial .fbt-row.lead { background: #f0e9d8; }
+.editorial .fbbr-champ {
+  background: #f0e9d8;
+  box-shadow: inset 6px 0 0 var(--house, #8a1f1f);
+}

@@ -994,14 +994,14 @@
           "</div>" +
           '<p class="muted" style="margin-top:6px">สลับโหมดจะสลับชุดข้อมูลทั้งหมด (รายการ / ผล / แมตช์) — ข้อมูลอีกชุดถูกเก็บไว้ กลับมาเหมือนเดิมเมื่อสลับกลับ</p>' +
         "</div>" +
-        '<label class="field" style="max-width:420px;margin-top:12px">ธีมแสดงผล (ทุกจอ Live / Scoreboard)' +
-          '<select id="setTheme" data-act="theme-set">' +
+        '<div class="field" style="max-width:420px;margin-top:12px">ธีมแสดงผล (ทุกจอ Live / Scoreboard)' +
+          '<select id="setTheme" data-act="theme-set" style="margin-top:6px;width:100%;max-width:320px">' +
             THEME_OPTS.map(function (o) {
               return '<option value="' + o[0] + '"' + (o[0] === themeVal ? " selected" : "") + ">" + esc(o[1]) + "</option>";
             }).join("") +
           "</select>" +
           '<p class="muted" style="margin-top:6px">มีผลกับทุกจอ Live / Scoreboard ทันที (หน้าคุม/จดคะแนนไม่เปลี่ยน) · 🧊 Liquid Glass ต้องใช้ OBS / vMix รุ่นใหม่ (backdrop-filter) ธีมอื่นไม่ต้อง · เติม <code>?theme=&lt;ชื่อธีม&gt;</code> หรือ <code>?theme=default</code> ต่อท้าย URL เพื่อบังคับเฉพาะจอนั้น</p>' +
-        "</label>" +
+        "</div>" +
         '<label class="field" style="max-width:360px;margin-top:12px">ชื่องาน (แสดงบน CG)<input type="text" id="setMeet" value="' + esc(s.meetTitle || "") + '"></label>' +
         '<label class="field" style="max-width:420px;margin-top:12px">โลโก้ส่วนกลาง (พาธ/URL — เว้นว่าง = ไม่แสดง)' +
           '<input type="text" id="setLogo" value="' + esc(s.logo == null ? "" : s.logo) + '" placeholder="/pictures/logo.png"></label>' +

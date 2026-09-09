@@ -1,0 +1,224 @@
+/* ============================================================================
+   retro.css — ธีมทดลอง "Retro-Futurism / synthwave" (นีออน / โครม / กริดยุค 80)
+   ----------------------------------------------------------------------------
+   เปิดใช้:  ตั้งที่หน้า /control แท็บ "ตั้งค่า" -> settings.theme = "retro"
+            (overlay.js / board.js เติม class .retro ที่ <html> ทุกจอ)
+            หรือบังคับเฉพาะจอ: URL ?theme=retro / ?theme=default (ทับค่าที่ตั้งไว้)
+   ค่าเริ่มต้น / settings.theme ไม่ใช่ "retro" = สไตล์เดิมทุกอย่าง
+   ไฟล์นี้ทั้งไฟล์ scope ใต้ .retro (มี :root.retro เฉพาะประกาศตัวแปร)
+
+   โหลดต่อจาก overlay.css / board.css — override เฉพาะพื้นผิว (พื้นหลัง/ขอบ/เงา/แสง/ตัวอักษร)
+   ไม่แตะ layout / grid / flex / position ของ layout / ขนาดเวที / keyframes / transition / ฟอนต์
+   ทำงานได้ทั้งโหมดสีคณะและโหมดโรงเรียน — ใช้ var(--house)/var(--ink) ไม่ฮาร์ดโค้ดสีคณะ
+   เลี่ยง color-mix() และ backdrop-filter เพื่อให้ CEF รุ่นเก่าของ OBS/vMix ยังใช้ได้
+   ฉากเต็มจอ (ท้องฟ้า+กริด) อยู่บน body.board เท่านั้น — การ์ดมัก overflow:hidden
+   จึงใส่ได้แค่ decoration ในกรอบ (::before/::after ของการ์ด)
+   ============================================================================ */
+
+:root.retro {
+  --panel:   rgba(14, 10, 26, 0.90);
+  --panel-2: rgba(244, 114, 182, 0.10);
+  --stroke:  rgba(34, 211, 238, 0.34);
+  --neon-cyan: #22d3ee;
+  --neon-pink: #f472b6;
+  --neon-amber: #ffc24a;
+}
+
+/* ---- ฉากเต็มจอ: จอประชาสัมพันธ์ (ทึบ) เท่านั้น --------------------------- */
+.retro body.board {
+  background:
+    radial-gradient(1200px 760px at 50% 116%, rgba(244,114,182,0.30), rgba(244,114,182,0) 60%),
+    linear-gradient(180deg, #1a1035 0%, #2a1550 42%, #3a1a5e 70%, #140a24 100%);
+  background-color: #120a22;
+}
+/* กริดเปอร์สเปกทีฟ 80s — เส้นนีออนจาง ๆ ครึ่งล่าง ไล่จางขึ้นหากลางจอ (เส้นขอบฟ้า) */
+.retro body.board::before {
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    linear-gradient(180deg, #1a1035 0%, #1a1035 46%, rgba(26,16,53,0) 62%),
+    repeating-linear-gradient(0deg,  rgba(34,211,238,0.16) 0 1px, rgba(34,211,238,0) 1px 46px),
+    repeating-linear-gradient(90deg, rgba(244,114,182,0.11) 0 1px, rgba(244,114,182,0) 1px 92px);
+  opacity: 0.55;
+}
+/* /live โปร่งใส (ซ้อนวิดีโอ) — ไม่มีฉากเต็มจอ ธีมเฉพาะการ์ด */
+.retro body.overlay { background: transparent; }
+
+/* ---- การ์ดหลัก (results / schedule / sportMatches / sportLive) ----------- */
+.retro .card {
+  background-color: rgba(14, 10, 26, 0.90);
+  background-image: linear-gradient(160deg, rgba(244,114,182,0.10), rgba(14,10,26,0) 44%, rgba(34,211,238,0.10));
+  border: 1px solid rgba(34, 211, 238, 0.55);
+  border-radius: 16px;
+  box-shadow: 0 0 22px rgba(34,211,238,0.35), 0 0 60px rgba(244,114,182,0.18),
+              0 30px 80px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(244,114,182,0.22);
+}
+/* สแกนไลน์บาง ๆ ในกรอบการ์ด (อยู่ใน overflow:hidden — ไม่ล้น) */
+.retro .card::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 1px, rgba(255,255,255,0) 1px 4px);
+}
+.retro .card-head {
+  background: linear-gradient(180deg, rgba(34,211,238,0.14), rgba(244,114,182,0.05));
+  border-bottom: 1px solid rgba(34, 211, 238, 0.45);
+}
+
+/* ---- หัวข้อ / kicker — ตัวอักษรกว้าง + เรืองนีออน (ตัวเล็กคงอ่านง่าย) ----- */
+.retro .card-kicker {
+  color: var(--neon-cyan); letter-spacing: 4px; text-transform: uppercase; opacity: 0.85;
+  text-shadow: 0 0 10px rgba(34, 211, 238, 0.7);
+}
+.retro .card-title {
+  letter-spacing: 1.5px;
+  text-shadow: 0 0 12px rgba(244, 114, 182, 0.55), 0 0 26px rgba(34, 211, 238, 0.35);
+}
+.retro .card-sub { color: rgba(255, 255, 255, 0.82); letter-spacing: 0.5px; }
+
+/* ---- แถวในลิสต์: ผลกรีฑา / แมตช์ / ตารางแข่ง --------------------------- */
+.retro .rrow2,
+.retro .fbm,
+.retro .srow {
+  background: rgba(14, 10, 26, 0.55);
+  border: 1px solid rgba(34, 211, 238, 0.20);
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px rgba(244, 114, 182, 0.08);
+}
+/* แถวรายการที่กำลังแข่ง — แถบกวาดนีออนอำพัน/ชมพู ยังอยู่โทน "สด" เดิม */
+.retro .rrow2.cur,
+.retro .fbm.cur,
+.retro .srow.cur {
+  background: rgba(255, 194, 74, 0.18);
+  border-color: rgba(255, 194, 74, 0.75);
+  box-shadow: inset 0 0 0 2px rgba(255, 194, 74, 0.7), 0 0 26px rgba(255, 140, 90, 0.45);
+}
+.retro .rrow2.cur .rno,
+.retro .srow.cur .smark { color: var(--neon-amber); text-shadow: 0 0 12px rgba(255, 194, 74, 0.8); }
+.retro .rres.rlive,
+.retro .fbm-live { color: var(--neon-amber); text-shadow: 0 0 12px rgba(255, 194, 74, 0.7); }
+
+/* ---- ชิป var(--house) — คงพื้นสีคณะ + เส้นขอบนีออน + เรืองบาง ๆ --------- */
+.retro .rchip,
+.retro .pill {
+  background-image: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(0,0,0,0.16));
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 0 0 14px rgba(244, 114, 182, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+.retro .rchip b { background: rgba(10, 6, 20, 0.55); color: #fff; }
+
+/* ---- แถบล่าง TOP 3 ---------------------------------------------------- */
+.retro .t3 {
+  background-color: rgba(14, 10, 26, 0.90);
+  background-image: linear-gradient(160deg, rgba(34,211,238,0.12), rgba(14,10,26,0) 45%, rgba(244,114,182,0.12));
+  border: 1px solid rgba(244, 114, 182, 0.55);
+  border-radius: 16px;
+  box-shadow: 0 0 22px rgba(244, 114, 182, 0.35), 0 18px 48px rgba(0, 0, 0, 0.55);
+}
+.retro .t3-head {
+  background: linear-gradient(180deg, rgba(34,211,238,0.14), rgba(34,211,238,0));
+  border-right: 1px solid rgba(34, 211, 238, 0.45);
+}
+.retro .t3-title-text { letter-spacing: 1px; text-shadow: 0 0 10px rgba(34, 211, 238, 0.5); }
+.retro .t3-house {
+  letter-spacing: 1px;
+  text-shadow: 0 0 14px var(--house, rgba(244,114,182,0.6)), 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+.retro .t3-item + .t3-item { border-left: 1px solid rgba(34, 211, 238, 0.3); }
+/* เหรียญ — คงหน้าตาเดิมให้อ่านออก เพิ่มแค่ขอบสว่าง + เรืองบาง ๆ */
+.retro .t3-medal {
+  border-color: rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 -4px 8px rgba(0, 0, 0, 0.28), 0 0 16px rgba(244, 114, 182, 0.45);
+}
+
+/* ---- โมดูลกีฬา: หัวข้อระดับชั้น + แถวแมตช์ --------------------------- */
+.retro .fblv-h {
+  border-left: 6px solid var(--neon-pink);
+  border-bottom: 1px solid rgba(34, 211, 238, 0.4);
+  letter-spacing: 2px; text-transform: uppercase;
+  text-shadow: 0 0 12px rgba(244, 114, 182, 0.6);
+}
+.retro .fbsub {
+  border-left: 3px solid rgba(34, 211, 238, 0.55);
+  letter-spacing: 2px; color: var(--neon-cyan); opacity: 0.75;
+}
+.retro .fbm-name { letter-spacing: 0.5px; text-shadow: 0 0 10px rgba(0, 0, 0, 0.5); }
+.retro .fbm-team.win .fbm-name { text-shadow: 0 0 18px var(--house, rgba(244,114,182,0.7)); }
+.retro .fbm-score {
+  color: #eafcff; letter-spacing: 1px;
+  text-shadow: 0 0 14px rgba(34, 211, 238, 0.8), 0 0 30px rgba(244, 114, 182, 0.4);
+}
+.retro .fbm-vs { letter-spacing: 3px; color: var(--neon-pink); opacity: 0.7; }
+
+/* ---- สกอร์บอร์ดคู่สด (เต็มจอ) -------------------------------------- */
+.retro .live-team {
+  background: rgba(14, 10, 26, 0.55);
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  border-radius: 16px;
+  box-shadow: inset 0 -8px 0 var(--house, #666), inset 0 0 0 1px rgba(244, 114, 182, 0.10);
+}
+.retro .live-team.win {
+  background: linear-gradient(180deg, rgba(244,114,182,0.16), rgba(14,10,26,0.4));
+  box-shadow: inset 0 -8px 0 var(--house, #666), 0 0 0 3px var(--house, #fff),
+              0 0 34px var(--house, rgba(244,114,182,0.5)), 0 16px 36px rgba(0,0,0,0.5);
+}
+.retro .live-name { letter-spacing: 1.5px; text-shadow: 0 0 16px rgba(34, 211, 238, 0.4); }
+.retro .live-team.win .live-name { text-shadow: 0 0 26px var(--house, rgba(244,114,182,0.8)); }
+.retro .live-score {
+  color: #eafcff; letter-spacing: 2px;
+  text-shadow: 0 0 20px rgba(34,211,238,0.85), 0 0 44px rgba(244,114,182,0.5), 0 6px 16px rgba(0,0,0,0.5);
+}
+.retro .live-clock {
+  background: rgba(10, 6, 20, 0.55);
+  border: 1px solid rgba(34, 211, 238, 0.45);
+  border-radius: 12px;
+  text-shadow: 0 0 12px rgba(34, 211, 238, 0.6);
+}
+.retro .live-clock.run { color: #eafcff; border-color: rgba(34, 211, 238, 0.7); }
+.retro .live-clock.ended,
+.retro .sportbar .live-clock.ended {
+  color: #ff5a7a; background: rgba(233, 40, 70, 0.20);
+  border-color: rgba(255, 90, 122, 0.75);
+  text-shadow: 0 0 14px rgba(255, 60, 100, 0.85);
+}
+.retro .live-status {
+  background: rgba(233, 40, 70, 0.18); color: #ff5a7a;
+  border: 1px solid rgba(255, 90, 122, 0.6);
+  letter-spacing: 2px; text-shadow: 0 0 12px rgba(255, 60, 100, 0.7);
+}
+.retro .live-status.done {
+  background: rgba(34, 211, 238, 0.12); color: #cfe9ee;
+  border-color: rgba(34, 211, 238, 0.4); text-shadow: none;
+}
+.retro .live-wait {
+  border: 1px solid rgba(34, 211, 238, 0.3); border-radius: 16px; letter-spacing: 1px;
+}
+
+/* ---- แถบล่างสกอร์สด (sportbar — เดิมโปร่ง; ใส่แผ่นนีออนบาง ๆ) --------- */
+.retro .sportbar {
+  background-color: rgba(14, 10, 26, 0.88);
+  background-image: linear-gradient(160deg, rgba(34,211,238,0.12), rgba(14,10,26,0) 50%, rgba(244,114,182,0.12));
+  border: 1px solid rgba(34, 211, 238, 0.5);
+  border-radius: 16px;
+  padding: 20px 44px 18px;
+  box-shadow: 0 0 22px rgba(34,211,238,0.32), 0 0 54px rgba(244,114,182,0.16), 0 20px 50px rgba(0,0,0,0.5);
+}
+.retro .sportbar-team { border-bottom-color: var(--house, #888); }
+.retro .sportbar-name { letter-spacing: 1px; text-transform: uppercase; }
+.retro .sportbar-team.win .sportbar-name {
+  text-shadow: 0 0 26px var(--house, #fff), 0 3px 12px rgba(0, 0, 0, 0.75);
+}
+.retro .sportbar-score {
+  color: #eafcff; letter-spacing: 2px;
+  text-shadow: 0 0 20px rgba(34,211,238,0.85), 0 0 40px rgba(244,114,182,0.45), 0 5px 20px rgba(0,0,0,0.7);
+}
+.retro .sportbar .live-clock {
+  background: rgba(10, 6, 20, 0.6);
+  border: 1px solid rgba(34, 211, 238, 0.5);
+  border-radius: 9px;
+}
+.retro .sportbar-status {
+  color: #ff5a7a; letter-spacing: 2px; text-shadow: 0 0 12px rgba(255, 60, 100, 0.7);
+}
+.retro .sportbar[data-done="1"] .sportbar-status { color: #cfe9ee; text-shadow: none; }
+.retro .sportbar-foot {
+  color: var(--neon-cyan); letter-spacing: 3px; text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(34, 211, 238, 0.55);
+}
