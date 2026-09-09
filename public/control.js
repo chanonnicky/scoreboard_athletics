@@ -964,23 +964,75 @@
     if (!confirm(msg)) return;
     cmd({ action: "setMode", mode: m }).then(function (ok) { if (ok) toast("สลับโหมดแล้ว"); });
   }
+  // ประมาณจำนวนไบต์จริงของรูปใน data URL (base64)
+  function dataUrlBytes(d) {
+    var i = d.indexOf(",");
+    return i < 0 ? d.length : Math.floor((d.length - i - 1) * 3 / 4);
+  }
+
   // อัปโหลดรูป -> คืน URL (/uploads/…) ผ่าน POST /api/upload (base64 data URL)
+  // รูปแรสเตอร์: ถ้าใหญ่เกิน (มิติ > 640px หรือ ไฟล์ > ~1.6MB) ย่อ/บีบฝั่ง client
+  // ให้พอดีก่อน (คงพื้นโปร่งใส: PNG ก่อน, ไม่พอค่อย WebP) — ไม่เด้ง error เรื่องขนาด
   function uploadImage(file) {
     return new Promise(function (resolve, reject) {
       if (!file) return reject(new Error("ไม่มีไฟล์"));
-      if (file.size > 2 * 1024 * 1024) return reject(new Error("ไฟล์ใหญ่เกิน 2MB"));
-      var fr = new FileReader();
-      fr.onerror = function () { reject(new Error("อ่านไฟล์ไม่ได้")); };
-      fr.onload = function () {
-        fetch("/api/upload", { method: "POST", headers: hdrs(), body: JSON.stringify({ name: file.name, dataUrl: fr.result }) })
+      var SERVER_MAX = 2 * 1024 * 1024, TARGET = 1.6 * 1024 * 1024, MAXDIM = 640;
+      var type = (file.type || "").toLowerCase();
+
+      function send(dataUrl) {
+        fetch("/api/upload", { method: "POST", headers: hdrs(), body: JSON.stringify({ name: file.name, dataUrl: dataUrl }) })
           .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
           .then(function (res) {
             if (!res.ok) throw new Error(res.j.error || "อัปโหลดล้มเหลว");
             resolve(res.j.url);
           })
           .catch(reject);
+      }
+      function sendOriginal(fallbackErr) {
+        if (file.size > SERVER_MAX) return reject(fallbackErr || new Error("ไฟล์ใหญ่เกิน 2MB"));
+        var fr = new FileReader();
+        fr.onerror = function () { reject(new Error("อ่านไฟล์ไม่ได้")); };
+        fr.onload = function () { send(fr.result); };
+        fr.readAsDataURL(file);
+      }
+
+      // ชนิดที่บีบด้วย canvas ไม่ได้ (svg ฯลฯ) -> ส่งตรง
+      if (!/^image\/(png|jpe?g|webp|gif)$/.test(type)) { sendOriginal(); return; }
+
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onerror = function () { URL.revokeObjectURL(url); sendOriginal(new Error("โหลดรูปไม่ได้")); };
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        var w = img.naturalWidth || 0, h = img.naturalHeight || 0;
+        // เล็กพออยู่แล้ว -> ส่งไฟล์เดิม (คงการบีบอัดของต้นฉบับ)
+        if (w && h && Math.max(w, h) <= MAXDIM && file.size <= TARGET) { sendOriginal(); return; }
+
+        var canvas = document.createElement("canvas"), ctx = canvas.getContext("2d");
+        if (!ctx) { sendOriginal(); return; }
+        var base = Math.min(1, MAXDIM / Math.max(w || MAXDIM, h || MAXDIM));
+        var steps = [1, 0.82, 0.66, 0.5, 0.4], out = "";
+        for (var k = 0; k < steps.length; k++) {
+          var sc = base * steps[k];
+          canvas.width = Math.max(1, Math.round((w || MAXDIM) * sc));
+          canvas.height = Math.max(1, Math.round((h || MAXDIM) * sc));
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          out = canvas.toDataURL("image/png");
+          if (dataUrlBytes(out) <= TARGET) break;
+          var webp = canvas.toDataURL("image/webp", 0.92);
+          if (webp.slice(0, 15) === "data:image/webp" && dataUrlBytes(webp) <= TARGET) { out = webp; break; }
+        }
+        if (!out || dataUrlBytes(out) > SERVER_MAX) {
+          var last = canvas.toDataURL("image/webp", 0.8);
+          if (last.slice(0, 15) !== "data:image/webp") last = out || canvas.toDataURL("image/png");
+          if (!last || dataUrlBytes(last) > SERVER_MAX) return reject(new Error("รูปนี้ใหญ่มากจนบีบไม่พอ — ลองใช้รูปที่เล็กลง"));
+          out = last;
+        }
+        toast("รูปใหญ่ไป — ย่อ/บีบให้อัตโนมัติแล้ว");
+        send(out);
       };
-      fr.readAsDataURL(file);
+      img.src = url;
     });
   }
 
