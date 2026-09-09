@@ -12,3 +12,5 @@ public/pictures/*
 !public/pictures/house-*.png
 !public/pictures/favicon.png
 /Picture/
+auto.crt
+auto.key
