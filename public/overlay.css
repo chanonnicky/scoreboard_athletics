@@ -685,7 +685,8 @@ body.is-offline #offline { opacity: 1; }
 .chart-medals .cm-b { color: #e3a374; }
 
 /* --- บาร์แนวนอน จัดอันดับ --- */
-.chart-list { display: flex; flex-direction: column; gap: 20px; min-height: 720px; justify-content: center; }
+/* บนจอ Live การ์ดย่อพอดีเนื้อหา (เหมือน results); จอ board บังคับสูงเต็มตาใน board.css */
+.chart-list { display: flex; flex-direction: column; gap: 20px; }
 .chart-row {
   display: grid; align-items: center; gap: 22px;
   grid-template-columns: 52px 58px 260px 1fr 60px auto;
@@ -714,7 +715,7 @@ body.is-offline #offline { opacity: 1; }
 /* --- คอลัมน์แนวตั้ง --- */
 .chart-cols {
   display: flex; align-items: stretch; justify-content: space-around; gap: 26px;
-  min-height: 720px; padding-top: 14px;
+  min-height: 440px; padding-top: 14px;
 }
 .chart-col {
   flex: 1; max-width: 230px;
