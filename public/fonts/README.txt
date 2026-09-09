@@ -22,3 +22,15 @@ overlay.css / control.css โหลด "LINE Seed Sans TH" จาก jsDelivr CD
 
 หมายเหตุ: LINE Seed Sans มีน้ำหนัก 100 / 400 / 700 / 800 / 900 (ไม่มี 500/600)
 เบราว์เซอร์จะปัดไปน้ำหนักใกล้เคียงให้เอง
+
+
+Charmonman (เฉพาะธีม "Editorial / Magazine")
+===========================================
+Charmonman-Regular.ttf / Charmonman-Bold.ttf  —  ฟอนต์ไทยลายมือ (Google Fonts)
+ใบอนุญาต SIL Open Font License 1.1  —  ดู Charmonman-OFL.txt (แจกจ่ายซ้ำในโปรเจกต์ได้)
+
+- ฝังในโปรเจกต์แล้ว (ไม่ต้องต่อเน็ต) — public/editorial.css ประกาศ @font-face เอง
+  ชี้ไปที่ /fonts/Charmonman-*.ttf
+- ใช้เฉพาะ "หัวข้อ/ชื่อทีม-คณะ" ของธีม editorial เท่านั้น (ทับ guard ฟอนต์ LINE ใน
+  overlay.css ด้วย !important) — ตัวเลข/นาฬิกา/ป้ายเล็ก ยังเป็น LINE Seed
+- ธีมอื่นทั้งหมดใช้ LINE Seed Sans TH ตามปกติ

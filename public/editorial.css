@@ -9,14 +9,29 @@
 
    โหลดต่อจาก overlay.css / board.css — override เฉพาะพื้นผิว/สี
    (พื้นหลัง/ขอบ/มุม/เงา/น้ำหนักอักษร/ระยะขอบการ์ด) ไม่แตะ layout / ตำแหน่ง /
-   ขนาดเวที / transform / overflow / keyframes / font-family (LINE Seed ทั้งเว็บ)
+   ขนาดเวที / transform / overflow / keyframes
+   ** ข้อยกเว้นเดียวของกฎ "ฟอนต์ LINE ทั้งเว็บ": ธีมนี้ใช้ Charmonman (ฟอนต์ไทยลายมือ
+      หัวคอลัมน์นิตยสาร) เฉพาะ "หัวข้อ/ชื่อ" — ทับ guard ใน overlay.css ด้วย
+      specificity สูงกว่า + !important · ตัวเลข/นาฬิกา/ป้ายเล็ก ยังเป็น LINE Seed
    เลี่ยง color-mix() และ backdrop-filter (CEF รุ่นเก่าของ OBS/vMix)
 
-   อารมณ์: นิตยสารพิมพ์ — พื้นกระดาษอุ่น หมึกเข้ม หัวข้อตัวหนา การ์ดเป็นแผ่น
+   อารมณ์: นิตยสารพิมพ์ — พื้นกระดาษอุ่น หมึกเข้ม หัวข้อฟอนต์ลายมือ การ์ดเป็นแผ่น
    เกือบเหลี่ยม ขอบเส้นเดียว เงาแทบไม่มี · แถวลิสต์ไม่มีกล่อง คั่นด้วยเส้นบาง
    ทองสด (#ffd54a) มองไม่เห็นบนกระดาษ -> เปลี่ยนเป็นหมึกเข้ม / แดงเลือดหมู
    (#8a1f1f) และแดงจอสด -> แดงสำนักพิมพ์ที่สุขุม (#9b2226)
    ============================================================================ */
+
+/* Charmonman — SIL Open Font License (ดู public/fonts/Charmonman-OFL.txt) */
+@font-face {
+  font-family: "Charmonman";
+  src: url("/fonts/Charmonman-Regular.ttf") format("truetype");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Charmonman";
+  src: url("/fonts/Charmonman-Bold.ttf") format("truetype");
+  font-weight: 700; font-style: normal; font-display: swap;
+}
 
 :root.editorial {
   --panel:   #fffdf8;   /* กระดาษขาวนวล (พื้นการ์ด) */
@@ -29,8 +44,25 @@
 .editorial body.board { color: #1c1a17; }
 .editorial body.board { background: #f6f3ec; background-color: #f6f3ec; }
 
-/* หมายเหตุ: ฟอนต์คงเป็น LINE Seed ทั้งเว็บ (บังคับใน overlay.css) — ธีมนี้เล่นที่
-   น้ำหนัก/ระยะอักษร/เส้น hairline แทนการเปลี่ยนเป็นเซอริฟ */
+/* ---- หัวข้อ/ชื่อ = Charmonman (ทับ guard ฟอนต์ LINE ใน overlay.css) ------
+   ต้อง !important + specificity สูงกว่า body.overlay*/body.board* (0,0,1,1)
+   เจาะเฉพาะ "หัวข้อใหญ่ + ชื่อทีม/คณะ" — ตัวเลขสกอร์/นาฬิกา/ชิปอันดับ/ชื่อรายการในลิสต์
+   (nowrap+ellipsis แน่น) จงใจไม่ใส่ คง LINE Seed ให้อ่านง่าย
+   Charmonman ตัวสูง (หางไทยยาว) จึงเผื่อ line-height ให้หน่อย */
+.editorial .card-kicker,
+.editorial .card-title,
+.editorial .card-sub,
+.editorial .t3-title-text,
+.editorial .t3-house,
+.editorial .live-name,
+.editorial .sportbar-name,
+.editorial .fblv-h,
+.editorial .fbm-name,
+.editorial .fbbr-champ-n {
+  font-family: "Charmonman", "LINE Seed Sans TH", "Leelawadee UI", cursive !important;
+}
+.editorial .card-title { line-height: 1.3; }
+.editorial .card-kicker { font-weight: 700; }
 
 /* ---- การ์ดหลัก (results / schedule / sportMatches / sportLive) ---------- */
 .editorial .card {

@@ -212,8 +212,11 @@ typography / decoration only — not the main layout, animations, HTML, or `temp
 `sigOf` doesn't track the theme and `applyTheme` runs before the sig early-return
 (`board.js` ~160, `overlay.js` ~310). `glass` is the only skin that uses `backdrop-filter`; none
 use `color-mix()` (old OBS/vMix CEF). **Font is locked to LINE Seed Sans TH** across all CG —
-`overlay.css` has a `body.overlay *, body.board * { font-family: … !important }` guard, so skins
-must not set `font-family` (they lean on weight / letter-spacing / text-transform instead).
+`overlay.css` has a `body.overlay *, body.board * { font-family: … !important }` guard (specificity
+`0,0,1,1`), so skins normally must not set `font-family`. The **one exception** is `editorial.css`,
+which self-declares `@font-face` for **Charmonman** (bundled at `public/fonts/Charmonman-*.ttf`,
+SIL OFL) and applies it to headings/names only, overriding the guard with a more specific
+selector + `!important`; numbers, clocks and dense list text stay LINE Seed.
 Default (no setting) = the original opaque look,
 byte-identical. The theme is chosen from a `<select>` in `/control` → settings
 (`data-act="theme-set"` → `setSettings {theme}`).
