@@ -18,8 +18,8 @@ if %errorLevel% neq 0 (
 
 echo.
 echo   Configuring port %PORT% ...
-netsh http add urlacl url=http://+:%PORT%/ user=Everyone 2>nul
-if errorlevel 1 echo   (port %PORT% reservation already exists - OK)
+netsh http add urlacl url=http://+:%PORT%/ user=Everyone >nul 2>&1
+if errorlevel 1 (echo   port %PORT% reservation already exists - OK) else (echo   port %PORT% reserved.)
 netsh advfirewall firewall delete rule name="CG Live %PORT%" >nul 2>nul
 netsh advfirewall firewall add rule name="CG Live %PORT%" dir=in action=allow protocol=TCP localport=%PORT% >nul
 echo   firewall rule "CG Live %PORT%" set.
