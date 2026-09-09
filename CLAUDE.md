@@ -79,7 +79,11 @@ change to routes, command handling, or the state model must be made in **both** 
 and macOS deployments diverge. They are currently in parity (routes incl. `/board`, `/uploads/*`;
 commands incl. `setSport`/`deleteSport`/`setMode`; `POST /api/upload`; the id-dedupe +
 `football`→`sports` + `football`→`futsal` rename migration on load, incl. forcing the sport's
-display name to `ฟุตซอล`, plus defaulting `settings.mode` to `"house"`). The one intentional
+display name to `ฟุตซอล`, plus defaulting `settings.mode` to `"house"`; and the **uploads GC** —
+`setSettings` (when it touches `schools`/`logo`/`houseLogos`) and `resetState` snapshot the
+active settings' `/uploads/` filenames, then after applying delete any that nothing references
+any more, active **or** parked (so removing a school / swapping a logo cleans up its file;
+PS side must `return ,$set` to stop HashSet unrolling)). The one intentional
 difference: `server.ps1` has no SSE (`/api/events` 404s → clients poll). It must also stay
 **ASCII-only** (PS 5.1 reads BOM-less scripts as ANSI), so where it needs the Thai name it
 builds the string from Unicode code points (`-join [char[]](0x0E1F,…)`) — both servers still

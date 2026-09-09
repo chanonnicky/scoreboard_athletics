@@ -272,7 +272,12 @@ def apply_command(cmd):
                     tally[house] = tally.get(house, 0) + pts[key]
 
         elif action == "setSettings":
-            STATE.setdefault("settings", {}).update(cmd["settings"])
+            new_settings = cmd["settings"]
+            # โลโก้ที่ active อ้างอยู่ "ก่อน" อัปเดต — เผื่อลบโรงเรียน/เปลี่ยนโลโก้ แล้วไฟล์เก่ากลายเป็นขยะ
+            gc_candidates = _settings_upload_names(STATE.get("settings")) \
+                if any(k in new_settings for k in ("schools", "logo", "houseLogos")) else set()
+            STATE.setdefault("settings", {}).update(new_settings)
+            _gc_uploads(gc_candidates)
 
         elif action == "setSport":
             # โมดูลกีฬา: control ส่งก้อนกีฬา 1 ชนิด (key เดียว) มา upsert เข้า list
@@ -297,6 +302,7 @@ def apply_command(cmd):
             # รีเซ็ตเฉพาะโหมดที่ active — คง settings.mode และ parked ไว้
             mode = STATE.get("settings", {}).get("mode") or "house"
             parked = STATE.get("parked", {})
+            gc_candidates = _settings_upload_names(STATE.get("settings"))
             with open(_default_path_for_mode(mode), encoding="utf-8") as f:
                 seed = json.load(f)
             for k in PROFILE_KEYS:
@@ -306,6 +312,7 @@ def apply_command(cmd):
                     STATE[k] = seed[k]
             STATE.setdefault("settings", {})["mode"] = mode
             STATE["parked"] = parked
+            _gc_uploads(gc_candidates)
 
         elif action == "setMode":
             new_mode = cmd.get("mode")
@@ -371,6 +378,52 @@ def import_csv(kind, text):
             return {"events": seen}
 
         raise ValueError("unknown import kind: %r" % kind)
+
+
+def _upload_name(url):
+    """'/uploads/xxx.png' (หรือมี query) -> 'xxx.png'; อย่างอื่น -> None"""
+    if isinstance(url, str) and url.startswith("/uploads/"):
+        n = url.split("?", 1)[0].split("#", 1)[0].rsplit("/", 1)[-1].strip()
+        if n and "/" not in n and "\\" not in n and n not in (".", ".."):
+            return n
+    return None
+
+
+def _settings_upload_names(settings):
+    """ชื่อไฟล์ /uploads/ ที่ settings ก้อนหนึ่งอ้างถึง (logo + houseLogos + schools[].logo)"""
+    names = set()
+    if not isinstance(settings, dict):
+        return names
+    for v in [settings.get("logo")] + list((settings.get("houseLogos") or {}).values()) + \
+             [sc.get("logo") for sc in (settings.get("schools") or []) if isinstance(sc, dict)]:
+        n = _upload_name(v)
+        if n:
+            names.add(n)
+    return names
+
+
+def _referenced_upload_names(state):
+    """ไฟล์ /uploads/ ที่ยังถูกอ้างถึง ทั้งโหมด active และที่ park ไว้"""
+    names = _settings_upload_names(state.get("settings"))
+    for prof in (state.get("parked") or {}).values():
+        if isinstance(prof, dict):
+            names |= _settings_upload_names(prof.get("settings"))
+    return names
+
+
+def _gc_uploads(candidate_names):
+    """ลบไฟล์ที่เคยถูกอ้างถึง (candidate_names) แต่ตอนนี้ไม่มีใครอ้างแล้ว"""
+    if not candidate_names:
+        return
+    still = _referenced_upload_names(STATE)
+    for n in candidate_names - still:
+        p = os.path.join(UPLOADS, n)
+        try:
+            if os.path.isfile(p) and os.path.abspath(p).startswith(os.path.abspath(UPLOADS)):
+                os.remove(p)
+                print("  [uploads] ลบโลโก้ที่ไม่ใช้แล้ว: %s" % n)
+        except OSError:
+            pass
 
 
 def save_upload(data_url):

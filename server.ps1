@@ -258,8 +258,16 @@ $Lib = {
           }
         }
         "setSettings" {
+          $ns = $cmd["settings"]
+          # snapshot logos the active settings reference BEFORE the update, so removing a
+          # school / swapping a logo lets the now-orphaned upload file be deleted
+          $gcCand = $null
+          if ($ns.ContainsKey("schools") -or $ns.ContainsKey("logo") -or $ns.ContainsKey("houseLogos")) {
+            $gcCand = Get-SettingsUploadNames $script:G.State["settings"]
+          }
           $s = $script:G.State["settings"]
-          foreach ($p in $cmd["settings"].Keys) { $s[$p] = $cmd["settings"][$p] }
+          foreach ($p in $ns.Keys) { $s[$p] = $ns[$p] }
+          if ($gcCand) { Invoke-GcUploads $gcCand }
         }
         "setSport" {
           $sp = $cmd["sport"]
@@ -279,6 +287,7 @@ $Lib = {
           # reset only the active profile - keep settings.mode and parked
           $mode = [string]$script:G.State["settings"]["mode"]; if (-not $mode) { $mode = "house" }
           $parked = $script:G.State["parked"]
+          $gcCand = Get-SettingsUploadNames $script:G.State["settings"]
           $seedPath = if ($mode -eq "school") { $script:G.DefaultSchoolPath } else { $script:G.DefaultPath }
           $seed = Read-JsonFile $seedPath
           foreach ($k in $script:G.ProfileKeys) {
@@ -288,6 +297,7 @@ $Lib = {
           $script:G.State["settings"]["mode"] = $mode
           if ($parked) { $script:G.State["parked"] = $parked }
           elseif ($script:G.State.ContainsKey("parked")) { [void]$script:G.State.Remove("parked") }
+          Invoke-GcUploads $gcCand
         }
         "setMode" {
           $newMode = [string]$cmd["mode"]
@@ -396,6 +406,60 @@ $Lib = {
     [System.IO.File]::WriteAllBytes($tmp, $bytes)
     Move-Item -Force -LiteralPath $tmp -Destination (Join-Path $script:G.UploadsDir $name)
     return "/uploads/$name"
+  }
+
+  # --- uploads garbage-collect: delete logo files nothing references any more --- #
+  function Get-UploadName($url) {
+    $u = "" + $url
+    if ($u.StartsWith("/uploads/")) {
+      $n = ($u -split '[?#]', 2)[0]
+      $n = $n.Substring($n.LastIndexOf('/') + 1).Trim()
+      if ($n -and $n -notmatch '[\\/]' -and $n -ne '.' -and $n -ne '..') { return $n }
+    }
+    return $null
+  }
+  function Get-SettingsUploadNames($settings) {
+    # NB: return ,$set  -> unary comma stops PowerShell unrolling the HashSet on return
+    $set = New-Object 'System.Collections.Generic.HashSet[string]'
+    if ($settings -isnot [System.Collections.IDictionary]) { return ,$set }
+    $vals = New-Object System.Collections.ArrayList
+    [void]$vals.Add($settings["logo"])
+    $hl = $settings["houseLogos"]
+    if ($hl -is [System.Collections.IDictionary]) { foreach ($v in $hl.Values) { [void]$vals.Add($v) } }
+    if ($settings["schools"]) {
+      foreach ($sc in @($settings["schools"])) {
+        if ($sc -is [System.Collections.IDictionary]) { [void]$vals.Add($sc["logo"]) }
+      }
+    }
+    foreach ($v in $vals) { $n = Get-UploadName $v; if ($n) { [void]$set.Add($n) } }
+    return ,$set
+  }
+  function Get-ReferencedUploadNames {
+    $set = Get-SettingsUploadNames $script:G.State["settings"]
+    $parked = $script:G.State["parked"]
+    if ($parked -is [System.Collections.IDictionary]) {
+      foreach ($prof in $parked.Values) {
+        if ($prof -is [System.Collections.IDictionary]) {
+          foreach ($n in (Get-SettingsUploadNames $prof["settings"])) { [void]$set.Add($n) }
+        }
+      }
+    }
+    return ,$set
+  }
+  function Invoke-GcUploads($candidates) {
+    if ($null -eq $candidates -or $candidates.Count -eq 0) { return }
+    $still = Get-ReferencedUploadNames
+    $baseDir = [System.IO.Path]::GetFullPath($script:G.UploadsDir)
+    foreach ($n in @($candidates)) {
+      if ($still.Contains($n)) { continue }
+      $p = Join-Path $script:G.UploadsDir $n
+      try {
+        if ((Test-Path -LiteralPath $p -PathType Leaf) -and ([System.IO.Path]::GetFullPath($p)).StartsWith($baseDir)) {
+          Remove-Item -LiteralPath $p -Force
+          Write-Host ("  [uploads] removed unused logo: " + $n)
+        }
+      } catch {}
+    }
   }
 
   # ----------------------------------------------------------------------- #
