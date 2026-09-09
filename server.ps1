@@ -211,8 +211,8 @@ $Lib = {
           $d = New-Dict
           $d["template"] = $cmd["template"]; $d["eventId"] = $cmd["eventId"]; $d["sport"] = $cmd["sport"]; $d["visible"] = $true
           $onair[$slot] = $d
-          # lower + full can be on air together; a new item just replaces its own slot
-          # (hideAll clears both)
+          # show one slot at a time: bringing up this slot hides the other (hideAll clears both)
+          foreach ($k in @($onair.Keys)) { if ($k -ne $slot) { $onair[$k]["visible"] = $false } }
         }
         "hide" {
           $slot = [string]$cmd["slot"]

@@ -220,8 +220,10 @@ def apply_command(cmd):
                 "sport": cmd.get("sport"),
                 "visible": True,
             }
-            # แต่ละช่อง (lower/full) ขึ้นพร้อมกันได้ — ขึ้นอันใหม่ในช่องเดิมแทนที่อันเก่า
-            # (ใช้ hideAll ถ้าจะเคลียร์ทั้งหมด)
+            # แสดงได้ทีละช่องเดียว — ขึ้นช่องนี้ = ซ่อนช่องอื่น (hideAll เคลียร์ทั้งหมด)
+            for s_key, s_val in onair.items():
+                if s_key != slot and isinstance(s_val, dict):
+                    s_val["visible"] = False
 
         elif action == "hide":
             slot = cmd["slot"]

@@ -126,9 +126,11 @@ serves that dir (traversal-guarded, before the `public/` static fallback). `data
 gitignored. The `/control` school editor uploads a school logo through this and stores the
 returned URL in `settings.schools[].logo`.
 
-`onair` has two independent slots, `lower` and `full`; the `show` command sets one slot and does
-**not** touch the other — a lower-third and a full-screen graphic can be on air together. Pushing
-a new template into a slot replaces whatever that slot held; `hideAll` clears both.
+`onair` still has two slots, `lower` and `full` (kept so templates/overlay stay slot-addressed and
+`/live?slot=lower|full` works), but **only one shows at a time**: the `show` command sets its slot
+`visible` *and forces every other slot hidden* (both `server.py` and `server.ps1`). Pushing a new
+template into a slot replaces whatever that slot held; `hideAll` clears both. On `/control` every
+hide button (`hide-lower`, `hide-full`, `hide-all`) sends `hideAll`.
 
 Because the whole blob round-trips, a running server holds authoritative state in memory and will
 **overwrite `data/state.json` on the next command**. Editing `state.json` by hand while a server
@@ -275,8 +277,8 @@ via the `setSport` command (whole-sport upsert; debounced or immediate for +/-).
 it: `onair[slot].sport` carries the key on Live's `show`; both `sportMatches` and `sportLive` are
 pushable to `/live`'s full slot (`renderLive()`'s per-sport button pair, `show-full-sport` /
 `show-full-sportlive`), `sportLower` is pushable to Live's **lower** slot (`renderLive()`'s
-per-sport `show-lower-sportbar` buttons, and can be on air *with* a full-slot graphic), and
-`/scoreboard/<sport>` always renders `sportLive`. `load_state` migrates a legacy `state.football`
+per-sport `show-lower-sportbar` buttons; like every slot it's mutually exclusive with the full
+slot now — see the `onair` note above), and `/scoreboard/<sport>` always renders `sportLive`. `load_state` migrates a legacy `state.football`
 object into `state.sports[0]`, and renames the old `football` sport (key + name + `onair` refs) to
 `futsal` / ฟุตซอล (name forced even when the key is already `futsal`).
 

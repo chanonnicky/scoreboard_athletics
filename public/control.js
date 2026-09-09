@@ -1086,7 +1086,7 @@
     "show-lower-sportbar": function (b) {
       cmd({ action: "show", slot: "lower", template: "sportLower", eventId: null, sport: b.dataset.sport });
     },
-    "hide-lower": function () { cmd({ action: "hide", slot: "lower" }); },
+    "hide-lower": function () { cmd({ action: "hideAll" }); },
     "show-full-results": function () {
       cmd({ action: "show", slot: "full", template: "results", eventId: null });
     },
@@ -1099,7 +1099,7 @@
     "show-full-schedule": function () {
       cmd({ action: "show", slot: "full", template: "schedule", eventId: selectedEventId() });
     },
-    "hide-full": function () { cmd({ action: "hide", slot: "full" }); },
+    "hide-full": function () { cmd({ action: "hideAll" }); },
 
     "preview-toggle": function () {
       var c = localStorage.getItem("cg_preview_collapsed") === "1";
