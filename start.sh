@@ -47,6 +47,27 @@ if command -v lsof >/dev/null 2>&1; then
   fi
 fi
 
+# --- RTMP relay (ทางเลือก) ---------------------------------------------------
+# ถ้ามี bin/mediamtx/mediamtx จะเปิด relay คู่กันไป (รับ RTMP จาก OBS หน้างาน
+# แล้ว push ต่อห้องถ่ายทอดสด) แล้วปิดให้อัตโนมัติเมื่อ start.sh จบ
+# หมายเหตุ: mediamtx.yml ปรับแต่งมาสำหรับ Windows เป็นหลัก (พาธ ffmpeg egress)
+#          — บน mac/Linux ต้องแก้ runOnAvailable ใน mediamtx.yml เอง
+RELAY_PID=""
+if [ -x bin/mediamtx/mediamtx ]; then
+  echo "  กำลังเริ่ม RTMP relay (MediaMTX) ..."
+  bin/mediamtx/mediamtx mediamtx.yml &
+  RELAY_PID=$!
+  trap '[ -n "$RELAY_PID" ] && kill "$RELAY_PID" 2>/dev/null || true' EXIT
+else
+  echo "  [i] ไม่ได้เปิด RTMP relay (ยังไม่มี bin/mediamtx/mediamtx)"
+fi
+echo
+
 echo "  กำลังเริ่ม CG Live ..."
 echo
-exec "$PY" server.py "$@"
+if [ -n "$RELAY_PID" ]; then
+  # ต้องคง trap ไว้ จึงไม่ใช้ exec
+  "$PY" server.py "$@"
+else
+  exec "$PY" server.py "$@"
+fi

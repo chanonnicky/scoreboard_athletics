@@ -44,6 +44,27 @@ fix in both, not to document.
 
 There is **no test suite and no build step**. The frontend is plain ES5 served statically.
 
+### RTMP relay sidecar (optional, Windows) — video never touches the CG server
+
+For the "OBS at the venue, this box is remote, broadcast room elsewhere" deployment,
+`start.bat`/`start.sh` also launch **MediaMTX** (`bin/mediamtx/mediamtx.exe`, config
+`mediamtx.yml`) if that binary is present — an RTMP ingest on :1935 that pushes the stream on
+to the broadcast room via a `runOnAvailable` **ffmpeg `-c copy`** (passthrough, no re-encode) and
+optionally records to `data/rec/`. `get-relay.ps1` downloads MediaMTX (pinned `v1.21.0`,
+checksum-verified) + ffmpeg (BtbN win64-gpl) into `bin/` (gitignored). `setup.bat` opens
+firewall 1935.
+
+**Invariants:** `server.py`/`server.ps1` have **no RTMP/video code** and no knowledge of the
+relay — video bypasses PowerShell/Python entirely, so relay load never affects the HTTP server.
+When `bin/mediamtx/mediamtx.exe` is absent, `start.bat`/`start.sh` must behave **exactly** as
+before (print one hint line, then launch the CG server unchanged) — this is part of the
+start.bat/start.sh parity rule. The broadcast room still composites the transparent `/live`
+overlay itself; the relay carries only the clean feed.
+
+Loopback test (Windows): `get-relay.ps1`, point `mediamtx.yml`'s `runOnReady` target at a
+second local path, publish with `bin\ffmpeg\ffmpeg.exe -re -f lavfi -i testsrc2=size=1920x1080:rate=30 -f lavfi -i sine -c:v libx264 -g 30 -c:a aac -f flv "rtmp://127.0.0.1:1935/live?user=publish&pass=..."`,
+confirm the egress ffmpeg starts (MediaMTX log) and `/healthz` on the CG server stays green.
+
 ### Verifying changes without a browser
 
 The Chrome automation extension in this environment often cannot reach the local server, and

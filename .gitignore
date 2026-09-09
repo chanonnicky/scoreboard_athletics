@@ -3,6 +3,8 @@ __pycache__/
 data/state.json
 data/state.json.tmp
 data/uploads/
+data/rec/
+bin/
 .DS_Store
 public/pictures/*
 !public/pictures/README.txt
