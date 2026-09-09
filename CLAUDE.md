@@ -60,7 +60,11 @@ there are no automated tests. Two reliable checks:
   `/pictures/house-red.png`). `python3 -c "import py_compile;py_compile.compile('server.py',doraise=True)"`
   catches syntax errors. For `setMode`/upload: `POST /api/command {"action":"setMode","mode":"school"}`
   then check `/api/state` has `settings.mode:"school"` + `parked.house`; `POST /api/upload` a tiny
-  base64 PNG and GET the returned `/uploads/…` URL.
+  base64 PNG and GET the returned `/uploads/…` URL. For `setApp`: `POST {"action":"setApp","app":"general"}`
+  then `/api/state` has only `settings`/`onair`/`lowers` + `parkedApp.sports` (holding the old
+  `parked`, minus `settings.app`); switch back and `events`/`sports`/`parked` return, `parkedApp.general`
+  holds the general profile. PS test client: POST bytes as `[Text.Encoding]::UTF8.GetBytes($json)`
+  with `charset=utf-8` (a plain `-Body` string mangles Thai — client bug, not server).
 - **House-mode regression** — the competitor abstraction must not change house-mode HTML. Render
   `results`/`top3`/`sportMatches`/`sportLive`/`sportLower` from the current `templates.js` and from
   `git show HEAD:public/templates.js` against the same house state; assert byte-equal. Then render
@@ -77,14 +81,18 @@ there are no automated tests. Two reliable checks:
 Windows default) are independent reimplementations of the *same* HTTP API and behavior. Any
 change to routes, command handling, or the state model must be made in **both** files, or Windows
 and macOS deployments diverge. They are currently in parity (routes incl. `/board`, `/uploads/*`;
-commands incl. `setSport`/`deleteSport`/`setMode`/`hideMain` + `show`'s lower⇄full mutual
-exclusion; `POST /api/upload`; the id-dedupe +
+commands incl. `setSport`/`deleteSport`/`setMode`/`setApp`/`setLowers`/`hideMain` + `show`'s
+lower⇄full mutual exclusion (and `show` carrying `line1`/`line2` for general-product CG);
+`POST /api/upload`; the id-dedupe +
 `football`→`sports` + `football`→`futsal` rename migration on load, incl. forcing the sport's
-display name to `ฟุตซอล`, plus defaulting `settings.mode` to `"house"`; and the **uploads GC** —
+display name to `ฟุตซอล`, plus defaulting `settings.mode` to `"house"` and `settings.app` to
+`"sports"`; and the **uploads GC** —
 `setSettings` (when it touches `schools`/`logo`/`houseLogos`) and `resetState` snapshot the
 active settings' `/uploads/` filenames, then after applying delete any that nothing references
-any more, active **or** parked (so removing a school / swapping a logo cleans up its file;
-PS side must `return ,$set` to stop HashSet unrolling)). The one intentional
+any more, active **or** parked — where "parked" means every profile in `state.parked` (modes)
+**and** every profile in `state.parkedApp` (products, incl. each one's nested `parked`) (so
+removing a school / swapping a logo cleans up its file; PS side must `return ,$set` to stop
+HashSet unrolling)). The one intentional
 difference: `server.ps1` has no SSE (`/api/events` 404s → clients poll). It must also stay
 **ASCII-only** (PS 5.1 reads BOM-less scripts as ANSI), so where it needs the Thai name it
 builds the string from Unicode code points (`-join [char[]](0x0E1F,…)`) — both servers still
@@ -115,6 +123,23 @@ Mutations go through one endpoint:
   disk write) + `broadcast()` (push to SSE subscribers). `GET /api/state` returns the whole blob;
   `GET /api/events` is the SSE stream.
 
+**Products / `settings.app` / `state.parkedApp`.** `settings.app` ∈ `("sports","general")` is an
+axis *above* `mode` — `"sports"` is this whole athletics/sports system; `"general"` is a live
+Lower Third generator (`/control` compose UI + `/live` only; no `/score`, no `/scoreboard`).
+`state.parkedApp` = `{sports?, general?}` parks the *inactive product's whole profile*, keyed by
+app name — **distinct from `state.parked`** (the mode axis), which is itself part of the sports
+profile and travels inside `parkedApp.sports` when sports is parked. The general profile keys are
+just `settings`, `onair`, `lowers` (`lowers` = saved Lower Third presets `[{id,kind,line1,line2}]`,
+`kind` ∈ `name|topic`). The `setApp` command mirrors `setMode` one level up: snapshot the active
+product's `_app_profile_keys(old)` into `parkedApp[old]` (minus `settings.app`), load
+`parkedApp[new]` or seed from `state.default.general.json` / `state.default.json`, clear
+**every** key in `ALL_PROFILE_KEYS`, install, force `onair` hidden, persist now. `setLowers`
+whole-list-replaces `state.lowers`. Both servers default `settings.app` to `"sports"` on load if
+absent, and `setMode` re-injects `settings.app` after its settings swap (else the product axis is
+lost). `resetState` is app-aware: reseeds the active product's keys, always re-injects
+`settings.app`, re-injects `settings.mode` + `state.parked` only when `app == "sports"`, always
+preserves `state.parkedApp`.
+
 **Modes / `state.parked`.** The *active* mode's data always lives at the normal top-level keys
 (`PROFILE_KEYS` = `settings`, `events`, `results`, `onair`, `sports`, `tally`) — so every consumer
 is mode-agnostic. `state.parked` = `{house?, school?}` holds *only the inactive* mode's profile
@@ -122,7 +147,8 @@ is mode-agnostic. `state.parked` = `{house?, school?}` holds *only the inactive*
 `state.parked[oldMode]`, then loads `state.parked[newMode]` (or seeds it from that mode's default
 file), swaps it in, forces every `onair` slot hidden, and persists immediately. `resetState`
 reseeds only the active mode and preserves `settings.mode` + `state.parked`. Both servers default
-`settings.mode` to `"house"` on load if absent (existing `state.json` = house mode).
+`settings.mode` to `"house"` on load if absent (existing `state.json` = house mode). `setMode`
+only runs inside the sports product.
 
 **Logo upload.** `POST /api/upload` (token-guarded) takes JSON `{name?, dataUrl}` — a base64
 image data URL (png/jpg/webp/gif/svg, ≤2MB; base64, *not* multipart, so `server.ps1` can parse
@@ -213,6 +239,11 @@ match list grouped by grade level); `sportLive` (single current-match scoreboard
 (the current match as a compact full-width lower-third bar); `scoreBug` (the current match as a
 small top-left corner bug — score + countdown clock + LIVE dot, meant to stay on the whole game).
 `sportLower`/`scoreBug` are Live overlay only and return `null` when there's no current match.
+The **general product** adds `genLowerName` (name + role/subtitle, `lower` slot), `genLowerTopic`
+(single-line topic bar, `lower` slot), `genTitle` (full-screen title card, `full` slot) — each
+takes `(state, conf)` where `conf` is the `onair[slot]` object and reads `conf.line1`/`conf.line2`;
+each returns `null` when empty. Live overlay only; `overlay.js` `isGen()`/`genSig()` gate them and
+`sameShell` is forced false so every push re-animates.
 Consumers: `overlay.js` (Live, `state.onair` slots), `control.js` (control + score pages, with
 live preview via the same `T.*`), `board.js` (Scoreboard).
 

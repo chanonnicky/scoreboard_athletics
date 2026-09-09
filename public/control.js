@@ -41,6 +41,8 @@
     chart: "กราฟเหรียญรางวัล",
     sportMatches: "กีฬา · ผลแมตช์", sportLive: "กีฬา · สกอร์สด",
     sportLower: "แถบล่าง · สกอร์สด", scoreBug: "Score bug",
+    genLowerName: "แถบล่าง · ชื่อ-ตำแหน่ง", genLowerTopic: "แถบล่าง · หัวข้อ",
+    genTitle: "เต็มจอ · การ์ดหัวเรื่อง",
   };
   function isSportTpl(t) {
     return t === "sportMatches" || t === "sportLive" || t === "sportLower" || t === "scoreBug";
@@ -164,9 +166,26 @@
     var sp = sportByKey(key);
     return (sp && sp.name) || key || "";
   }
+  // แบรนด์บน sidebar + topbar ตามผลิตภัณฑ์ (งานกีฬา = "กีฬาสี" · งานทั่วไป = "งานทั่วไป")
+  function applyAppBrand() {
+    if (MODE === "score") return;   // /score จัดการแบรนด์เองใน renderScoreBrand
+    var key = isGeneralApp() ? "gen" : "sports";
+    if (applyAppBrand._k === key) return;
+    applyAppBrand._k = key;
+    var html = (isGeneralApp() ? "🎬" : "🏃") + " CG Live <span>" +
+      (isGeneralApp() ? "งานทั่วไป" : "กีฬาสี") + "</span>";
+    [].forEach.call(document.querySelectorAll(".brand, .sb-brand"), function (el) { el.innerHTML = html; });
+  }
+
   // แก้หัวข้อ/แบรนด์หน้า /score/<sport> ให้เป็นชื่อกีฬาไทย (บรรทัด 16–23 เป็นแค่ fallback ก่อน state มา)
   function renderScoreBrand() {
     if (MODE !== "score") return;
+    if (isGeneralApp()) {
+      document.title = "CG Live — งานทั่วไป";
+      var b0 = document.querySelector(".brand");
+      if (b0) b0.innerHTML = "🎬 CG Live <span>งานทั่วไป</span>";
+      return;
+    }
     var label = SCORE_SPORT ? sportName(SCORE_SPORT)
       : ((state && state.settings && state.settings.meetTitle) || (isSchool() ? "การแข่งขัน" : "กีฬาสี"));
     document.title = "CG Live — จดคะแนน" + (SCORE_SPORT ? " " + label : "");
@@ -175,6 +194,8 @@
   }
 
   function onState() {
+    document.body.classList.toggle("app-general", isGeneralApp());
+    applyAppBrand();
     renderScoreBrand();
     renderHeader();
 
@@ -230,6 +251,8 @@
   // ---- sidebar nav ----------------------------------------- //
   function viewFromHash() {
     var h = (location.hash || "").replace(/^#/, "");
+    // งานทั่วไป: มีแค่ live | settings (ไม่มีรายการแข่ง/นำเข้า)
+    if (state && isGeneralApp()) return (h === "settings") ? "settings" : "live";
     return (h === "events" || h === "import" || h === "settings") ? h : "live";
   }
   function closeDrawer() { document.body.classList.remove("sb-open"); }
@@ -275,8 +298,15 @@
 
   function renderSidebar() {
     if (!state) return;
-    var sports = state.sports || [];
-    var sig = sports.map(function (s) { return s.key + "|" + (s.name || "") + "|" + (s.icon || ""); }).join("~");
+    // งานทั่วไป: ซ่อนกลุ่มจดคะแนน + รายการแข่ง/นำเข้า + ลิงก์ Scoreboard (เหลือแค่ /live)
+    var gen = isGeneralApp();
+    var hide = function (id, h) { var el = document.getElementById(id); if (el) el.hidden = h; };
+    hide("sbGroupScore", gen);
+    hide("sbNavEvents", gen);
+    hide("sbNavImport", gen);
+    hide("sbNavBoard", gen);
+    var sports = gen ? [] : (state.sports || []);
+    var sig = "gen:" + gen + "~" + sports.map(function (s) { return s.key + "|" + (s.name || "") + "|" + (s.icon || ""); }).join("~");
     if (sig !== renderSidebar._sig) {
       renderSidebar._sig = sig;
       var sc = document.getElementById("sbScoreSports");
@@ -305,6 +335,9 @@
   markActiveNav();
 
   // ---- shared bits ----------------------------------------- //
+  // ผลิตภัณฑ์: "sports" = CG งานกีฬา (เดิม) · "general" = CG งานทั่วไป (Lower Third)
+  function currentApp() { return (state && state.settings && state.settings.app) || "sports"; }
+  function isGeneralApp() { return currentApp() === "general"; }
   // โหมด: "house" = 4 สีคณะ · "school" = รายชื่อโรงเรียน (settings.schools)
   function isSchool() { return (state.settings && state.settings.mode) === "school"; }
   function compWord() { return isSchool() ? "โรงเรียน" : "สีคณะ"; }
@@ -362,7 +395,18 @@
   function render() {
     pendingRender = false;
     if (!state) { panel.innerHTML = '<p class="muted">กำลังโหลด…</p>'; return; }
-    if (MODE === "score") { return SCORE_SPORT ? renderSportScore() : renderScore(); }
+    if (MODE === "score") {
+      if (isGeneralApp()) {
+        panel.innerHTML = '<div class="card"><h2>โหมดงานทั่วไป</h2>' +
+          '<p class="muted">งานทั่วไปไม่มีการจดคะแนน — ไปที่ <a href="/control">คุม Live</a> เพื่อสั่ง Lower Third</p></div>';
+        return;
+      }
+      return SCORE_SPORT ? renderSportScore() : renderScore();
+    }
+    if (isGeneralApp()) {
+      var gv = (activeView === "settings") ? "settings" : "live";
+      return ({ live: renderGeneralLive, settings: renderGeneralSettings }[gv])();
+    }
     ({ live: renderLive, events: renderEvents, import: renderImport, settings: renderSettings }[activeView] || renderLive)();
   }
 
@@ -566,6 +610,181 @@
 
     renderResEditor();
   }
+
+  // ========================================================= //
+  //  GENERAL (งานทั่วไป — Lower Third generator)
+  // ========================================================= //
+  var genPresetEdit = null;   // id ของพรีเซ็ตที่กำลังแก้ (null = ฟอร์มเพิ่มใหม่)
+
+  function genOnair(slot) { return (state.onair && state.onair[slot]) || {}; }
+  function genVal(id) { var el = document.getElementById(id); return el ? el.value.trim() : ""; }
+
+  function renderGeneralLive() {
+    var lo = genOnair("lower"), fu = genOnair("full");
+    var nameOn = !!(lo.visible && lo.template === "genLowerName");
+    var topicOn = !!(lo.visible && lo.template === "genLowerTopic");
+    var titleOn = !!(fu.visible && fu.template === "genTitle");
+    var collapsed = localStorage.getItem("cg_preview_collapsed") === "1";
+    var curTheme = (state.settings && state.settings.theme) || "default";
+    var lowers = state.lowers || [];
+
+    function liveBtn(act, on, label) {
+      return '<button class="btn primary' + (on ? " is-live" : "") + '" data-act="' + act + '">' +
+        (on ? "● " : "▶ ") + label + (on ? " · ออกอยู่" : "") + "</button>";
+    }
+
+    var presetRows = lowers.length ? lowers.map(function (p) {
+      var kind = p.kind === "topic" ? "หัวข้อ" : "ชื่อ";
+      var l2 = p.kind === "topic" ? "" : esc(p.line2 || "");
+      return '<div class="preset-row">' +
+        '<span class="preset-kind">' + kind + "</span>" +
+        '<span class="preset-txt"><b>' + esc(p.line1 || "(ว่าง)") + "</b>" + (l2 ? ' <span class="muted">· ' + l2 + "</span>" : "") + "</span>" +
+        '<button class="btn sm primary" data-act="preset-trigger" data-id="' + esc(p.id) + '">▶ ขึ้นจอ</button>' +
+        '<button class="btn sm" data-act="preset-edit" data-id="' + esc(p.id) + '">แก้ไข</button>' +
+        '<button class="btn sm danger" data-act="preset-del" data-id="' + esc(p.id) + '">✕</button>' +
+      "</div>";
+    }).join("") : '<p class="muted">ยังไม่มีพรีเซ็ต</p>';
+
+    var editP = genPresetEdit ? lowers.filter(function (p) { return p.id === genPresetEdit; })[0] : null;
+
+    panel.innerHTML =
+      '<div class="grid' + (collapsed ? " grid-noprev" : "") + '"><div>' +
+
+        '<div class="card onair-card">' +
+          '<div class="row" style="justify-content:space-between;align-items:center">' +
+            '<h2 style="margin:0">ออกอากาศตอนนี้</h2>' +
+            '<button class="btn danger lg" data-act="hide-all">■ ลงจอทั้งหมด</button>' +
+          "</div>" +
+          '<div class="onair-slots">' +
+            onairSlotHtml("lower", "แถบล่าง") +
+            onairSlotHtml("full", "เต็มจอ") +
+          "</div>" +
+        "</div>" +
+
+        '<div class="card">' +
+          '<h2 style="margin:0 0 10px">แถบล่าง — ชื่อ + ตำแหน่ง</h2>' +
+          '<label class="field">ชื่อ<input type="text" id="genName" value="' + esc(nameOn ? (lo.line1 || "") : "") + '" placeholder="เช่น นายสมชาย ใจดี"></label>' +
+          '<label class="field" style="margin-top:8px">ตำแหน่ง / คำบรรยาย<input type="text" id="genRole" value="' + esc(nameOn ? (lo.line2 || "") : "") + '" placeholder="เช่น ผู้อำนวยการโรงเรียน"></label>' +
+          '<div class="cmd-grid" style="margin-top:10px">' +
+            liveBtn("gen-show-name", nameOn, "ขึ้นแถบล่าง (ชื่อ)") +
+            '<button class="btn" data-act="gen-hide-lower"' + (nameOn || topicOn ? "" : " disabled") + ">ซ่อนแถบล่าง</button>" +
+          "</div>" +
+        "</div>" +
+
+        '<div class="card">' +
+          '<h2 style="margin:0 0 10px">แถบล่าง — หัวข้อ (บรรทัดเดียว)</h2>' +
+          '<label class="field">หัวข้อ<input type="text" id="genTopic" value="' + esc(topicOn ? (lo.line1 || "") : "") + '" placeholder="เช่น พิธีเปิดการแข่งขัน"></label>' +
+          '<div class="cmd-grid" style="margin-top:10px">' +
+            liveBtn("gen-show-topic", topicOn, "ขึ้นแถบล่าง (หัวข้อ)") +
+            '<button class="btn" data-act="gen-hide-lower"' + (nameOn || topicOn ? "" : " disabled") + ">ซ่อนแถบล่าง</button>" +
+          "</div>" +
+        "</div>" +
+
+        '<div class="card">' +
+          '<h2 style="margin:0 0 10px">เต็มจอ — การ์ดหัวเรื่อง</h2>' +
+          '<label class="field">หัวเรื่อง<input type="text" id="genTitleH" value="' + esc(titleOn ? (fu.line1 || "") : "") + '" placeholder="เช่น การแข่งขันกีฬาสี 2568"></label>' +
+          '<label class="field" style="margin-top:8px">คำบรรยายรอง (ไม่บังคับ)<input type="text" id="genTitleSub" value="' + esc(titleOn ? (fu.line2 || "") : "") + '" placeholder="เช่น สนามกีฬากลางจังหวัด"></label>' +
+          '<div class="cmd-grid" style="margin-top:10px">' +
+            liveBtn("gen-show-title", titleOn, "ขึ้นเต็มจอ") +
+            '<button class="btn" data-act="gen-hide-full"' + (titleOn ? "" : " disabled") + ">ซ่อนเต็มจอ</button>" +
+          "</div>" +
+        "</div>" +
+
+        '<div class="card">' +
+          '<h2 style="margin:0 0 4px">รายการพรีเซ็ต (rundown)</h2>' +
+          '<p class="muted" style="margin:0 0 10px">บันทึก Lower Third ไว้ล่วงหน้า กด “ขึ้นจอ” เพื่อสั่งขึ้นแถบล่างทันที</p>' +
+          '<div class="preset-list">' + presetRows + "</div>" +
+          '<div class="row" style="margin-top:12px;align-items:flex-end;flex-wrap:wrap">' +
+            '<label class="field" style="max-width:130px">ชนิด<select id="genPKind">' +
+              '<option value="name"' + (editP && editP.kind === "name" ? " selected" : (!editP ? " selected" : "")) + ">ชื่อ+ตำแหน่ง</option>" +
+              '<option value="topic"' + (editP && editP.kind === "topic" ? " selected" : "") + ">หัวข้อ</option>" +
+            "</select></label>" +
+            '<label class="field" style="flex:1;min-width:160px">บรรทัด 1<input type="text" id="genPL1" value="' + esc(editP ? (editP.line1 || "") : "") + '"></label>' +
+            '<label class="field" style="flex:1;min-width:160px">บรรทัด 2<input type="text" id="genPL2" value="' + esc(editP ? (editP.line2 || "") : "") + '"></label>' +
+            '<button class="btn ok" data-act="preset-add">' + (genPresetEdit ? "บันทึกการแก้ไข" : "+ บันทึกพรีเซ็ต") + "</button>" +
+            (genPresetEdit ? '<button class="btn" data-act="preset-cancel">ยกเลิก</button>' : "") +
+          "</div>" +
+        "</div>" +
+
+      "</div>" +
+
+      '<div class="preview-wrap' + (collapsed ? " collapsed" : "") + '">' +
+        '<div class="row" style="justify-content:space-between;align-items:center">' +
+          '<div class="preview-label">พรีวิว overlay (โปร่งใส = ลายตาราง)</div>' +
+          '<button class="btn sm" data-act="preview-toggle">' + (collapsed ? "แสดงพรีวิว" : "ซ่อนพรีวิว") + "</button>" +
+        "</div>" +
+        (collapsed ? "" :
+          '<div class="preview"><iframe src="/live?transport=poll&theme=' + encodeURIComponent(curTheme) + '" title="preview"></iframe></div>') +
+      "</div>" +
+
+      "</div>";
+  }
+
+  function renderGeneralSettings() {
+    var s = state.settings || {};
+    var origin = location.origin;
+    var themeVal = s.theme || "default";
+    panel.innerHTML =
+      '<div class="card"><h2>ตั้งค่างานทั่วไป</h2>' +
+        productToggleHtml() +
+        '<div class="field" style="max-width:420px;margin-top:12px">ธีมแสดงผล (จอ Live)' +
+          '<select id="setTheme" data-act="theme-set" style="margin-top:6px;width:100%;max-width:320px">' +
+            THEME_OPTS.map(function (o) {
+              return '<option value="' + o[0] + '"' + (o[0] === themeVal ? " selected" : "") + ">" + esc(o[1]) + "</option>";
+            }).join("") +
+          "</select>" +
+          '<p class="muted" style="margin-top:6px">มีผลกับจอ Live ทันที · เติม <code>?theme=&lt;ชื่อธีม&gt;</code> ต่อท้าย URL เพื่อบังคับเฉพาะจอนั้น</p>' +
+        "</div>" +
+        '<label class="field" style="max-width:360px;margin-top:12px">ชื่องาน (ไม่บังคับ)<input type="text" id="setMeet" value="' + esc(s.meetTitle || "") + '"></label>' +
+        '<label class="field" style="max-width:420px;margin-top:12px">โลโก้ส่วนกลาง (พาธ/URL — เว้นว่าง = ไม่แสดง)' +
+          '<input type="text" id="setLogo" value="' + esc(s.logo == null ? "" : s.logo) + '" placeholder="/pictures/logo.png"></label>' +
+        '<div class="row" style="margin-top:12px">' +
+          '<label class="field">ความเร็ว animation (ms)<input type="number" id="setAnim" min="0" step="50" value="' + (s.animMs || 450) + '"></label>' +
+        "</div>" +
+        '<div class="row" style="margin-top:14px">' +
+          '<button class="btn ok" data-act="gen-set-save">บันทึกการตั้งค่า</button>' +
+        "</div>" +
+      "</div>" +
+
+      '<div class="card"><h2>จอ Live (ใส่ใน OBS / vMix)</h2>' +
+        '<div class="urlbox"><input type="text" id="ovUrl" readonly value="' + origin + '/live">' +
+          '<button class="btn" data-act="url-copy">คัดลอก</button></div>' +
+        '<div class="linklist">' +
+          '<a href="/live" target="_blank">/live &nbsp;— จอ Live (โปร่งใส) สั่งขึ้น/ลงจากหน้าคุม Live</a>' +
+          '<a href="/live?slot=lower" target="_blank">/live?slot=lower &nbsp;— เฉพาะแถบล่าง</a>' +
+          '<a href="/live?transport=poll" target="_blank">/live?transport=poll &nbsp;— ถ้าเน็ตบล็อก SSE</a>' +
+        "</div>" +
+      "</div>" +
+
+      '<div class="card"><h2>รีเซ็ต</h2>' +
+        '<p class="muted">คืนค่าข้อมูลของ<b>งานทั่วไป</b>กลับเป็นค่าตั้งต้น (งานกีฬาไม่ถูกแตะ)</p>' +
+        '<button class="btn danger" data-act="set-reset" style="margin-top:8px">รีเซ็ตข้อมูลงานทั่วไป</button>' +
+      "</div>";
+  }
+
+  // toggle ผลิตภัณฑ์ — ใช้ทั้งในหน้าตั้งค่างานทั่วไปและงานกีฬา
+  function productToggleHtml() {
+    var gen = isGeneralApp();
+    return '<div class="field" style="max-width:560px">ผลิตภัณฑ์' +
+      '<div class="mode-toggle">' +
+        '<button class="btn' + (!gen ? " is-live" : "") + '" data-act="app-sports"' + (!gen ? " disabled" : "") + ">🏟️ งานกีฬา</button>" +
+        '<button class="btn' + (gen ? " is-live" : "") + '" data-act="app-general"' + (gen ? " disabled" : "") + ">🎬 งานทั่วไป (Lower Third)</button>" +
+      "</div>" +
+      '<p class="muted" style="margin-top:6px">สลับผลิตภัณฑ์จะสลับชุดข้อมูล/โลโก้/ธีม/ชื่องานทั้งหมด — อีกชุดถูกเก็บไว้ กลับมาเหมือนเดิมเมื่อสลับกลับ</p>' +
+    "</div>";
+  }
+
+  function switchApp(a) {
+    if (currentApp() === a) return;
+    var msg = a === "general"
+      ? 'สลับไป "งานทั่วไป" (Lower Third) ?\nข้อมูลงานกีฬาตอนนี้จะถูกเก็บไว้ กลับมาได้เมื่อสลับกลับ'
+      : 'สลับกลับ "งานกีฬา" ?\nข้อมูลงานทั่วไปตอนนี้จะถูกเก็บไว้ กลับมาได้เมื่อสลับกลับ';
+    if (!confirm(msg)) return;
+    if (location.hash) history.replaceState("", document.title, location.pathname);
+    cmd({ action: "setApp", app: a }).then(function (ok) { if (ok) toast("สลับผลิตภัณฑ์แล้ว"); });
+  }
+
+  function genPresetId() { return "l_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
   function ensureDraft(ev) {
     var eid = ev ? ev.id : null;
@@ -1063,7 +1282,8 @@
     var themeVal = s.theme || "default";
     panel.innerHTML =
       '<div class="card"><h2>ตั้งค่าทั่วไป</h2>' +
-        '<div class="field" style="max-width:560px">โหมดการแข่งขัน' +
+        productToggleHtml() +
+        '<div class="field" style="max-width:560px;margin-top:12px">โหมดการแข่งขัน' +
           '<div class="mode-toggle">' +
             '<button class="btn' + (!isSc ? " is-live" : "") + '" data-act="mode-house"' + (!isSc ? " disabled" : "") + ">กีฬาสีภายใน (4 คณะ)</button>" +
             '<button class="btn' + (isSc ? " is-live" : "") + '" data-act="mode-school"' + (isSc ? " disabled" : "") + ">แข่งกับโรงเรียนภายนอก</button>" +
@@ -1202,6 +1422,61 @@
       cmd({ action: "show", slot: "full", template: "chart", eventId: null });
     },
     "hide-full": function () { cmd({ action: "hideMain" }); },
+
+    // ---- งานทั่วไป (general) ----
+    "app-sports": function () { switchApp("sports"); },
+    "app-general": function () { switchApp("general"); },
+    "gen-show-name": function () {
+      cmd({ action: "show", slot: "lower", template: "genLowerName", line1: genVal("genName"), line2: genVal("genRole") });
+    },
+    "gen-show-topic": function () {
+      var t = genVal("genTopic");
+      if (!t) return toast("ใส่หัวข้อก่อน", true);
+      cmd({ action: "show", slot: "lower", template: "genLowerTopic", line1: t });
+    },
+    "gen-show-title": function () {
+      var h = genVal("genTitleH"), sub = genVal("genTitleSub");
+      if (!h && !sub) return toast("ใส่หัวเรื่องก่อน", true);
+      cmd({ action: "show", slot: "full", template: "genTitle", line1: h, line2: sub });
+    },
+    "gen-hide-lower": function () { cmd({ action: "hide", slot: "lower" }); },
+    "gen-hide-full": function () { cmd({ action: "hide", slot: "full" }); },
+    "gen-set-save": function () {
+      cmd({ action: "setSettings", settings: {
+        meetTitle: genVal("setMeet"),
+        logo: genVal("setLogo"),
+        animMs: Number(document.getElementById("setAnim").value) || 450,
+      } }).then(function (ok) { if (ok) toast("บันทึกการตั้งค่าแล้ว"); });
+    },
+    "preset-trigger": function (b) {
+      var p = (state.lowers || []).filter(function (x) { return x.id === b.dataset.id; })[0];
+      if (!p) return;
+      cmd({ action: "show", slot: "lower",
+        template: p.kind === "topic" ? "genLowerTopic" : "genLowerName",
+        line1: p.line1 || "", line2: p.line2 || "" });
+    },
+    "preset-edit": function (b) { genPresetEdit = b.dataset.id; render(); },
+    "preset-cancel": function () { genPresetEdit = null; render(); },
+    "preset-del": function (b) {
+      var next = (state.lowers || []).filter(function (x) { return x.id !== b.dataset.id; });
+      if (genPresetEdit === b.dataset.id) genPresetEdit = null;
+      cmd({ action: "setLowers", lowers: next }).then(function (ok) { if (ok) toast("ลบพรีเซ็ตแล้ว"); });
+    },
+    "preset-add": function () {
+      var kind = document.getElementById("genPKind").value === "topic" ? "topic" : "name";
+      var l1 = document.getElementById("genPL1").value.trim();
+      var l2 = kind === "topic" ? "" : document.getElementById("genPL2").value.trim();
+      if (!l1) return toast("ใส่บรรทัด 1 ก่อน", true);
+      var list = (state.lowers || []).slice();
+      if (genPresetEdit) {
+        list = list.map(function (p) { return p.id === genPresetEdit ? { id: p.id, kind: kind, line1: l1, line2: l2 } : p; });
+      } else {
+        list.push({ id: genPresetId(), kind: kind, line1: l1, line2: l2 });
+      }
+      var wasEdit = !!genPresetEdit;
+      genPresetEdit = null;
+      cmd({ action: "setLowers", lowers: list }).then(function (ok) { if (ok) toast(wasEdit ? "บันทึกการแก้ไขแล้ว" : "เพิ่มพรีเซ็ตแล้ว"); });
+    },
 
     "preview-toggle": function () {
       var c = localStorage.getItem("cg_preview_collapsed") === "1";

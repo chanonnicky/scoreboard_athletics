@@ -105,6 +105,12 @@
       "||" + (s.mode || "house") + "||" + JSON.stringify(s.schools || []);
   }
   function isSport(t) { return t === "sportMatches" || t === "sportLive" || t === "sportLower" || t === "scoreBug"; }
+  // CG งานทั่วไป (Lower Third generator) — เปลี่ยนตามข้อความ + โลโก้
+  function isGen(t) { return t === "genLowerName" || t === "genLowerTopic" || t === "genTitle"; }
+  function genSig(state, conf) {
+    var s = state.settings || {};
+    return (conf.template || "") + "||" + (conf.line1 || "") + "||" + (conf.line2 || "") + "||" + (s.logo || "");
+  }
   // เทมเพลตสกอร์สด (เดินนาฬิกา + เด้งสกอร์เอง): สกอร์บอร์ดเต็มจอ + แถบล่าง + score bug มุมจอ
   function isLiveSport(t) { return t === "sportLive" || t === "sportLower" || t === "scoreBug"; }
 
@@ -230,6 +236,9 @@
       case "sportLive": return T.sportLive(state, conf.sport);
       case "sportLower": return T.sportLower(state, conf.sport);
       case "scoreBug": return T.scoreBug(state, conf.sport);
+      case "genLowerName":  return T.genLowerName(state, conf);
+      case "genLowerTopic": return T.genLowerTopic(state, conf);
+      case "genTitle":      return T.genTitle(state, conf);
       default:         return null;
     }
   }
@@ -247,6 +256,7 @@
       : isPaged ? pagedSig(state)
       : conf.template === "chart" ? chartSig(state)
       : conf.template === "schedule" ? schedSig(state, conf.eventId)
+      : isGen(conf.template) ? genSig(state, conf)
       : null;
 
     // ไม่มีอะไรจะแสดง -> เอาออก
@@ -269,8 +279,9 @@
 
     // เทมเพลตผูกกับกีฬา (sportMatches/sportLive/sportLower) ต้องเช็ก "กีฬาเดียวกัน" ด้วย ไม่งั้นสลับบอล<->บาส
     // จะเข้าใจผิดว่าเป็นการ์ดเดิม (eventId ว่างเท่ากันทั้งคู่)
-    var sameShell = (cont && isPaged) || (cur && prev.visible && prev.template === conf.template &&
-      (isSport(conf.template) ? prev.sport === conf.sport : (prev.eventId === conf.eventId || conf.template === "schedule")));
+    // CG งานทั่วไป: ทุกครั้งที่ push = exit/enter ใหม่ (re-animate) ไม่ patch เงียบ
+    var sameShell = !isGen(conf.template) && ((cont && isPaged) || (cur && prev.visible && prev.template === conf.template &&
+      (isSport(conf.template) ? prev.sport === conf.sport : (prev.eventId === conf.eventId || conf.template === "schedule"))));
 
     // แถบล่างสกอร์สด (sportLower) / score bug มุมจอ (scoreBug): ถ้าคู่/ชื่อคณะ/โลโก้/ชื่อกีฬา
     // ไม่เปลี่ยน -> แก้เฉพาะจุด (สกอร์/นาฬิกา/สถานะ) จุด LIVE ไม่รีสตาร์ต โลโก้ไม่โหลดใหม่ ไม่มีวูบ

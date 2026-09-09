@@ -1,0 +1,14 @@
+{
+  "settings": {
+    "app": "general",
+    "theme": "default",
+    "logo": "/pictures/logo.png",
+    "animMs": 450,
+    "meetTitle": ""
+  },
+  "onair": {
+    "lower": { "template": "genLowerName", "line1": "", "line2": "", "visible": false },
+    "full": { "template": "genTitle", "line1": "", "line2": "", "visible": false }
+  },
+  "lowers": []
+}

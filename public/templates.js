@@ -661,10 +661,47 @@ window.T = (function () {
     return '<div class="card tpl-chart-card tpl-chart-' + kind + '">' + head + body + "</div>";
   }
 
+  /* ================= CG งานทั่วไป (general) — Lower Third generator =========
+     ผลิตภัณฑ์ "งานทั่วไป": operator พิมพ์ข้อความสด สั่งขึ้น/ลงจาก /control
+     ทั้ง 3 ฟังก์ชันรับ conf = object ของ onair[slot] ({template,line1,line2,visible})
+     - genLowerName  : ช่อง lower — ชื่อ (line1) + ตำแหน่ง/คำบรรยาย (line2)
+     - genLowerTopic : ช่อง lower — หัวข้อบรรทัดเดียว (line1)
+     - genTitle      : ช่อง full  — การ์ดหัวเรื่องเต็มจอ (line1) + รอง (line2)
+     คืน null เมื่อไม่มีข้อความ (slot จะไม่ขึ้น)                                */
+  function genLowerName(state, conf) {
+    conf = conf || {};
+    var name = esc(conf.line1 || ""), role = esc(conf.line2 || "");
+    if (!name && !role) return null;
+    return '<div class="gen-l3 gen-l3-name">' + logoImg(state) +
+      '<div class="gen-l3-bar">' +
+        '<div class="gen-l3-name-txt">' + name + "</div>" +
+        (role ? '<div class="gen-l3-role-txt">' + role + "</div>" : "") +
+      "</div></div>";
+  }
+  function genLowerTopic(state, conf) {
+    conf = conf || {};
+    var topic = esc(conf.line1 || "");
+    if (!topic) return null;
+    return '<div class="gen-l3 gen-topic">' + logoImg(state) +
+      '<div class="gen-topic-txt">' + topic + "</div></div>";
+  }
+  function genTitle(state, conf) {
+    conf = conf || {};
+    var head = esc(conf.line1 || ""), sub = esc(conf.line2 || "");
+    if (!head && !sub) return null;
+    return '<div class="card tpl-gentitle-card">' +
+      '<div class="card-head">' + logoImg(state) + "</div>" +
+      '<div class="card-body gen-title-body">' +
+        '<div class="gen-title-h card-title big">' + head + "</div>" +
+        (sub ? '<div class="gen-title-sub card-sub">' + sub + "</div>" : "") +
+      "</div></div>";
+  }
+
   return {
     top3: top3, results: results, schedule: schedule,
     sportMatches: sportMatches, sportLive: sportLive, sportLower: sportLower,
     scoreBug: scoreBug, chart: chart, medalTally: medalTally,
+    genLowerName: genLowerName, genLowerTopic: genLowerTopic, genTitle: genTitle,
     esc: esc, clockValue: clockValue, clockDur: clockDur, clockRemain: clockRemain,
     remainSec: remainSec, fmtClock: fmtClock,
     comp: comp, compMode: compMode, compKeys: compKeys,

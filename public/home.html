@@ -63,11 +63,41 @@
     @media (max-width: 720px) {
       .steps { grid-template-columns: 1fr; }
     }
-  </style>
+
+    /* ---- ปุ่มเลือกผลิตภัณฑ์ ---- */
+    .apps { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 8px; }
+    @media (max-width: 620px) { .apps { grid-template-columns: 1fr; } }
+    .app-card {
+      display: block; text-align: left; cursor: pointer;
+      background: var(--bg-2); border: 1px solid var(--stroke);
+      border-radius: 14px; padding: 16px 18px; color: var(--ink);
+      font: inherit;
+    }
+    .app-card:hover { border-color: var(--accent); }
+    .app-card[disabled] { cursor: default; border-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 16%, var(--bg-2)); }
+    .app-card b { display: block; font-size: 17px; margin-bottom: 3px; }
+    .app-card small { color: var(--ink-dim); font-size: 13px; }
+    .app-card .cur-tag { color: var(--accent); font-size: 12px; font-weight: 700; }
+</style>
 </head>
 <body>
   <div class="home-h"><h1>🏟️ CG Live</h1><span id="meet">ระบบกราฟิกสด งานกีฬาสี</span></div>
   <p class="home-lead">แสดงผลอันดับ 1–3 และสกอร์กีฬาสด บนจอถ่ายทอด · ทุกเครื่องซิงก์ข้อมูลกันอัตโนมัติ</p>
+
+  <div class="sec-t">เลือกผลิตภัณฑ์</div>
+  <div class="apps" id="apps">
+    <button type="button" class="app-card" data-app="sports">
+      <b>🏟️ งานกีฬา</b>
+      <small>ผลกรีฑา 1–3 · สกอร์กีฬาสด · กราฟเหรียญ · Scoreboard</small>
+      <div class="cur-tag" data-cur hidden>● ใช้งานอยู่</div>
+    </button>
+    <button type="button" class="app-card" data-app="general">
+      <b>🎬 งานทั่วไป</b>
+      <small>ตัวสร้าง Lower Third สด — ชื่อ/ตำแหน่ง · หัวข้อ · การ์ดเต็มจอ</small>
+      <div class="cur-tag" data-cur hidden>● ใช้งานอยู่</div>
+    </button>
+  </div>
 
   <div class="sec-t">เริ่มใช้งาน 3 ขั้น</div>
   <div class="steps">
@@ -77,14 +107,14 @@
       <p>ใส่ <b>/live</b> ใน OBS หรือ vMix (Browser Source 1920×1080) · เปิด <b>/scoreboard</b> เต็มจอ (F11) ที่จอในสนาม</p>
       <a class="go" href="/live" target="_blank">เปิด /live ↗</a>
     </div>
-    <div class="step">
+    <div class="step" id="step2">
       <div class="n">2</div>
       <h3>จดคะแนน</h3>
       <p>เปิด <b>/score</b> เลือกรายการ แล้วแตะสีคณะ/โรงเรียนเรียงตามลำดับเข้าเส้น — บันทึกเอง</p>
       <a class="go" href="/score" target="_blank">เปิด /score ↗</a>
     </div>
     <div class="step">
-      <div class="n">3</div>
+      <div class="n" id="step3n">3</div>
       <h3>สั่งกราฟิกขึ้นจอ</h3>
       <p>เปิด <b>/control</b> กดปุ่มเดียวขึ้น/ลง แถบล่างหรือเต็มจอ พร้อมดูพรีวิวสด</p>
       <a class="go" href="/control" target="_blank">เปิด /control ↗</a>
@@ -97,7 +127,7 @@
     <h4>สำหรับทีมงาน</h4>
     <div class="tiles" id="crewLinks">
       <a class="tile primary" href="/control" target="_blank"><b>คอนโทรล</b><small>/control — ผู้กำกับสั่ง CG</small></a>
-      <a class="tile" href="/score" target="_blank"><b>จดคะแนน กรีฑา</b><small>/score</small></a>
+      <a class="tile" id="tileScore" href="/score" target="_blank"><b>จดคะแนน กรีฑา</b><small>/score</small></a>
     </div>
   </div>
 
@@ -105,7 +135,7 @@
     <h4>จอแสดงผล</h4>
     <div class="tiles" id="displayLinks">
       <a class="tile" href="/live" target="_blank"><b>Live (OBS / vMix)</b><small>/live</small></a>
-      <a class="tile" href="/scoreboard?view=all" target="_blank"><b>Scoreboard วนผล</b><small>/scoreboard?view=all</small></a>
+      <a class="tile" id="tileBoard" href="/scoreboard?view=all" target="_blank"><b>Scoreboard วนผล</b><small>/scoreboard?view=all</small></a>
     </div>
   </div>
 
@@ -115,15 +145,52 @@
   </div>
 
   <script>
+    // สลับผลิตภัณฑ์ผ่าน POST /api/command (token จาก localStorage ที่ /control เก็บไว้)
+    document.getElementById("apps").addEventListener("click", function (e) {
+      var btn = e.target.closest(".app-card");
+      if (!btn || btn.disabled) return;
+      var h = { "Content-Type": "application/json" };
+      var tok = null;
+      try { tok = localStorage.getItem("cg_token"); } catch (x) {}
+      if (tok) h["X-Token"] = tok;
+      fetch("/api/command", { method: "POST", headers: h, body: JSON.stringify({ action: "setApp", app: btn.dataset.app }) })
+        .then(function (r) {
+          if (r.status === 401) { alert("ต้องใส่ token ในหน้า /control (แท็บตั้งค่า) ก่อน จึงจะสลับผลิตภัณฑ์ได้"); return; }
+          if (r.ok) location.reload();
+        })
+        .catch(function () {});
+    });
+
     // เติมชื่องาน + ลิงก์ต่อกีฬา (จดคะแนน + สกอร์สด) ตามกีฬาที่มีจริง
     fetch("/api/state", { cache: "no-store" })
       .then(function (r) { return r.json(); })
       .then(function (s) {
-        var meet = (s.settings && s.settings.meetTitle) || "ระบบกราฟิกสด งานกีฬาสี";
+        var app = (s.settings && s.settings.app) || "sports";
+        var gen = app === "general";
+        var defMeet = gen ? "ระบบทำ Lower Third สด" : "ระบบกราฟิกสด งานกีฬาสี";
+        var meet = (s.settings && s.settings.meetTitle) || defMeet;
         document.getElementById("meet").textContent = meet;
         document.title = "CG Live — วิธีใช้งาน (" + meet + ")";
+
+        // ปุ่มเลือกผลิตภัณฑ์: ตัวที่ใช้อยู่ = disabled + tag
+        [].forEach.call(document.querySelectorAll("#apps .app-card"), function (c) {
+          var on = c.dataset.app === app;
+          c.disabled = on;
+          c.querySelector("[data-cur]").hidden = !on;
+        });
+
         var crew = document.getElementById("crewLinks");
         var disp = document.getElementById("displayLinks");
+
+        if (gen) {
+          // งานทั่วไป: ไม่มีจดคะแนน / ไม่มี Scoreboard
+          ["step2", "tileScore", "tileBoard"].forEach(function (id) {
+            var el = document.getElementById(id); if (el) el.hidden = true;
+          });
+          var s3 = document.getElementById("step3n"); if (s3) s3.textContent = "2";
+          return;
+        }
+
         (s.sports || []).forEach(function (sp) {
           var nm = (sp.icon ? sp.icon + " " : "") + (sp.name || sp.key);
           crew.insertAdjacentHTML("beforeend",

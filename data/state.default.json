@@ -1,5 +1,6 @@
 {
   "settings": {
+    "app": "sports",
     "mode": "house",
     "houses": {
       "red": "#e53935",

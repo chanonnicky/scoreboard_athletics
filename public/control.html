@@ -16,21 +16,21 @@
           <div class="sb-group-t">ควบคุม</div>
           <a class="sb-item" data-nav href="/control">🎛️ คุม Live</a>
         </div>
-        <div class="sb-group">
+        <div class="sb-group" id="sbGroupScore">
           <div class="sb-group-t">จดคะแนน</div>
           <a class="sb-item" data-nav href="/score">🏃 กรีฑา</a>
           <span id="sbScoreSports"></span>
         </div>
-        <div class="sb-group">
+        <div class="sb-group" id="sbGroupManage">
           <div class="sb-group-t">จัดการ</div>
-          <a class="sb-item" data-nav href="/control#events">📋 รายการแข่ง</a>
-          <a class="sb-item" data-nav href="/control#import">📥 นำเข้า</a>
+          <a class="sb-item" id="sbNavEvents" data-nav href="/control#events">📋 รายการแข่ง</a>
+          <a class="sb-item" id="sbNavImport" data-nav href="/control#import">📥 นำเข้า</a>
           <a class="sb-item" data-nav href="/control#settings">⚙️ ตั้งค่า</a>
         </div>
-        <div class="sb-group">
+        <div class="sb-group" id="sbGroupDisplay">
           <div class="sb-group-t">เปิดจอ</div>
           <a class="sb-item" href="/live" target="_blank">📺 จอ Live (OBS)</a>
-          <a class="sb-item" href="/scoreboard?view=all" target="_blank">🏆 Scoreboard รวม</a>
+          <a class="sb-item" id="sbNavBoard" href="/scoreboard?view=all" target="_blank">🏆 Scoreboard รวม</a>
           <span id="sbBoardSports"></span>
         </div>
       </nav>

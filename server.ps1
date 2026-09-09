@@ -42,6 +42,7 @@ $DataDir     = Join-Path $Root "data"
 $StatePath   = Join-Path $DataDir "state.json"
 $DefaultPath = Join-Path $DataDir "state.default.json"
 $DefaultSchoolPath = Join-Path $DataDir "state.default.school.json"
+$DefaultGeneralPath = Join-Path $DataDir "state.default.general.json"
 $UploadsDir  = Join-Path $DataDir "uploads"
 
 # --------------------------------------------------------------------------- #
@@ -61,9 +62,17 @@ $G.DataDir     = $DataDir
 $G.StatePath   = $StatePath
 $G.DefaultPath = $DefaultPath
 $G.DefaultSchoolPath = $DefaultSchoolPath
+$G.DefaultGeneralPath = $DefaultGeneralPath
 $G.UploadsDir  = $UploadsDir
 $G.Token       = $Token
 $G.ProfileKeys = @("settings", "events", "results", "onair", "sports", "tally")
+# product axis (settings.app): "sports" | "general" -- higher than the mode axis.
+# The inactive product parks at State.parkedApp[<app>] (distinct from State.parked
+# which is the mode axis and belongs to the sports product's own profile).
+$G.Apps = @("sports", "general")
+$G.AllProfileKeys = @("settings", "events", "results", "onair", "sports", "tally", "parked", "lowers")
+$G.SportsProfileKeys  = @("settings", "events", "results", "onair", "sports", "tally", "parked")
+$G.GeneralProfileKeys = @("settings", "onair", "lowers")
 $G.CTypes      = @{
   ".html"  = "text/html; charset=utf-8"
   ".css"   = "text/css; charset=utf-8"
@@ -116,6 +125,16 @@ $Lib = {
   # chokes on ("circular reference ... PSParameterizedProperty").
   function New-Dict { return @{} }
 
+  # profile key set / seed path for a product (settings.app)
+  function Get-AppProfileKeys([string]$app) {
+    if ($app -eq "general") { return $script:G.GeneralProfileKeys }
+    return $script:G.SportsProfileKeys
+  }
+  function Get-AppDefaultPath([string]$app) {
+    if ($app -eq "general") { return $script:G.DefaultGeneralPath }
+    return $script:G.DefaultPath
+  }
+
   # unique id: timestamp(ms) + counter, so a burst of calls in the same ms
   # (e.g. importing many CSV rows) never collides. Monitor is re-entrant, so
   # calling this from inside a locked mutation is fine.
@@ -153,6 +172,8 @@ $Lib = {
     # default mode (every pre-existing state = house/colour mode)
     $st = $script:G.State["settings"]
     if ($st -and -not $st.ContainsKey("mode")) { $st["mode"] = "house"; $changed++ }
+    # default product (every pre-existing state = the sports product)
+    if ($st -and -not $st.ContainsKey("app")) { $st["app"] = "sports"; $changed++ }
     # This file must stay ASCII-only (see CLAUDE.md), so the Thai sport names are
     # built from Unicode code points:  0E1F 0E38 0E15 0E0B 0E2D 0E25 = "futsal" in Thai,
     #                                  0E1F 0E38 0E15 0E1A 0E2D 0E25 = "football" in Thai.
@@ -210,6 +231,8 @@ $Lib = {
           $slot = [string]$cmd["slot"]
           $d = New-Dict
           $d["template"] = $cmd["template"]; $d["eventId"] = $cmd["eventId"]; $d["sport"] = $cmd["sport"]; $d["visible"] = $true
+          # general product: Lower Third text rides here (sports templates ignore it)
+          $d["line1"] = $cmd["line1"]; $d["line2"] = $cmd["line2"]
           $onair[$slot] = $d
           # main graphics (lower/full) show one at a time; 'bug' (score bug) is an independent
           # persistent slot (hideAll still clears everything)
@@ -306,25 +329,72 @@ $Lib = {
           $script:G.State["sports"] = $kept.ToArray()
         }
         "resetState" {
-          # reset only the active profile - keep settings.mode and parked
+          # reset only the active product + mode - keep settings.app always, and (sports
+          # only) settings.mode + parked. parkedApp is never touched.
+          $app  = [string]$script:G.State["settings"]["app"];  if (-not $app)  { $app  = "sports" }
           $mode = [string]$script:G.State["settings"]["mode"]; if (-not $mode) { $mode = "house" }
-          $parked = $script:G.State["parked"]
+          $keys = Get-AppProfileKeys $app
+          $parked    = $script:G.State["parked"]
+          $parkedApp = $script:G.State["parkedApp"]
           $gcCand = Get-SettingsUploadNames $script:G.State["settings"]
-          $seedPath = if ($mode -eq "school") { $script:G.DefaultSchoolPath } else { $script:G.DefaultPath }
+          $seedPath = if ($app -eq "general") { $script:G.DefaultGeneralPath }
+                      elseif ($mode -eq "school") { $script:G.DefaultSchoolPath }
+                      else { $script:G.DefaultPath }
           $seed = Read-JsonFile $seedPath
-          foreach ($k in $script:G.ProfileKeys) {
-            if ($seed.ContainsKey($k)) { $script:G.State[$k] = $seed[$k] }
-            elseif ($script:G.State.ContainsKey($k)) { [void]$script:G.State.Remove($k) }
+          foreach ($k in $script:G.AllProfileKeys) {
+            if ($script:G.State.ContainsKey($k)) { [void]$script:G.State.Remove($k) }
           }
-          $script:G.State["settings"]["mode"] = $mode
-          if ($parked) { $script:G.State["parked"] = $parked }
-          elseif ($script:G.State.ContainsKey("parked")) { [void]$script:G.State.Remove("parked") }
+          foreach ($k in $keys) {
+            if ($seed.ContainsKey($k)) { $script:G.State[$k] = $seed[$k] }
+          }
+          $script:G.State["settings"]["app"] = $app
+          if ($app -eq "sports") {
+            $script:G.State["settings"]["mode"] = $mode
+            if ($parked) { $script:G.State["parked"] = $parked }
+          }
+          if ($parkedApp) { $script:G.State["parkedApp"] = $parkedApp }
           Invoke-GcUploads $gcCand
         }
+        "setApp" {
+          $newApp = [string]$cmd["app"]
+          if ($newApp -ne "sports" -and $newApp -ne "general") { throw "bad app: $newApp" }
+          $oldApp = [string]$script:G.State["settings"]["app"]; if (-not $oldApp) { $oldApp = "sports" }
+          if ($newApp -ne $oldApp) {
+            if (-not $script:G.State.ContainsKey("parkedApp")) { $script:G.State["parkedApp"] = New-Dict }
+            $parkedApp = $script:G.State["parkedApp"]
+            # snapshot current product (deep copy via serialize round-trip; drop settings.app)
+            $snapKeys = @{}
+            foreach ($k in (Get-AppProfileKeys $oldApp)) {
+              if ($script:G.State.ContainsKey($k)) { $snapKeys[$k] = $script:G.State[$k] }
+            }
+            $snap = $script:JS.DeserializeObject($script:JS.Serialize($snapKeys))
+            if ($snap["settings"] -and $snap["settings"].ContainsKey("app")) { [void]$snap["settings"].Remove("app") }
+            $parkedApp[$oldApp] = $snap
+            # incoming product: from parkedApp if present, else seed from that product's default
+            if ($parkedApp.ContainsKey($newApp)) {
+              $incoming = $parkedApp[$newApp]
+              [void]$parkedApp.Remove($newApp)
+            } else {
+              $seed = Read-JsonFile (Get-AppDefaultPath $newApp)
+              $incoming = @{}
+              foreach ($k in (Get-AppProfileKeys $newApp)) { if ($seed.ContainsKey($k)) { $incoming[$k] = $seed[$k] } }
+            }
+            foreach ($k in $script:G.AllProfileKeys) {
+              if ($script:G.State.ContainsKey($k)) { [void]$script:G.State.Remove($k) }
+            }
+            foreach ($k in $incoming.Keys) { $script:G.State[$k] = $incoming[$k] }
+            $script:G.State["settings"]["app"] = $newApp
+            # hide every on-air slot so a stale graphic can't linger after a product switch
+            $oa = $script:G.State["onair"]
+            if ($oa) { foreach ($sk in @($oa.Keys)) { if ($oa[$sk]) { $oa[$sk]["visible"] = $false } } }
+          }
+        }
+        "setLowers" { $script:G.State["lowers"] = $cmd["lowers"] }
         "setMode" {
           $newMode = [string]$cmd["mode"]
           if ($newMode -ne "house" -and $newMode -ne "school") { throw "bad mode: $newMode" }
           $oldMode = [string]$script:G.State["settings"]["mode"]; if (-not $oldMode) { $oldMode = "house" }
+          $keepApp = [string]$script:G.State["settings"]["app"]; if (-not $keepApp) { $keepApp = "sports" }
           if ($newMode -ne $oldMode) {
             if (-not $script:G.State.ContainsKey("parked")) { $script:G.State["parked"] = New-Dict }
             $parked = $script:G.State["parked"]
@@ -351,6 +421,7 @@ $Lib = {
               elseif ($script:G.State.ContainsKey($k)) { [void]$script:G.State.Remove($k) }
             }
             $script:G.State["settings"]["mode"] = $newMode
+            $script:G.State["settings"]["app"] = $keepApp
             # hide every on-air slot so a stale graphic can't linger after a mode switch
             $oa = $script:G.State["onair"]
             if ($oa) { foreach ($sk in @($oa.Keys)) { if ($oa[$sk]) { $oa[$sk]["visible"] = $false } } }
@@ -456,13 +527,25 @@ $Lib = {
     foreach ($v in $vals) { $n = Get-UploadName $v; if ($n) { [void]$set.Add($n) } }
     return ,$set
   }
+  function Add-ParkedUploadNames($set, $parked) {
+    if ($parked -isnot [System.Collections.IDictionary]) { return }
+    foreach ($prof in $parked.Values) {
+      if ($prof -is [System.Collections.IDictionary]) {
+        foreach ($n in (Get-SettingsUploadNames $prof["settings"])) { [void]$set.Add($n) }
+      }
+    }
+  }
   function Get-ReferencedUploadNames {
+    # active + parked modes (house/school) + parked products (parkedApp), incl. each
+    # parked product's own nested parked modes
     $set = Get-SettingsUploadNames $script:G.State["settings"]
-    $parked = $script:G.State["parked"]
-    if ($parked -is [System.Collections.IDictionary]) {
-      foreach ($prof in $parked.Values) {
-        if ($prof -is [System.Collections.IDictionary]) {
-          foreach ($n in (Get-SettingsUploadNames $prof["settings"])) { [void]$set.Add($n) }
+    Add-ParkedUploadNames $set $script:G.State["parked"]
+    $parkedApp = $script:G.State["parkedApp"]
+    if ($parkedApp -is [System.Collections.IDictionary]) {
+      foreach ($appProf in $parkedApp.Values) {
+        if ($appProf -is [System.Collections.IDictionary]) {
+          foreach ($n in (Get-SettingsUploadNames $appProf["settings"])) { [void]$set.Add($n) }
+          Add-ParkedUploadNames $set $appProf["parked"]
         }
       }
     }

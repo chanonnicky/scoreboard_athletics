@@ -189,6 +189,19 @@ table.tbl .hcell { width: 150px; }
 .mode-toggle { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
 .mode-toggle .btn { flex: 1 1 200px; }
 .mode-toggle .btn[disabled] { opacity: 1; cursor: default; }
+
+/* ---- งานทั่วไป: รายการพรีเซ็ต (rundown) ---- */
+.preset-list { display: flex; flex-direction: column; gap: 6px; }
+.preset-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 10px; border-radius: 9px;
+  background: var(--bg-3); border: 1px solid var(--stroke);
+}
+.preset-kind {
+  flex: none; font-size: 12px; padding: 2px 8px; border-radius: 999px;
+  background: var(--bg-2); border: 1px solid var(--stroke); color: var(--ink-dim);
+}
+.preset-txt { flex: 1; min-width: 140px; }
 .school-tbl td { vertical-align: middle; }
 .school-tbl input[type=text] { width: 100%; max-width: 320px; }
 .school-logo-cell { display: flex; align-items: center; gap: 10px; }

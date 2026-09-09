@@ -198,6 +198,48 @@ body.is-offline #offline { opacity: 1; }
 .t3-r2 .t3-medal, .t3-r3 .t3-medal { width: 48px; height: 48px; font-size: 23px; }
 .t3-r2 .t3-house, .t3-r3 .t3-house { font-size: 24px; }
 
+/* ==== CG งานทั่วไป (general) — Lower Third / topic bar / title card ==== */
+/* แถบล่าง: ชื่อ + ตำแหน่ง (genLowerName) และ หัวข้อบรรทัดเดียว (genTopic)
+   ใช้ transition ของ .slot-lower .cg (เลื่อนขึ้น + เฟด) — ไม่มี keyframe เพิ่ม */
+.gen-l3 {
+  display: flex; align-items: stretch;
+  max-width: 1500px;
+  background: var(--panel);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .42);
+}
+.gen-l3 .cg-logo {
+  flex: none; align-self: center;
+  height: 64px; width: auto; margin: 0 6px 0 26px;
+}
+.gen-l3-bar {
+  display: flex; flex-direction: column; justify-content: center; gap: 6px;
+  padding: 22px 44px 24px 30px;
+  border-left: 4px solid var(--accent, #3b82f6);
+}
+.gen-l3 .cg-logo + .gen-l3-bar { margin-left: 22px; }
+.gen-l3-name-txt { font-size: 44px; font-weight: 800; line-height: 1.08; }
+.gen-l3-role-txt { font-size: 24px; font-weight: 500; opacity: .82; line-height: 1.15; }
+
+.gen-topic {
+  align-items: center;
+  min-width: 900px;
+}
+.gen-topic .gen-topic-txt {
+  flex: 1;
+  padding: 24px 48px;
+  font-size: 38px; font-weight: 700; line-height: 1.15;
+  border-left: 4px solid var(--accent, #3b82f6);
+}
+
+/* การ์ดหัวเรื่องเต็มจอ (genTitle) — ใช้เปลือก .card ให้สกินธีมจับได้ */
+.tpl-gentitle-card { min-width: 1100px; max-width: 1600px; text-align: center; }
+.tpl-gentitle-card .card-head { padding: 20px 40px; min-height: 92px; }
+.gen-title-body { padding: 70px 80px 84px; }
+.gen-title-h { line-height: 1.12; }
+.gen-title-sub { margin-top: 20px; }
+
 /* ==== template card (results) ====================================== */
 .card {
   position: relative;

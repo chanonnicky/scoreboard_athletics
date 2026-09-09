@@ -29,12 +29,32 @@ DATA = os.path.join(ROOT, "data")
 STATE_PATH = os.path.join(DATA, "state.json")
 DEFAULT_STATE_PATH = os.path.join(DATA, "state.default.json")
 DEFAULT_SCHOOL_STATE_PATH = os.path.join(DATA, "state.default.school.json")
+DEFAULT_GENERAL_STATE_PATH = os.path.join(DATA, "state.default.general.json")
 UPLOADS = os.path.join(DATA, "uploads")
 
 # state ที่ active อยู่ที่ top-level key เหล่านี้เสมอ; setMode สลับทั้งชุด
 # (โหมดที่ไม่ได้ใช้ถูกเก็บไว้ที่ STATE["parked"][<mode>])
 PROFILE_KEYS = ("settings", "events", "results", "onair", "sports", "tally")
 MODES = ("house", "school")
+
+# แกน "ผลิตภัณฑ์" (settings.app) — สูงกว่าแกน mode (house/school ซึ่งเป็นแกนของงานกีฬาเท่านั้น)
+#   "sports"  = CG งานกีฬา (กรีฑา + โมดูลกีฬา) — ทุกอย่างเดิม
+#   "general" = CG งานทั่วไป — ตัวสร้าง Lower Third สด
+# ผลิตภัณฑ์ที่ไม่ได้ใช้ถูก park ที่ STATE["parkedApp"][<app>] (คนละตัวกับ STATE["parked"] ของ mode)
+APPS = ("sports", "general")
+# ทุก key ที่อาจเป็นของ profile ผลิตภัณฑ์ใดผลิตภัณฑ์หนึ่ง (setApp เคลียร์ทั้งหมดก่อนโหลดชุดใหม่)
+# "parked" (house/school) เป็นส่วนหนึ่งของ profile งานกีฬา จึงเดินทางไปพร้อมกันตอน park งานกีฬา
+ALL_PROFILE_KEYS = ("settings", "events", "results", "onair", "sports", "tally", "parked", "lowers")
+
+
+def _app_profile_keys(app):
+    if app == "general":
+        return ("settings", "onair", "lowers")
+    return ("settings", "events", "results", "onair", "sports", "tally", "parked")
+
+
+def _app_default_path(app):
+    return DEFAULT_GENERAL_STATE_PATH if app == "general" else DEFAULT_STATE_PATH
 MAX_UPLOAD = 2 * 1024 * 1024
 UPLOAD_EXT = {
     "image/png": ".png",
@@ -92,6 +112,10 @@ def load_state():
     changed = False
     if "mode" not in STATE.get("settings", {}):
         STATE.setdefault("settings", {})["mode"] = "house"
+        changed = True
+    # ผลิตภัณฑ์ตั้งต้น (state เดิมทั้งหมด = งานกีฬา)
+    if "app" not in STATE.get("settings", {}):
+        STATE.setdefault("settings", {})["app"] = "sports"
         changed = True
     # ล้าง id รายการที่ซ้ำกัน (เช่นข้อมูลเก่าที่ import มาก่อนแก้ _new_id)
     # ถ้ามีการแก้ ให้เขียนไฟล์กลับทันที เพื่อไม่ให้ id ซ้ำวนกลับมาอีก
@@ -218,6 +242,8 @@ def apply_command(cmd):
                 "template": cmd.get("template"),
                 "eventId": cmd.get("eventId"),
                 "sport": cmd.get("sport"),
+                "line1": cmd.get("line1"),   # CG งานทั่วไป: ข้อความบรรทัดบน (sports ไม่ใช้)
+                "line2": cmd.get("line2"),   # CG งานทั่วไป: ข้อความบรรทัดล่าง
                 "visible": True,
             }
             # กราฟิกหลัก (lower/full) แสดงได้ทีละช่องเดียว — ขึ้นช่องนี้ = ซ่อนอีกช่อง
@@ -307,20 +333,64 @@ def apply_command(cmd):
             STATE.update(cmd["state"])
 
         elif action == "resetState":
-            # รีเซ็ตเฉพาะโหมดที่ active — คง settings.mode และ parked ไว้
+            # รีเซ็ตเฉพาะผลิตภัณฑ์ + โหมดที่ active — คง settings.app, และ (เฉพาะงานกีฬา)
+            # settings.mode + parked · parkedApp ไม่ถูกแตะเสมอ
+            app = STATE.get("settings", {}).get("app") or "sports"
             mode = STATE.get("settings", {}).get("mode") or "house"
+            keys = _app_profile_keys(app)
             parked = STATE.get("parked", {})
+            parked_app = STATE.get("parkedApp", {})
             gc_candidates = _settings_upload_names(STATE.get("settings"))
-            with open(_default_path_for_mode(mode), encoding="utf-8") as f:
+            seed_path = _app_default_path(app) if app == "general" else _default_path_for_mode(mode)
+            with open(seed_path, encoding="utf-8") as f:
                 seed = json.load(f)
-            for k in PROFILE_KEYS:
+            for k in ALL_PROFILE_KEYS:
                 STATE.pop(k, None)
-            for k in PROFILE_KEYS:
+            for k in keys:
                 if k in seed:
                     STATE[k] = seed[k]
-            STATE.setdefault("settings", {})["mode"] = mode
-            STATE["parked"] = parked
+            STATE.setdefault("settings", {})["app"] = app
+            if app == "sports":
+                STATE["settings"]["mode"] = mode
+                STATE["parked"] = parked
+            STATE["parkedApp"] = parked_app
             _gc_uploads(gc_candidates)
+
+        elif action == "setApp":
+            new_app = cmd.get("app")
+            if new_app not in APPS:
+                raise ValueError("bad app: %r" % new_app)
+            settings = STATE.setdefault("settings", {})
+            old_app = settings.get("app") or "sports"
+            if new_app != old_app:
+                parked_app = STATE.setdefault("parkedApp", {})
+                # snapshot ผลิตภัณฑ์ปัจจุบัน (deep copy, ตัด settings.app ออก)
+                snap = json.loads(json.dumps(
+                    {k: STATE[k] for k in _app_profile_keys(old_app) if k in STATE}
+                ))
+                snap.get("settings", {}).pop("app", None)
+                parked_app[old_app] = snap
+                # โหลดผลิตภัณฑ์ใหม่: จาก parkedApp ถ้ามี ไม่งั้น seed จาก default ของผลิตภัณฑ์นั้น
+                if new_app in parked_app:
+                    incoming = parked_app.pop(new_app)
+                else:
+                    with open(_app_default_path(new_app), encoding="utf-8") as f:
+                        seed = json.load(f)
+                    incoming = {k: seed[k] for k in _app_profile_keys(new_app) if k in seed}
+                for k in ALL_PROFILE_KEYS:
+                    STATE.pop(k, None)
+                for k, v in incoming.items():
+                    STATE[k] = v
+                STATE.setdefault("settings", {})["app"] = new_app
+                # สลับผลิตภัณฑ์: ซ่อนกราฟิกทุก slot กันของเก่าค้างจอ
+                for s in STATE.get("onair", {}).values():
+                    if isinstance(s, dict):
+                        s["visible"] = False
+                _save_now()
+
+        elif action == "setLowers":
+            # CG งานทั่วไป: รายการพรีเซ็ต Lower Third (whole-list replace)
+            STATE["lowers"] = cmd["lowers"]
 
         elif action == "setMode":
             new_mode = cmd.get("mode")
@@ -328,6 +398,7 @@ def apply_command(cmd):
                 raise ValueError("bad mode: %r" % new_mode)
             settings = STATE.setdefault("settings", {})
             old_mode = settings.get("mode") or "house"
+            keep_app = settings.get("app") or "sports"   # settings swap must not drop the product axis
             if new_mode != old_mode:
                 parked = STATE.setdefault("parked", {})
                 # snapshot โหมดปัจจุบัน (deep copy, ตัด settings.mode ออก)
@@ -348,6 +419,7 @@ def apply_command(cmd):
                 for k, v in incoming.items():
                     STATE[k] = v
                 STATE.setdefault("settings", {})["mode"] = new_mode
+                STATE["settings"]["app"] = keep_app
                 # สลับโหมด: ซ่อนกราฟิกทุก slot กันของเก่าค้างจอ
                 for s in STATE.get("onair", {}).values():
                     if isinstance(s, dict):
@@ -411,11 +483,16 @@ def _settings_upload_names(settings):
 
 
 def _referenced_upload_names(state):
-    """ไฟล์ /uploads/ ที่ยังถูกอ้างถึง ทั้งโหมด active และที่ park ไว้"""
-    names = _settings_upload_names(state.get("settings"))
-    for prof in (state.get("parked") or {}).values():
-        if isinstance(prof, dict):
-            names |= _settings_upload_names(prof.get("settings"))
+    """ไฟล์ /uploads/ ที่ยังถูกอ้างถึง — active, โหมดที่ park (house/school), และผลิตภัณฑ์ที่ park (parkedApp)"""
+    profs = [state]
+    profs += [p for p in (state.get("parked") or {}).values() if isinstance(p, dict)]
+    for app_prof in (state.get("parkedApp") or {}).values():
+        if isinstance(app_prof, dict):
+            profs.append(app_prof)
+            profs += [p for p in (app_prof.get("parked") or {}).values() if isinstance(p, dict)]
+    names = set()
+    for prof in profs:
+        names |= _settings_upload_names(prof.get("settings"))
     return names
 
 
