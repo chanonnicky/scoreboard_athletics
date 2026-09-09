@@ -246,7 +246,15 @@ $Lib = {
         }
         "deleteEvent" {
           $eid = [string]$cmd["eventId"]
-          $script:G.State["events"] = @($script:G.State["events"] | Where-Object { [string]$_["id"] -ne $eid })
+          # NOTE: filter with foreach, not "| Where-Object" - the pipeline re-wraps each
+          # dict in a PSObject and JavaScriptSerializer then chokes on it
+          # ("circular reference ... PSParameterizedProperty"). Same reason upsertEvent
+          # rebuilds via ArrayList.ToArray().
+          $kept = [System.Collections.ArrayList]@()
+          foreach ($e in @($script:G.State["events"])) {
+            if ([string]$e["id"] -ne $eid) { [void]$kept.Add($e) }
+          }
+          $script:G.State["events"] = $kept.ToArray()
           if ($script:G.State["results"].ContainsKey($eid)) { [void]$script:G.State["results"].Remove($eid) }
           foreach ($k in @($onair.Keys)) {
             if ([string]$onair[$k]["eventId"] -eq $eid) { $onair[$k]["eventId"] = $null; $onair[$k]["visible"] = $false }
@@ -290,7 +298,12 @@ $Lib = {
         }
         "deleteSport" {
           $key = [string]$cmd["key"]
-          $script:G.State["sports"] = @($script:G.State["sports"] | Where-Object { [string]$_["key"] -ne $key })
+          # foreach, not "| Where-Object" - see the note in deleteEvent
+          $kept = [System.Collections.ArrayList]@()
+          foreach ($s in @($script:G.State["sports"])) {
+            if ([string]$s["key"] -ne $key) { [void]$kept.Add($s) }
+          }
+          $script:G.State["sports"] = $kept.ToArray()
         }
         "resetState" {
           # reset only the active profile - keep settings.mode and parked
