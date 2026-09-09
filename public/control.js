@@ -614,96 +614,136 @@
   // ========================================================= //
   //  GENERAL (งานทั่วไป — Lower Third generator)
   // ========================================================= //
-  var genPresetEdit = null;   // id ของพรีเซ็ตที่กำลังแก้ (null = ฟอร์มเพิ่มใหม่)
+  // ชนิด CG ของงานทั่วไป — label + ช่อง onair + template + ป้ายช่องข้อความ
+  var GEN_KINDS = {
+    name:  { label: "ชื่อ + ตำแหน่ง", tag: "ชื่อ", slot: "lower", slotLabel: "แถบล่าง",
+             template: "genLowerName", l1: "ชื่อ", l2: "ตำแหน่ง / คำบรรยาย",
+             ph1: "เช่น นายสมชาย ใจดี", ph2: "เช่น ผู้อำนวยการโรงเรียน" },
+    topic: { label: "หัวข้อ", tag: "หัวข้อ", slot: "lower", slotLabel: "แถบล่าง",
+             template: "genLowerTopic", l1: "หัวข้อ", l2: null,
+             ph1: "เช่น พิธีเปิดการแข่งขัน" },
+    title: { label: "การ์ดเต็มจอ", tag: "เต็มจอ", slot: "full", slotLabel: "เต็มจอ",
+             template: "genTitle", l1: "หัวเรื่อง", l2: "คำบรรยายรอง (ไม่บังคับ)",
+             ph1: "เช่น การแข่งขันกีฬาสี 2568", ph2: "เช่น สนามกีฬากลางจังหวัด" },
+  };
+  var GEN_KIND_ORDER = ["name", "topic", "title"];
+
+  // สถานะกล่องคอมโพส (working draft) — { kind, l1, l2, editId }
+  var genUI = null;
 
   function genOnair(slot) { return (state.onair && state.onair[slot]) || {}; }
   function genVal(id) { var el = document.getElementById(id); return el ? el.value.trim() : ""; }
+  function genEnsureUI() {
+    if (genUI) return;
+    var lo = genOnair("lower"), fu = genOnair("full");
+    if (lo.visible && lo.template === "genLowerName")
+      genUI = { kind: "name", l1: lo.line1 || "", l2: lo.line2 || "", editId: null };
+    else if (lo.visible && lo.template === "genLowerTopic")
+      genUI = { kind: "topic", l1: lo.line1 || "", l2: "", editId: null };
+    else if (fu.visible && fu.template === "genTitle")
+      genUI = { kind: "title", l1: fu.line1 || "", l2: fu.line2 || "", editId: null };
+    else
+      genUI = { kind: "name", l1: "", l2: "", editId: null };
+  }
+  // อ่านค่าที่พิมพ์อยู่ใน DOM กลับเข้า genUI (เรียกก่อนทุก action ที่ใช้ข้อความ)
+  function genCollectUI() {
+    if (!genUI) return;
+    var a = document.getElementById("genL1"), b = document.getElementById("genL2");
+    if (a) genUI.l1 = a.value;
+    if (b) genUI.l2 = b.value;
+  }
+  // CG (kind+ข้อความ) กำลังออกจอตรง ๆ อยู่ไหม
+  function genIsLive(kind, l1, l2) {
+    var m = GEN_KINDS[kind]; if (!m) return false;
+    var o = genOnair(m.slot);
+    if (!o.visible || o.template !== m.template) return false;
+    if ((o.line1 || "") !== (l1 || "")) return false;
+    return m.l2 ? (o.line2 || "") === (l2 || "") : true;
+  }
 
   function renderGeneralLive() {
-    var lo = genOnair("lower"), fu = genOnair("full");
-    var nameOn = !!(lo.visible && lo.template === "genLowerName");
-    var topicOn = !!(lo.visible && lo.template === "genLowerTopic");
-    var titleOn = !!(fu.visible && fu.template === "genTitle");
+    genEnsureUI();
     var collapsed = localStorage.getItem("cg_preview_collapsed") === "1";
     var curTheme = (state.settings && state.settings.theme) || "default";
     var lowers = state.lowers || [];
+    var m = GEN_KINDS[genUI.kind] || GEN_KINDS.name;
+    var composeLive = genIsLive(genUI.kind, genUI.l1, genUI.l2);
+    var editingP = genUI.editId && lowers.some(function (p) { return p.id === genUI.editId; });
 
-    function liveBtn(act, on, label) {
-      return '<button class="btn primary' + (on ? " is-live" : "") + '" data-act="' + act + '">' +
-        (on ? "● " : "▶ ") + label + (on ? " · ออกอยู่" : "") + "</button>";
+    // --- แถบสถานะออกอากาศ (โชว์ข้อความจริงที่กำลังขึ้น) ---
+    function slotStrip(slot, label, act) {
+      var o = genOnair(slot);
+      var on = !!(o.visible && o.template);
+      var txt = on ? (esc(o.line1 || "") + (o.line2 ? ' <span class="muted">· ' + esc(o.line2) + "</span>" : "")) : "— ว่าง —";
+      return '<div class="gl-slot' + (on ? " on" : "") + '">' +
+        '<span class="gl-tag">' + (on ? "● " : "") + label + "</span>" +
+        '<span class="gl-txt' + (on ? "" : " muted") + '">' + txt + "</span>" +
+        (on ? '<button class="btn sm" data-act="' + act + '">✕ ลงจอ</button>' : "") +
+      "</div>";
     }
 
+    // --- segmented control เลือกชนิด ---
+    var seg = '<div class="seg">' + GEN_KIND_ORDER.map(function (k) {
+      return '<button class="seg-btn' + (k === genUI.kind ? " is-on" : "") + '" data-act="gen-kind" data-kind="' + k + '">' +
+        esc(GEN_KINDS[k].label) + "</button>";
+    }).join("") + "</div>";
+
+    // --- ช่องข้อความตามชนิด ---
+    var fields = '<label class="field">' + esc(m.l1) +
+      '<input type="text" id="genL1" value="' + esc(genUI.l1 || "") + '" placeholder="' + esc(m.ph1 || "") + '"></label>' +
+      (m.l2 ? '<label class="field" style="margin-top:8px">' + esc(m.l2) +
+        '<input type="text" id="genL2" value="' + esc(genUI.l2 || "") + '" placeholder="' + esc(m.ph2 || "") + '"></label>' : "");
+
+    // --- รายการพรีเซ็ต (คลิกทั้งแถว = ขึ้นจอ) ---
     var presetRows = lowers.length ? lowers.map(function (p) {
-      var kind = p.kind === "topic" ? "หัวข้อ" : "ชื่อ";
-      var l2 = p.kind === "topic" ? "" : esc(p.line2 || "");
-      return '<div class="preset-row">' +
-        '<span class="preset-kind">' + kind + "</span>" +
-        '<span class="preset-txt"><b>' + esc(p.line1 || "(ว่าง)") + "</b>" + (l2 ? ' <span class="muted">· ' + l2 + "</span>" : "") + "</span>" +
-        '<button class="btn sm primary" data-act="preset-trigger" data-id="' + esc(p.id) + '">▶ ขึ้นจอ</button>' +
-        '<button class="btn sm" data-act="preset-edit" data-id="' + esc(p.id) + '">แก้ไข</button>' +
+      var pm = GEN_KINDS[p.kind] || GEN_KINDS.name;
+      var live = genIsLive(p.kind, p.line1, p.line2);
+      var sub = pm.l2 && p.line2 ? ' <span class="muted">· ' + esc(p.line2) + "</span>" : "";
+      return '<div class="preset-row' + (live ? " is-live" : "") + (p.id === genUI.editId ? " is-edit" : "") +
+          '" data-act="preset-air" data-id="' + esc(p.id) + '" title="คลิกเพื่อขึ้นจอ">' +
+        '<span class="preset-kind">' + esc(pm.tag) + "</span>" +
+        '<span class="preset-txt"><b>' + esc(p.line1 || "(ว่าง)") + "</b>" + sub + "</span>" +
+        (live ? '<span class="preset-live">● ออกอยู่</span>' : "") +
+        '<button class="btn sm" data-act="preset-load" data-id="' + esc(p.id) + '">แก้</button>' +
         '<button class="btn sm danger" data-act="preset-del" data-id="' + esc(p.id) + '">✕</button>' +
       "</div>";
-    }).join("") : '<p class="muted">ยังไม่มีพรีเซ็ต</p>';
-
-    var editP = genPresetEdit ? lowers.filter(function (p) { return p.id === genPresetEdit; })[0] : null;
+    }).join("") : '<p class="muted">ยังไม่มีพรีเซ็ต — คอมโพสข้อความด้านบนแล้วกด “★ บันทึกเป็นพรีเซ็ต”</p>';
 
     panel.innerHTML =
       '<div class="grid' + (collapsed ? " grid-noprev" : "") + '"><div>' +
 
-        '<div class="card onair-card">' +
+        '<div class="card">' +
           '<div class="row" style="justify-content:space-between;align-items:center">' +
-            '<h2 style="margin:0">ออกอากาศตอนนี้</h2>' +
-            '<button class="btn danger lg" data-act="hide-all">■ ลงจอทั้งหมด</button>' +
+            '<h2 style="margin:0">กำลังออกอากาศ</h2>' +
+            '<button class="btn danger" data-act="hide-all">■ ลงจอทั้งหมด</button>' +
           "</div>" +
-          '<div class="onair-slots">' +
-            onairSlotHtml("lower", "แถบล่าง") +
-            onairSlotHtml("full", "เต็มจอ") +
-          "</div>" +
-        "</div>" +
-
-        '<div class="card">' +
-          '<h2 style="margin:0 0 10px">แถบล่าง — ชื่อ + ตำแหน่ง</h2>' +
-          '<label class="field">ชื่อ<input type="text" id="genName" value="' + esc(nameOn ? (lo.line1 || "") : "") + '" placeholder="เช่น นายสมชาย ใจดี"></label>' +
-          '<label class="field" style="margin-top:8px">ตำแหน่ง / คำบรรยาย<input type="text" id="genRole" value="' + esc(nameOn ? (lo.line2 || "") : "") + '" placeholder="เช่น ผู้อำนวยการโรงเรียน"></label>' +
-          '<div class="cmd-grid" style="margin-top:10px">' +
-            liveBtn("gen-show-name", nameOn, "ขึ้นแถบล่าง (ชื่อ)") +
-            '<button class="btn" data-act="gen-hide-lower"' + (nameOn || topicOn ? "" : " disabled") + ">ซ่อนแถบล่าง</button>" +
+          '<div class="gl-strip">' +
+            slotStrip("lower", "แถบล่าง", "gen-hide-lower") +
+            slotStrip("full", "เต็มจอ", "gen-hide-full") +
           "</div>" +
         "</div>" +
 
         '<div class="card">' +
-          '<h2 style="margin:0 0 10px">แถบล่าง — หัวข้อ (บรรทัดเดียว)</h2>' +
-          '<label class="field">หัวข้อ<input type="text" id="genTopic" value="' + esc(topicOn ? (lo.line1 || "") : "") + '" placeholder="เช่น พิธีเปิดการแข่งขัน"></label>' +
-          '<div class="cmd-grid" style="margin-top:10px">' +
-            liveBtn("gen-show-topic", topicOn, "ขึ้นแถบล่าง (หัวข้อ)") +
-            '<button class="btn" data-act="gen-hide-lower"' + (nameOn || topicOn ? "" : " disabled") + ">ซ่อนแถบล่าง</button>" +
+          '<h2 style="margin:0 0 10px">คอมโพส</h2>' +
+          seg +
+          fields +
+          '<div class="gen-actions">' +
+            '<button class="btn primary lg' + (composeLive ? " is-live" : "") + '" data-act="gen-air">' +
+              (composeLive ? "● กำลังออก — ส่งซ้ำ" : "▶ ขึ้นจอ (" + esc(m.slotLabel) + ")") + "</button>" +
+            '<button class="btn" data-act="gen-clear">ล้าง</button>' +
+            '<button class="btn ok" data-act="gen-save-preset">' + (editingP ? "★ อัปเดตพรีเซ็ต" : "★ บันทึกเป็นพรีเซ็ต") + "</button>" +
           "</div>" +
+          (editingP
+            ? '<p class="muted" style="margin-top:8px">กำลังผูกกับพรีเซ็ต — “★ อัปเดตพรีเซ็ต” จะทับอันเดิม · <a href="#" data-act="gen-unbind">เลิกผูก</a></p>'
+            : '<p class="muted" style="margin-top:8px">กด Enter ในช่องข้อความ = ขึ้นจอ</p>') +
         "</div>" +
 
         '<div class="card">' +
-          '<h2 style="margin:0 0 10px">เต็มจอ — การ์ดหัวเรื่อง</h2>' +
-          '<label class="field">หัวเรื่อง<input type="text" id="genTitleH" value="' + esc(titleOn ? (fu.line1 || "") : "") + '" placeholder="เช่น การแข่งขันกีฬาสี 2568"></label>' +
-          '<label class="field" style="margin-top:8px">คำบรรยายรอง (ไม่บังคับ)<input type="text" id="genTitleSub" value="' + esc(titleOn ? (fu.line2 || "") : "") + '" placeholder="เช่น สนามกีฬากลางจังหวัด"></label>' +
-          '<div class="cmd-grid" style="margin-top:10px">' +
-            liveBtn("gen-show-title", titleOn, "ขึ้นเต็มจอ") +
-            '<button class="btn" data-act="gen-hide-full"' + (titleOn ? "" : " disabled") + ">ซ่อนเต็มจอ</button>" +
+          '<div class="row" style="justify-content:space-between;align-items:baseline">' +
+            '<h2 style="margin:0">พรีเซ็ต (rundown)</h2>' +
+            '<span class="muted" style="font-size:13px">คลิกแถว = ขึ้นจอทันที</span>' +
           "</div>" +
-        "</div>" +
-
-        '<div class="card">' +
-          '<h2 style="margin:0 0 4px">รายการพรีเซ็ต (rundown)</h2>' +
-          '<p class="muted" style="margin:0 0 10px">บันทึก Lower Third ไว้ล่วงหน้า กด “ขึ้นจอ” เพื่อสั่งขึ้นแถบล่างทันที</p>' +
-          '<div class="preset-list">' + presetRows + "</div>" +
-          '<div class="row" style="margin-top:12px;align-items:flex-end;flex-wrap:wrap">' +
-            '<label class="field" style="max-width:130px">ชนิด<select id="genPKind">' +
-              '<option value="name"' + (editP && editP.kind === "name" ? " selected" : (!editP ? " selected" : "")) + ">ชื่อ+ตำแหน่ง</option>" +
-              '<option value="topic"' + (editP && editP.kind === "topic" ? " selected" : "") + ">หัวข้อ</option>" +
-            "</select></label>" +
-            '<label class="field" style="flex:1;min-width:160px">บรรทัด 1<input type="text" id="genPL1" value="' + esc(editP ? (editP.line1 || "") : "") + '"></label>' +
-            '<label class="field" style="flex:1;min-width:160px">บรรทัด 2<input type="text" id="genPL2" value="' + esc(editP ? (editP.line2 || "") : "") + '"></label>' +
-            '<button class="btn ok" data-act="preset-add">' + (genPresetEdit ? "บันทึกการแก้ไข" : "+ บันทึกพรีเซ็ต") + "</button>" +
-            (genPresetEdit ? '<button class="btn" data-act="preset-cancel">ยกเลิก</button>' : "") +
-          "</div>" +
+          '<div class="preset-list" style="margin-top:10px">' + presetRows + "</div>" +
         "</div>" +
 
       "</div>" +
@@ -781,6 +821,7 @@
       : 'สลับกลับ "งานกีฬา" ?\nข้อมูลงานทั่วไปตอนนี้จะถูกเก็บไว้ กลับมาได้เมื่อสลับกลับ';
     if (!confirm(msg)) return;
     if (location.hash) history.replaceState("", document.title, location.pathname);
+    genUI = null;   // เริ่มกล่องคอมโพสใหม่ตาม on-air ของผลิตภัณฑ์ที่สลับไป
     cmd({ action: "setApp", app: a }).then(function (ok) { if (ok) toast("สลับผลิตภัณฑ์แล้ว"); });
   }
 
@@ -1426,21 +1467,48 @@
     // ---- งานทั่วไป (general) ----
     "app-sports": function () { switchApp("sports"); },
     "app-general": function () { switchApp("general"); },
-    "gen-show-name": function () {
-      cmd({ action: "show", slot: "lower", template: "genLowerName", line1: genVal("genName"), line2: genVal("genRole") });
+    "gen-kind": function (b) {
+      genCollectUI();
+      genUI.kind = b.dataset.kind;
+      render();
+      var el = document.getElementById("genL1"); if (el) el.focus();
     },
-    "gen-show-topic": function () {
-      var t = genVal("genTopic");
-      if (!t) return toast("ใส่หัวข้อก่อน", true);
-      cmd({ action: "show", slot: "lower", template: "genLowerTopic", line1: t });
+    "gen-air": function () {
+      genCollectUI();
+      var m = GEN_KINDS[genUI.kind] || GEN_KINDS.name;
+      var l1 = (genUI.l1 || "").trim(), l2 = m.l2 ? (genUI.l2 || "").trim() : "";
+      if (!l1 && !l2) return toast("ใส่ข้อความก่อน", true);
+      cmd({ action: "show", slot: m.slot, template: m.template, line1: l1, line2: l2 });
     },
-    "gen-show-title": function () {
-      var h = genVal("genTitleH"), sub = genVal("genTitleSub");
-      if (!h && !sub) return toast("ใส่หัวเรื่องก่อน", true);
-      cmd({ action: "show", slot: "full", template: "genTitle", line1: h, line2: sub });
+    "gen-clear": function () {
+      genCollectUI();
+      genUI.l1 = ""; genUI.l2 = ""; genUI.editId = null;
+      render();
+      var el = document.getElementById("genL1"); if (el) el.focus();
     },
+    "gen-unbind": function () { genCollectUI(); genUI.editId = null; render(); },
     "gen-hide-lower": function () { cmd({ action: "hide", slot: "lower" }); },
     "gen-hide-full": function () { cmd({ action: "hide", slot: "full" }); },
+    "gen-save-preset": function () {
+      genCollectUI();
+      var m = GEN_KINDS[genUI.kind] || GEN_KINDS.name;
+      var l1 = (genUI.l1 || "").trim(), l2 = m.l2 ? (genUI.l2 || "").trim() : "";
+      if (!l1) return toast("ใส่ข้อความก่อน", true);
+      var list = (state.lowers || []).slice();
+      var editing = genUI.editId && list.some(function (p) { return p.id === genUI.editId; });
+      if (editing) {
+        list = list.map(function (p) {
+          return p.id === genUI.editId ? { id: p.id, kind: genUI.kind, line1: l1, line2: l2 } : p;
+        });
+      } else {
+        var np = { id: genPresetId(), kind: genUI.kind, line1: l1, line2: l2 };
+        list.push(np);
+        genUI.editId = np.id;
+      }
+      cmd({ action: "setLowers", lowers: list }).then(function (ok) {
+        if (ok) toast(editing ? "อัปเดตพรีเซ็ตแล้ว" : "บันทึกพรีเซ็ตแล้ว");
+      });
+    },
     "gen-set-save": function () {
       cmd({ action: "setSettings", settings: {
         meetTitle: genVal("setMeet"),
@@ -1448,34 +1516,23 @@
         animMs: Number(document.getElementById("setAnim").value) || 450,
       } }).then(function (ok) { if (ok) toast("บันทึกการตั้งค่าแล้ว"); });
     },
-    "preset-trigger": function (b) {
+    "preset-air": function (b) {
       var p = (state.lowers || []).filter(function (x) { return x.id === b.dataset.id; })[0];
       if (!p) return;
-      cmd({ action: "show", slot: "lower",
-        template: p.kind === "topic" ? "genLowerTopic" : "genLowerName",
-        line1: p.line1 || "", line2: p.line2 || "" });
+      var m = GEN_KINDS[p.kind] || GEN_KINDS.name;
+      cmd({ action: "show", slot: m.slot, template: m.template, line1: p.line1 || "", line2: p.line2 || "" });
     },
-    "preset-edit": function (b) { genPresetEdit = b.dataset.id; render(); },
-    "preset-cancel": function () { genPresetEdit = null; render(); },
+    "preset-load": function (b) {
+      var p = (state.lowers || []).filter(function (x) { return x.id === b.dataset.id; })[0];
+      if (!p) return;
+      genUI = { kind: GEN_KINDS[p.kind] ? p.kind : "name", l1: p.line1 || "", l2: p.line2 || "", editId: p.id };
+      render();
+      var el = document.getElementById("genL1"); if (el) el.focus();
+    },
     "preset-del": function (b) {
       var next = (state.lowers || []).filter(function (x) { return x.id !== b.dataset.id; });
-      if (genPresetEdit === b.dataset.id) genPresetEdit = null;
+      if (genUI && genUI.editId === b.dataset.id) genUI.editId = null;
       cmd({ action: "setLowers", lowers: next }).then(function (ok) { if (ok) toast("ลบพรีเซ็ตแล้ว"); });
-    },
-    "preset-add": function () {
-      var kind = document.getElementById("genPKind").value === "topic" ? "topic" : "name";
-      var l1 = document.getElementById("genPL1").value.trim();
-      var l2 = kind === "topic" ? "" : document.getElementById("genPL2").value.trim();
-      if (!l1) return toast("ใส่บรรทัด 1 ก่อน", true);
-      var list = (state.lowers || []).slice();
-      if (genPresetEdit) {
-        list = list.map(function (p) { return p.id === genPresetEdit ? { id: p.id, kind: kind, line1: l1, line2: l2 } : p; });
-      } else {
-        list.push({ id: genPresetId(), kind: kind, line1: l1, line2: l2 });
-      }
-      var wasEdit = !!genPresetEdit;
-      genPresetEdit = null;
-      cmd({ action: "setLowers", lowers: list }).then(function (ok) { if (ok) toast(wasEdit ? "บันทึกการแก้ไขแล้ว" : "เพิ่มพรีเซ็ตแล้ว"); });
     },
 
     "preview-toggle": function () {
@@ -1658,6 +1715,16 @@
     if (!b) return;
     var fn = handlers[b.dataset.act];
     if (fn) { e.preventDefault(); fn(b, e); }
+  });
+
+  // งานทั่วไป: กด Enter ในช่องคอมโพส = ขึ้นจอ
+  panel.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") return;
+    var t = e.target;
+    if (t && (t.id === "genL1" || t.id === "genL2") && handlers["gen-air"]) {
+      e.preventDefault();
+      handlers["gen-air"]();
+    }
   });
 
   panel.addEventListener("change", function (e) {

@@ -190,18 +190,55 @@ table.tbl .hcell { width: 150px; }
 .mode-toggle .btn { flex: 1 1 200px; }
 .mode-toggle .btn[disabled] { opacity: 1; cursor: default; }
 
-/* ---- งานทั่วไป: รายการพรีเซ็ต (rundown) ---- */
+/* ---- งานทั่วไป (Lower Third generator) ---- */
+/* แถบสถานะออกอากาศ — โชว์ข้อความจริงที่กำลังขึ้น */
+.gl-strip { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+@media (max-width: 640px) { .gl-strip { grid-template-columns: 1fr; } }
+.gl-slot {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 12px; border-radius: 10px;
+  background: var(--bg-3); border: 1px solid var(--stroke);
+}
+.gl-slot.on { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, var(--bg-3)); }
+.gl-tag {
+  flex: none; font-size: 12px; letter-spacing: .04em;
+  color: var(--ink-dim); text-transform: uppercase;
+}
+.gl-slot.on .gl-tag { color: var(--ok); font-weight: 700; }
+.gl-txt { flex: 1; min-width: 90px; font-weight: 600; }
+
+/* segmented control เลือกชนิด CG */
+.seg {
+  display: inline-flex; flex-wrap: wrap; gap: 3px;
+  background: var(--bg-3); border: 1px solid var(--stroke);
+  border-radius: 10px; padding: 3px; margin-bottom: 14px;
+}
+.seg-btn {
+  border: 0; background: transparent; color: var(--ink-dim);
+  padding: 7px 15px; border-radius: 8px; font: inherit; cursor: pointer;
+}
+.seg-btn:hover { color: var(--ink); }
+.seg-btn.is-on { background: var(--accent); color: #fff; font-weight: 600; }
+
+.gen-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.gen-actions .btn.lg { flex: 1 1 220px; }
+
+/* รายการพรีเซ็ต (rundown) — คลิกทั้งแถว = ขึ้นจอ */
 .preset-list { display: flex; flex-direction: column; gap: 6px; }
 .preset-row {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  padding: 8px 10px; border-radius: 9px;
+  padding: 9px 11px; border-radius: 9px; cursor: pointer;
   background: var(--bg-3); border: 1px solid var(--stroke);
 }
+.preset-row:hover { border-color: var(--accent); }
+.preset-row.is-live { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, var(--bg-3)); }
+.preset-row.is-edit { box-shadow: inset 3px 0 0 var(--accent); }
 .preset-kind {
   flex: none; font-size: 12px; padding: 2px 8px; border-radius: 999px;
   background: var(--bg-2); border: 1px solid var(--stroke); color: var(--ink-dim);
 }
 .preset-txt { flex: 1; min-width: 140px; }
+.preset-live { flex: none; font-size: 12px; font-weight: 700; color: var(--ok); }
 .school-tbl td { vertical-align: middle; }
 .school-tbl input[type=text] { width: 100%; max-width: 320px; }
 .school-logo-cell { display: flex; align-items: center; gap: 10px; }
