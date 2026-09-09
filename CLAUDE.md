@@ -130,7 +130,9 @@ Lower Third generator (`/control` compose UI + `/live` only; no `/score`, no `/s
 app name — **distinct from `state.parked`** (the mode axis), which is itself part of the sports
 profile and travels inside `parkedApp.sports` when sports is parked. The general profile keys are
 just `settings`, `onair`, `lowers` (`lowers` = saved Lower Third presets `[{id,kind,line1,line2}]`,
-`kind` ∈ `name|topic`). The `setApp` command mirrors `setMode` one level up: snapshot the active
+`kind` ∈ `name|topic|title` — mapped to a slot+template by `GEN_KINDS` in `control.js`:
+`name`→`lower`/`genLowerName`, `topic`→`lower`/`genLowerTopic`, `title`→`full`/`genTitle`).
+The `setApp` command mirrors `setMode` one level up: snapshot the active
 product's `_app_profile_keys(old)` into `parkedApp[old]` (minus `settings.app`), load
 `parkedApp[new]` or seed from `state.default.general.json` / `state.default.json`, clear
 **every** key in `ALL_PROFILE_KEYS`, install, force `onair` hidden, persist now. `setLowers`
@@ -198,6 +200,11 @@ state and one operator control:
 | `/live` (alias `/overlay`) | overlay.html | **Live** — transparent OBS/vMix overlay, driven by `state.onair` |
 | `/scoreboard` (alias `/board`) | board.html | **Scoreboard type 1** — opaque venue screen, auto-rotates all results (`?view=all\|results\|chart\|<sport>`) |
 | `/scoreboard/<sport>` | board.html | **Scoreboard type 2** — live single-match scoreboard of that sport's `currentId` |
+| `/` (alias `/home`) | home.html | landing / help page + the **product picker** (`setApp`) |
+
+Every route is served in **both** products; when `settings.app == "general"` only `/control`
+(compose UI) and `/live` are meaningful — `/score*` shows a "no scoring" card and `/scoreboard*`
+renders an empty rotation (guarded by `|| []`).
 
 The rotate-all screen only re-renders the visible card when it must (card count changes, or a
 single-card view); on a plain data change with 2+ cards it updates `cards[]` silently and lets the
@@ -224,6 +231,21 @@ the four "manage" views (`live` | `events` | `import` | `settings`) are switched
 `location.hash` (`activeView` / `viewFromHash()` / `hashchange`), not tabs. `board.js` picks its
 mode from the path: `/scoreboard/<sport>` → live mode (renders `T.sportLive`, no rotation,
 in-place score updates); otherwise the rotate-all mode.
+
+`control.js` also branches on `settings.app` (`isGeneralApp()`): in the **general** product
+`render()` routes to `renderGeneralLive` / `renderGeneralSettings` (score views and the
+events/import hash-views are unreachable — the sidebar hides those groups via ids
+`sbGroupScore`/`sbNavEvents`/`sbNavImport`/`sbNavBoard`, `body.app-general` + `applyAppBrand()`
+relabel the brand). `renderGeneralLive` is one **compose** card (a `.seg` segmented control picks
+`GEN_KINDS` kind → text fields → `gen-air` shows it, Enter in a field = air, `gen-save-preset`
+saves/updates a `lowers` preset) + a **rundown** card (each `state.lowers` row: click = air, the
+row for whatever's currently on-air is `.is-live`, a card-header `preset-hide` button lowers it) +
+a "กำลังออกอากาศ" strip showing the live text with per-slot `✕ ลงจอ` + the shared live preview
+iframe. Client draft state is `genUI = {kind,l1,l2,editId}` (a module var, seeded from `onair`
+once, cleared on `switchApp`); handlers call `genCollectUI()` to read the DOM back into it before
+acting. The product toggle (`app-sports`/`app-general` → `switchApp()` → `setApp`) is in **both**
+settings views. `home.html` has the same picker (POSTs `setApp` with the `cg_token` from
+localStorage; 401 → tells the user to set the token in `/control`).
 
 The **selected event** is meet-wide shared state at `settings.selEventId` (written via
 `setSettings`, which shallow-merges — no new command). `control.js` reads it through
@@ -284,7 +306,15 @@ SIL OFL) and applies it to headings/names only, overriding the guard with a more
 selector + `!important`; numbers, clocks and dense list text stay LINE Seed.
 Default (no setting) = the original opaque look,
 byte-identical. The theme is chosen from a `<select>` in `/control` → settings
-(`data-act="theme-set"` → `setSettings {theme}`).
+(`data-act="theme-set"` → `setSettings {theme}`) — present in **both** the sports and general
+settings views (each product parks its own `settings.theme`).
+
+The general-product CG classes (`.gen-l3` / `.gen-l3-name-txt` / `.gen-l3-role-txt` /
+`.gen-topic` / `.gen-topic-txt` in `overlay.css`) render with the base `overlay.css` look under
+every theme — no skin file targets them yet (add `.<slug> .gen-l3 {…}` blocks the same way the
+other template classes are covered). `genTitle` deliberately reuses the `.card` / `.card-head` /
+`.card-title.big` / `.card-sub` shell (+ `.tpl-gentitle-card` for layout) so it inherits each
+skin's surface/typography automatically.
 
 In **house mode**, colors are CSS variables
 (`--red`/`--green`/`--yellow`/`--blue`) pushed from `settings.houses` at runtime; `.h-red`/`.h-green`/…
