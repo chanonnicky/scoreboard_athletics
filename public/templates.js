@@ -521,9 +521,97 @@ window.T = (function () {
     "</div>";
   }
 
+  /* ================= กราฟ / Data Graphic =============================
+     นับเหรียญ (🥇🥈🥉) ต่อคณะ/โรงเรียน จาก state.results ของทุกรายการ แล้ววาดเป็นกราฟ
+     - settings.chartEnabled : สวิตช์เปิด/ปิด (ปิด = chart() คืน null -> ไม่มีการ์ด)
+     - settings.chartType    : "bars" (บาร์แนวนอน จัดอันดับ — ดีฟอลต์) | "columns" (คอลัมน์แนวตั้ง)
+     - settings.chartTitle   : ชื่อกราฟ (ว่าง = "ตารางเหรียญรางวัล")
+     ไม่ persist — คำนวณสดทุกครั้งที่ render                                     */
+  function medalTally(state) {
+    var resById = state.results || {};
+    var order = compKeys(state);
+    var tally = {};
+    order.forEach(function (k) { tally[k] = { key: k, g: 0, s: 0, b: 0, total: 0 }; });
+    (state.events || []).forEach(function (e) {
+      (resById[e.id] || []).forEach(function (r) {
+        var t = tally[r.house];
+        if (!t) return;
+        var rk = Number(r.rank);
+        if (rk === 1) t.g++;
+        else if (rk === 2) t.s++;
+        else if (rk === 3) t.b++;
+      });
+    });
+    return order.map(function (k) {
+      var t = tally[k]; t.total = t.g + t.s + t.b; return t;
+    }).sort(function (a, b) {
+      return (b.g - a.g) || (b.s - a.s) || (b.b - a.b) ||
+        (order.indexOf(a.key) - order.indexOf(b.key));
+    });
+  }
+
+  function chartMedals(t) {
+    return '<div class="chart-medals">' +
+      '<span class="cm cm-g">🥇 ' + t.g + "</span>" +
+      '<span class="cm cm-s">🥈 ' + t.s + "</span>" +
+      '<span class="cm cm-b">🥉 ' + t.b + "</span>" +
+    "</div>";
+  }
+
+  function chart(state) {
+    var s = state.settings || {};
+    if (!s.chartEnabled) return null;
+    var rows = medalTally(state);
+    var maxTotal = rows.reduce(function (m, r) { return Math.max(m, r.total); }, 0);
+    var kind = s.chartType === "columns" ? "cols" : "bars";
+    var kicker = s.chartTitle || "ตารางเหรียญรางวัล";
+
+    var head =
+      '<div class="card-head">' +
+        '<div class="card-kicker">' + esc(kicker) + "</div>" +
+        '<div class="card-title">' + esc(meetTitleOf(state)) + "</div>" +
+        logoImg(state) +
+      "</div>";
+
+    var body;
+    if (maxTotal <= 0) {
+      body = '<div class="card-body"><div class="live-wait">— ยังไม่มีผล —</div></div>';
+    } else if (kind === "cols") {
+      var cols = rows.map(function (t) {
+        var h = Math.round((t.total / maxTotal) * 100);
+        return '<div class="chart-col ' + compCls(state, t.key) + '"' + compStyle(state, t.key) + ">" +
+          '<div class="chart-col-val">' + t.total + "</div>" +
+          '<div class="chart-col-track"><div class="chart-col-bar" style="height:' + h + '%"></div></div>' +
+          '<div class="chart-col-cap">' +
+            houseLogoImg(state, t.key, "chart-logo") +
+            '<span class="chart-name">' + esc(houseName(state, t.key)) + "</span>" +
+            chartMedals(t) +
+          "</div>" +
+        "</div>";
+      }).join("");
+      body = '<div class="card-body"><div class="chart-cols">' + cols + "</div></div>";
+    } else {
+      var list = rows.map(function (t, i) {
+        var w = Math.round((t.total / maxTotal) * 100);
+        return '<div class="chart-row ' + compCls(state, t.key) + '"' + compStyle(state, t.key) + ">" +
+          '<div class="chart-rank">' + (i + 1) + "</div>" +
+          houseLogoImg(state, t.key, "chart-logo") +
+          '<div class="chart-name">' + esc(houseName(state, t.key)) + "</div>" +
+          '<div class="chart-track"><div class="chart-fill" style="width:' + w + '%">' +
+            '<span class="chart-total">' + t.total + "</span></div></div>" +
+          chartMedals(t) +
+        "</div>";
+      }).join("");
+      body = '<div class="card-body"><div class="chart-list">' + list + "</div></div>";
+    }
+
+    return '<div class="card tpl-chart-card tpl-chart-' + kind + '">' + head + body + "</div>";
+  }
+
   return {
     top3: top3, results: results, schedule: schedule,
     sportMatches: sportMatches, sportLive: sportLive, sportLower: sportLower,
+    chart: chart, medalTally: medalTally,
     esc: esc, clockValue: clockValue, clockDur: clockDur, clockRemain: clockRemain,
     remainSec: remainSec, fmtClock: fmtClock,
     comp: comp, compMode: compMode, compKeys: compKeys,

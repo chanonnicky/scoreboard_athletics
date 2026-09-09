@@ -38,6 +38,7 @@
 
   var TPL_NAMES = {
     top3: "อันดับ 1–3", results: "ผลการแข่งขัน", schedule: "ตารางการแข่งขัน",
+    chart: "กราฟเหรียญรางวัล",
     sportMatches: "กีฬา · ผลแมตช์", sportLive: "กีฬา · สกอร์สด",
     sportLower: "แถบล่าง · สกอร์สด",
   };
@@ -448,6 +449,8 @@
     var resOn = !!(fu.visible && fu.template === "results");
     var sportOn = !!(fu.visible && fu.template === "sportMatches");
     var sportLiveOn = !!(fu.visible && fu.template === "sportLive");
+    var chartOn = !!(fu.visible && fu.template === "chart");
+    var chartEnabled = !!(state.settings && state.settings.chartEnabled);
     var collapsed = localStorage.getItem("cg_preview_collapsed") === "1";
     var curTheme = (state.settings && state.settings.theme) || "default";
 
@@ -516,10 +519,11 @@
           '<div class="cmd-grid">' +
             cmdBtn("show-full-schedule", schedOn, "ตารางแข่ง") +
             cmdBtn("show-full-results", resOn, "ผลการแข่งขัน") +
+            (chartEnabled ? cmdBtn("show-full-chart", chartOn, "กราฟเหรียญ") : "") +
             sportBtns +
           "</div>" +
           '<div class="row" style="margin-top:10px">' +
-            '<button class="btn" data-act="hide-full"' + (schedOn || resOn || sportOn || sportLiveOn ? "" : " disabled") + ">■ ซ่อนเต็มจอ</button>" +
+            '<button class="btn" data-act="hide-full"' + (schedOn || resOn || sportOn || sportLiveOn || chartOn ? "" : " disabled") + ">■ ซ่อนเต็มจอ</button>" +
           "</div>" +
           ((state.sports || []).length
             ? "<h3>Score bug (แถบสกอร์สด — ค้างจอ)</h3>" +
@@ -1080,6 +1084,22 @@
         "</div>" +
       "</div>" +
 
+      '<div class="card"><h2>กราฟเหรียญรางวัล (Chart)</h2>' +
+        '<p class="muted">นับเหรียญ 🥇🥈🥉 จากผลกรีฑาทุกรายการอัตโนมัติ แล้วโชว์เป็นกราฟบนจอ Live / Scoreboard</p>' +
+        '<div class="row" style="margin-top:8px">' +
+          '<button class="btn' + (s.chartEnabled ? " is-live" : "") + '" data-act="chart-toggle" data-on="' + (s.chartEnabled ? 1 : 0) + '">' +
+            (s.chartEnabled ? "● เปิดอยู่ — กดเพื่อปิด" : "▶ ปิดอยู่ — กดเพื่อเปิด") + "</button>" +
+        "</div>" +
+        '<label class="field" style="max-width:420px;margin-top:12px">ชนิดกราฟ' +
+          '<select data-act="chart-type"' + (s.chartEnabled ? "" : " disabled") + ">" +
+            '<option value="bars"' + ((s.chartType || "bars") === "bars" ? " selected" : "") + ">บาร์แนวนอน (จัดอันดับ)</option>" +
+            '<option value="columns"' + (s.chartType === "columns" ? " selected" : "") + ">คอลัมน์แนวตั้ง</option>" +
+          "</select></label>" +
+        '<label class="field" style="max-width:420px;margin-top:12px">ชื่อกราฟ (เว้นว่าง = “ตารางเหรียญรางวัล”)' +
+          '<input type="text" data-act="chart-title" value="' + esc(s.chartTitle || "") + '"></label>' +
+        '<p class="muted" style="margin-top:6px">เปิดจอเฉพาะกราฟที่ <code>/scoreboard?view=chart</code> — บันทึกทันทีเมื่อแก้ (ไม่ต้องกดปุ่ม)</p>' +
+      "</div>" +
+
       '<div class="card"><h2>จอ Live (ใส่ใน OBS / vMix)</h2>' +
         '<div class="urlbox"><input type="text" id="ovUrl" readonly value="' + origin + '/live">' +
           '<button class="btn" data-act="url-copy">คัดลอก</button></div>' +
@@ -1099,6 +1119,7 @@
         '<div class="linklist">' +
           '<a href="/scoreboard?view=all" target="_blank">/scoreboard?view=all &nbsp;— วนรวมทุกอย่าง ⭐</a>' +
           '<a href="/scoreboard" target="_blank">/scoreboard &nbsp;— วนเฉพาะผลกรีฑา</a>' +
+          '<a href="/scoreboard?view=chart" target="_blank">/scoreboard?view=chart &nbsp;— จอกราฟเหรียญรางวัล 📊</a>' +
           (state.sports || []).map(function (sp) {
             return '<a href="/scoreboard/' + esc(sp.key) + '" target="_blank">/scoreboard/' + esc(sp.key) +
               ' &nbsp;— สกอร์สด ' + esc(sp.name || sp.key) + " 🔴</a>";
@@ -1165,6 +1186,9 @@
     },
     "show-full-schedule": function () {
       cmd({ action: "show", slot: "full", template: "schedule", eventId: selectedEventId() });
+    },
+    "show-full-chart": function () {
+      cmd({ action: "show", slot: "full", template: "chart", eventId: null });
     },
     "hide-full": function () { cmd({ action: "hideMain" }); },
 
@@ -1244,6 +1268,10 @@
     },
     "mode-house": function () { switchMode("house"); },
     "mode-school": function () { switchMode("school"); },
+    "chart-toggle": function (b) {
+      cmd({ action: "setSettings", settings: { chartEnabled: b.dataset.on !== "1" } })
+        .then(function (ok) { if (ok) toast(b.dataset.on !== "1" ? "เปิดกราฟแล้ว" : "ปิดกราฟแล้ว"); });
+    },
     "school-add": function () {
       var tb = document.querySelector("#schoolTbl tbody");
       if (!tb) return;
@@ -1361,6 +1389,16 @@
       var tv = t.value;
       cmd({ action: "setSettings", settings: { theme: tv } })
         .then(function (ok) { if (ok) toast("ธีม: " + tv); });
+      return;
+    }
+    if (t.dataset && t.dataset.act === "chart-type") {
+      cmd({ action: "setSettings", settings: { chartType: t.value } })
+        .then(function (ok) { if (ok) toast("ชนิดกราฟ: " + (t.value === "columns" ? "คอลัมน์แนวตั้ง" : "บาร์แนวนอน")); });
+      return;
+    }
+    if (t.dataset && t.dataset.act === "chart-title") {
+      cmd({ action: "setSettings", settings: { chartTitle: t.value.trim() } })
+        .then(function (ok) { if (ok) toast("บันทึกชื่อกราฟแล้ว"); });
       return;
     }
     // ติ๊ก "จบการแข่งขัน" ในแผงคู่สด

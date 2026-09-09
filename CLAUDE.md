@@ -167,7 +167,7 @@ state and one operator control:
 | `/score` | control.html | score-entry: athletics events (rank competitors — houses or schools) |
 | `/score/<sport>` | control.html | score-entry per sport (futsal/basketball): edit matches, set the **current match**, live +/- and number entry |
 | `/live` (alias `/overlay`) | overlay.html | **Live** — transparent OBS/vMix overlay, driven by `state.onair` |
-| `/scoreboard` (alias `/board`) | board.html | **Scoreboard type 1** — opaque venue screen, auto-rotates all results (`?view=all\|results\|<sport>`) |
+| `/scoreboard` (alias `/board`) | board.html | **Scoreboard type 1** — opaque venue screen, auto-rotates all results (`?view=all\|results\|chart\|<sport>`) |
 | `/scoreboard/<sport>` | board.html | **Scoreboard type 2** — live single-match scoreboard of that sport's `currentId` |
 
 The rotate-all screen only re-renders the visible card when it must (card count changes, or a
@@ -205,11 +205,24 @@ the on-air `schedule` window when the pointer moves) is gated to `/control`.
 ### Frontend: one template module, shared by every consumer
 
 `public/templates.js` (`window.T`) renders every CG as an HTML string. Templates: `top3`, `results`,
-`schedule` (athletics); `sportMatches` (per-sport match list grouped by grade level); `sportLive`
-(single current-match scoreboard); `sportLower` (the current match as a compact lower-third bar —
-Live overlay only, `null` when no current match). Consumers: `overlay.js` (Live, `state.onair`
-slots), `control.js` (control + score pages, with live preview via the same `T.*`), `board.js`
-(Scoreboard).
+`schedule` (athletics); `chart` (medal-count data graphic, see below); `sportMatches` (per-sport
+match list grouped by grade level); `sportLive` (single current-match scoreboard); `sportLower`
+(the current match as a compact lower-third bar — Live overlay only, `null` when no current match).
+Consumers: `overlay.js` (Live, `state.onair` slots), `control.js` (control + score pages, with
+live preview via the same `T.*`), `board.js` (Scoreboard).
+
+**`chart` — medal data graphic.** `T.chart(state)` counts 🥇🥈🥉 per competitor from
+`state.results` across all events (fresh each render — `T.medalTally(state)`, Olympic sort
+gold→silver→bronze→roster order; nothing persisted, `state.tally` is unrelated dead code). Gated
+by `settings.chartEnabled` (returns `null` when off, so it drops out of the board rotation and
+`onair` slot); `settings.chartType` = `"bars"` (horizontal ranked, default) | `"columns"`
+(vertical); `settings.chartTitle` overrides the "ตารางเหรียญรางวัล" kicker. All three live under
+`settings` (plain `setSettings` shallow-merge — no new command) so they park per-mode. Pushable to
+Live's `full` slot (`show` template `chart`, `renderLive`'s "กราฟเหรียญ" button, shown only when
+`chartEnabled`); on the board via `/scoreboard?view=chart` (dedicated) and appended to
+`?view=all`'s rotation. `overlay.js` `chartSig()` / `board.js` `sigOf()` include the three chart
+settings. Styles: `.tpl-chart-card` + `.chart-*` in `overlay.css`, bars/columns coloured by the
+competitor `--house`/`--ink` vars like `.rchip`.
 
 `overlay.css` holds the shared card/house/animation styles (loaded by both overlay and board);
 `board.css` only overrides background and sizing. On top of those, **theme skins** — one CSS file

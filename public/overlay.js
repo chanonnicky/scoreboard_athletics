@@ -86,6 +86,12 @@
     return eventsSig(state) + "||" + rs + "||" + (s.meetTitle || "") + "||" + JSON.stringify(s.houseNames || {}) +
       "||" + (s.mode || "house") + "||" + JSON.stringify(s.schools || []);
   }
+  // กราฟเหรียญ: เปลี่ยนตามผล/รายการ/ชื่อ-โหมด + ค่าตั้งกราฟ
+  function chartSig(state) {
+    var s = state.settings || {};
+    return pagedSig(state) + "||" + (s.chartEnabled ? 1 : 0) +
+      "|" + (s.chartType || "") + "|" + (s.chartTitle || "");
+  }
   // schedule เปลี่ยนตามรายการ + รายการที่เลือก (ไม่สนผลการแข่ง)
   function schedSig(state, eid) {
     var s = state.settings || {};
@@ -211,6 +217,7 @@
     switch (conf.template) {
       case "top3":     return ev ? T.top3(state, ev, (state.results || {})[ev.id] || []) : null;
       case "results":  return T.results(state);
+      case "chart":    return T.chart(state);
       case "schedule": return T.schedule(state, conf.eventId);
       case "sportMatches": return T.sportMatches(state, conf.sport);
       case "sportLive": return T.sportLive(state, conf.sport);
@@ -230,6 +237,7 @@
     var sig = html == null ? null
       : isSport(conf.template) ? sportSig(state, conf.sport)
       : isPaged ? pagedSig(state)
+      : conf.template === "chart" ? chartSig(state)
       : conf.template === "schedule" ? schedSig(state, conf.eventId)
       : null;
 

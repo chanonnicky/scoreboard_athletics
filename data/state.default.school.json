@@ -5,7 +5,9 @@
     "logo": "/pictures/logo.png",
     "animMs": 450,
     "meetTitle": "การแข่งขันกีฬา",
-    "selEventId": ""
+    "selEventId": "",
+    "chartEnabled": false,
+    "chartType": "bars"
   },
   "events": [],
   "results": {},

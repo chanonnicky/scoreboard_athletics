@@ -53,11 +53,13 @@
   function buildCards(state) {
     var T = window.T;
     var sports = state.sports || [];
+    if (VIEW === "chart") return [T.chart(state)];
     if (VIEW === "all") {
       // รายการ/คู่ที่กำลังแข่งอยู่ตอนนี้ ไม่ได้ขึ้นเป็นการ์ดแยก — ติดเป็นแถวสถานะ
       // (T.nowRow, สไตล์เดียวกับแถว .cur ในตารางการแข่งขัน) บนหัวการ์ด results/sportMatches เอง
       var cards = [T.results(state)];
       sports.forEach(function (sp) { cards = cards.concat(sportCards(T, state, sp.key)); });
+      cards = cards.concat([T.chart(state)]);   // ปิดสวิตช์ = T.chart คืน null -> apply() filter ทิ้ง
       return cards;
     }
     for (var i = 0; i < sports.length; i++) {
@@ -156,6 +158,7 @@
       "||" + (s.selEventId || "") +     // แถบ "กำลังแข่ง" ใช้รายการที่เลือกอยู่ — ต้องรู้เมื่อเปลี่ยน
       "||" + (s.mode || "house") +
       "||" + JSON.stringify(s.schools || []) +
+      "||" + (s.chartEnabled ? 1 : 0) + "|" + (s.chartType || "") + "|" + (s.chartTitle || "") +
       "||" + JSON.stringify(state.sports || []);
   }
 

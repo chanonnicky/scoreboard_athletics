@@ -604,3 +604,64 @@ body.is-offline #offline { opacity: 1; }
 .sportbar-foot {
   font-size: 21px; font-weight: 700; letter-spacing: 1.5px; opacity: .95;
 }
+
+/* ==== chart — กราฟเหรียญรางวัล (นับ 🥇🥈🥉 ต่อคณะ/โรงเรียน) ==============
+   สีแท่ง = สี competitor (var(--house)/--ink เหมือน .rchip) — โหมด house จาก .h-<key>,
+   โหมด school จาก inline style ที่ templates.js ใส่มา                          */
+.tpl-chart-card { min-width: 1240px; max-width: 1520px; }
+.tpl-chart-card .card-body { padding: 30px 48px 42px; }
+.chart-medals { display: flex; gap: 16px; font-size: 22px; font-weight: 800; white-space: nowrap; }
+.chart-medals .cm-g { color: #ffcf3f; }
+.chart-medals .cm-s { color: #d3dbe3; }
+.chart-medals .cm-b { color: #e3a374; }
+
+/* --- บาร์แนวนอน จัดอันดับ --- */
+.chart-list { display: flex; flex-direction: column; gap: 20px; min-height: 720px; justify-content: center; }
+.chart-row {
+  display: grid; align-items: center; gap: 22px;
+  grid-template-columns: 52px 58px 260px 1fr 60px auto;
+}
+.chart-rank { font-size: 32px; font-weight: 800; opacity: .42; text-align: center; }
+.chart-logo {
+  width: 54px; height: 54px; object-fit: contain;
+  background: #fff; border-radius: 11px; padding: 4px;
+}
+.chart-name {
+  font-size: 31px; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.chart-track {
+  position: relative; height: 46px; border-radius: 11px;
+  background: rgba(255,255,255,.08); overflow: hidden;
+}
+.chart-fill {
+  height: 100%; min-width: 8px; border-radius: 11px;
+  background: var(--house, #888);
+  transform-origin: left center;
+  animation: chartGrowX .7s cubic-bezier(.16,.84,.44,1) both;
+}
+.chart-row .chart-total { font-size: 30px; font-weight: 800; text-align: right; }
+
+/* --- คอลัมน์แนวตั้ง --- */
+.chart-cols {
+  display: flex; align-items: stretch; justify-content: space-around; gap: 26px;
+  min-height: 720px; padding-top: 14px;
+}
+.chart-col {
+  flex: 1; max-width: 230px;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.chart-col-val { font-size: 36px; font-weight: 800; }
+.chart-col-track { flex: 1; width: 104px; display: flex; align-items: flex-end; }
+.chart-col-bar {
+  width: 100%; min-height: 8px; border-radius: 13px 13px 0 0;
+  background: var(--house, #888);
+  transform-origin: bottom center;
+  animation: chartGrowY .7s cubic-bezier(.16,.84,.44,1) both;
+}
+.chart-col-cap { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.chart-cols .chart-name { font-size: 25px; max-width: 220px; }
+.chart-cols .chart-medals { font-size: 20px; gap: 12px; }
+
+@keyframes chartGrowX { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes chartGrowY { from { transform: scaleY(0); } to { transform: scaleY(1); } }
