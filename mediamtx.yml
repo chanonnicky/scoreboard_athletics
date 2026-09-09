@@ -30,6 +30,7 @@ rtsp: false
 hls: false
 webrtc: false
 srt: false
+moq: false
 
 # --- Auth -------------------------------------------------------------------
 # "publish" = the only account allowed to push a stream in (from OBS).
@@ -67,6 +68,6 @@ paths:
     # Local backup recording. Flip to "true" to record every ingested stream to
     # data/rec/ (~3.6 GB per hour at 8 Mbps). data/rec/ is gitignored.
     record: false
-    recordPath: data/rec/%Y-%m-%d_%H-%M-%S-%f
+    recordPath: data/rec/%path/%Y-%m-%d_%H-%M-%S-%f
     recordFormat: fmp4
     recordSegmentDuration: 1h
