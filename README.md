@@ -135,7 +135,8 @@ Add Input → **More…** → **Web Browser**
 
 `ปกติ` (ทึบ ค่าเริ่มต้น) · `🧊 Liquid Glass` · `🟤 Claymorphism` · `⚪ Neumorphism` ·
 `🌆 Retro-Futurism` · `📰 Editorial / Magazine` · `📐 Asymmetrical / Broken Grid` ·
-`🔺 Bauhaus` · `🖤 Dark Techno / Techwear` · `💥 Pop Art` · `✏️ Illustrative`
+`🔺 Bauhaus` · `🖤 Dark Techno / Techwear` · `💥 Pop Art` · `✏️ Illustrative` ·
+`🫧 Y2K / Frutiger Aero` · `🔲 Swiss / International Typographic`
 
 - บังคับธีมเฉพาะจอเดียว: เติม `?theme=<ชื่อธีม>` ต่อท้าย URL (เช่น `/live?theme=bauhaus`,
   `/scoreboard?view=all&theme=techno`) — ไม่กระทบค่าที่ตั้งไว้ · `?theme=default` = ปิดสกิน

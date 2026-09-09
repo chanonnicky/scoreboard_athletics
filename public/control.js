@@ -58,6 +58,8 @@
     ["techno", "🖤 Dark Techno / Techwear"],
     ["popart", "💥 Pop Art"],
     ["illustrative", "✏️ Illustrative"],
+    ["y2k", "🫧 Y2K / Frutiger Aero"],
+    ["swiss", "🔲 Swiss / International Typographic"],
   ];
   function themeLabel(slug) {
     for (var i = 0; i < THEME_OPTS.length; i++) if (THEME_OPTS[i][0] === slug) return THEME_OPTS[i][1];

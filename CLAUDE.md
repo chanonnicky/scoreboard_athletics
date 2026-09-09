@@ -200,7 +200,8 @@ each, every rule scoped under `.<slug>` (and `:root.<slug>` for var-only blocks)
 control/score pages are inherently un-themed): `glass.css` (liquid glass), `clay.css`
 (Claymorphism — light), `neu.css` (Neumorphism — dark), `retro.css` (Retro-Futurism),
 `editorial.css` (Editorial/Magazine), `broken.css` (Asymmetrical/Broken Grid), `bauhaus.css`,
-`techno.css` (Dark Techno/Techwear), `popart.css` (Pop Art), `illustrative.css`. `applyTheme(state)`
+`techno.css` (Dark Techno/Techwear), `popart.css` (Pop Art), `illustrative.css`, `y2k.css`
+(Y2K / Frutiger Aero), `swiss.css` (International Typographic). `applyTheme(state)`
 in `overlay.js` / `board.js` picks **one** class for `<html>` from the `THEMES[]` list by
 `settings.theme` (`"default"` / absent = none); URL `?theme=<slug>` forces one screen, `?theme=default`
 (or `classic`) forces none, legacy `?glass=1` still means glass. Skins override surfaces /
