@@ -164,6 +164,9 @@ OBS (หน้างาน) ──RTMP push──► เครื่องรี
 
 ### ตั้งค่า OBS หน้างาน
 
+> ค่าที่ต้องใส่ (Server / Stream Key / URL ปลายทาง) + สถานะว่ามีสัญญาณเข้ามาหรือยัง
+> โชว์อยู่ในหน้า **`/control` → แท็บ "ตั้งค่า" → การ์ด "RTMP relay"** กดคัดลอกได้เลย
+
 Settings → Stream → Service **Custom**
 - Server: `rtmp://<ip-รีโมต>:1935`   (ไม่มี `/live` ต่อท้าย)
 - Stream Key: `live?user=publish&pass=<รหัสที่ตั้งใน mediamtx.yml>`

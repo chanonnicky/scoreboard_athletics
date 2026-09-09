@@ -54,8 +54,14 @@ optionally records to `data/rec/`. `get-relay.ps1` downloads MediaMTX (pinned `v
 checksum-verified) + ffmpeg (BtbN win64-gpl) into `bin/` (gitignored). `setup.bat` opens
 firewall 1935.
 
-**Invariants:** `server.py`/`server.ps1` have **no RTMP/video code** and no knowledge of the
-relay — video bypasses PowerShell/Python entirely, so relay load never affects the HTTP server.
+**Invariants:** `server.py`/`server.ps1` carry **no RTMP/video code**. The one exception is a
+read-only `GET /api/relay` (token-gated like the write endpoints) that parses a few values out
+of `mediamtx.yml` (ingest port, publish user/pass, `runOnAvailable` destination, `record`) and
+polls MediaMTX's localhost API (`:9997/v3/paths/get/live`, 1–2s timeout) for live status —
+`relay_info()` / `Relay-Info`, kept in parity. The `/control` settings view renders it as a
+copy-only "RTMP relay" card (`relayCardHtml`/`startRelayPoll` in `control.js`, polled every 5s,
+shown in both the sports and general settings). Video itself bypasses PowerShell/Python
+entirely, so relay load never affects the HTTP server.
 When `bin/mediamtx/mediamtx.exe` is absent, `start.bat`/`start.sh` must behave **exactly** as
 before (print one hint line, then launch the CG server unchanged) — this is part of the
 start.bat/start.sh parity rule. The broadcast room still composites the transparent `/live`

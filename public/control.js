@@ -394,6 +394,7 @@
   // ---- render dispatch ------------------------------------ //
   function render() {
     pendingRender = false;
+    stopRelayPoll();
     if (!state) { panel.innerHTML = '<p class="muted">กำลังโหลด…</p>'; return; }
     if (MODE === "score") {
       if (isGeneralApp()) {
@@ -798,10 +799,13 @@
         "</div>" +
       "</div>" +
 
+      relayCardHtml() +
+
       '<div class="card"><h2>รีเซ็ต</h2>' +
         '<p class="muted">คืนค่าข้อมูลของ<b>งานทั่วไป</b>กลับเป็นค่าตั้งต้น (งานกีฬาไม่ถูกแตะ)</p>' +
         '<button class="btn danger" data-act="set-reset" style="margin-top:8px">รีเซ็ตข้อมูลงานทั่วไป</button>' +
       "</div>";
+    startRelayPoll();
   }
 
   // toggle ผลิตภัณฑ์ — ใช้ทั้งในหน้าตั้งค่างานทั่วไปและงานกีฬา
@@ -1023,6 +1027,59 @@
     stopSpClockTick();
     var el = document.querySelector('.sp-clock[data-run="1"]');
     if (el) { tickSpClock(); spClockTimer = setInterval(tickSpClock, 500); }
+  }
+
+  // ---- RTMP relay status card (settings views only) -------------- //
+  var relayTimer = null;
+  function stopRelayPoll() { if (relayTimer) { clearInterval(relayTimer); relayTimer = null; } }
+  function relayCardHtml() {
+    return '<div class="card"><h2>RTMP relay — รับสัญญาณ OBS หน้างาน</h2>' +
+      '<div id="relayBody"><p class="muted">กำลังโหลด…</p></div></div>';
+  }
+  function fmtBytes(n) {
+    n = Number(n) || 0;
+    if (n < 1048576) return (n / 1024).toFixed(0) + " KB";
+    if (n < 1073741824) return (n / 1048576).toFixed(1) + " MB";
+    return (n / 1073741824).toFixed(2) + " GB";
+  }
+  function renderRelayBody(d) {
+    var box = document.getElementById("relayBody");
+    if (!box) { stopRelayPoll(); return; }
+    if (!d || !d.configured) {
+      box.innerHTML = '<p class="muted">ยังไม่ได้ตั้งค่า relay — รัน <code>get-relay.ps1</code> แล้วแก้ <code>mediamtx.yml</code> (ดู README)</p>';
+      return;
+    }
+    var ingest = "rtmp://" + location.hostname + ":" + d.ingestPort;
+    var warn = function (t) { return '<p class="relay-warn">⚠ ' + esc(t) + "</p>"; };
+    var urlRow = function (label, id, val) {
+      return '<div class="field" style="margin-top:8px">' + esc(label) +
+        '<div class="urlbox"><input type="text" id="' + id + '" readonly value="' + esc(val || "") + '">' +
+        '<button class="btn" data-act="relay-copy" data-t="' + id + '">คัดลอก</button></div></div>';
+    };
+    var st;
+    if (!d.running) st = '<span class="relay-pill off">● relay ไม่ทำงาน</span> <span class="muted">— เปิด start.bat บนเครื่อง relay</span>';
+    else if (!d.live || !d.live.publishing) st = '<span class="relay-pill idle">● พร้อมรับ</span> <span class="muted">— ยังไม่มีสัญญาณจาก OBS</span>';
+    else st = '<span class="relay-pill on">● กำลังรับสัญญาณ</span> <span class="muted">— ' + esc(fmtBytes(d.live.bytesReceived)) +
+      " · ปลายทางดึงต่อ " + (d.live.readers || 0) + "</span>";
+    box.innerHTML =
+      '<p class="muted">ใส่ค่าพวกนี้ที่ OBS ของเครื่องหน้างาน (Settings → Stream → Custom)</p>' +
+      urlRow("Server", "relayIngest", ingest) +
+      urlRow("Stream Key", "relayKey", d.publishKey) +
+      (d.passIsDefault ? warn("ยังไม่ได้ตั้งรหัส publish — แก้ pass: ใน mediamtx.yml") : "") +
+      urlRow("ปลายทาง (ห้องถ่ายทอดสด)", "relayDest", d.dest) +
+      (d.destIsDefault ? warn("ยังไม่ได้ตั้ง URL ปลายทาง — แก้บรรทัด runOnAvailable ใน mediamtx.yml") : "") +
+      '<p style="margin-top:12px">สถานะ: ' + st + (d.recording ? ' <span class="muted">· อัดไฟล์สำรองอยู่</span>' : "") + "</p>";
+  }
+  function startRelayPoll() {
+    stopRelayPoll();
+    var go = function () {
+      fetch("/api/relay", { headers: hdrs(), cache: "no-store" })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(renderRelayBody)
+        .catch(function () { renderRelayBody(null); });
+    };
+    go();
+    relayTimer = setInterval(go, 5000);
   }
 
   function sportClockMin() { return Number(sportDraft && sportDraft.clockMin) > 0 ? Number(sportDraft.clockMin) : 10; }
@@ -1384,6 +1441,8 @@
         '<p class="muted" style="margin-top:10px">ตั้งขนาด Browser Source / Web Input เป็น 1920×1080 · ธีมใช้ตามที่ตั้งไว้ด้านบน — เติม <code>?theme=&lt;ชื่อธีม&gt;</code> หรือ <code>?theme=default</code> ต่อท้าย URL = บังคับเฉพาะจอนั้น</p>' +
       "</div>" +
 
+      relayCardHtml() +
+
       '<div class="card"><h2>จอ Scoreboard (เปิดค้างที่จอในงาน)</h2>' +
         '<div class="urlbox"><input type="text" id="bdUrl" readonly value="' + origin + '/scoreboard?view=all">' +
           '<button class="btn" data-act="board-copy">คัดลอก</button></div>' +
@@ -1414,6 +1473,7 @@
         '<p class="muted">คืนค่าข้อมูลของ<b>โหมดนี้</b>กลับเป็นค่าตั้งต้น (อีกโหมดไม่ถูกแตะ)</p>' +
         '<button class="btn danger" data-act="set-reset" style="margin-top:8px">รีเซ็ตข้อมูลทั้งหมด</button>' +
       "</div>";
+    startRelayPoll();
   }
 
   function toHex(c) {
@@ -1648,6 +1708,13 @@
       u.select();
       navigator.clipboard && navigator.clipboard.writeText(u.value);
       toast("คัดลอกลิงก์แล้ว");
+    },
+    "relay-copy": function (b) {
+      var u = document.getElementById(b.getAttribute("data-t"));
+      if (!u) return;
+      u.select();
+      navigator.clipboard && navigator.clipboard.writeText(u.value);
+      toast("คัดลอกแล้ว");
     },
 
     "sp-add": function () {

@@ -20,6 +20,7 @@ import re
 import socket
 import threading
 import time
+import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -31,6 +32,8 @@ DEFAULT_STATE_PATH = os.path.join(DATA, "state.default.json")
 DEFAULT_SCHOOL_STATE_PATH = os.path.join(DATA, "state.default.school.json")
 DEFAULT_GENERAL_STATE_PATH = os.path.join(DATA, "state.default.general.json")
 UPLOADS = os.path.join(DATA, "uploads")
+MEDIAMTX_YML = os.path.join(ROOT, "mediamtx.yml")
+MEDIAMTX_API = "http://127.0.0.1:9997/v3/paths/get/live"
 
 # state ที่ active อยู่ที่ top-level key เหล่านี้เสมอ; setMode สลับทั้งชุด
 # (โหมดที่ไม่ได้ใช้ถูกเก็บไว้ที่ STATE["parked"][<mode>])
@@ -171,6 +174,62 @@ def save_soon():
     _save_timer = threading.Timer(0.5, _save_now)
     _save_timer.daemon = True
     _save_timer.start()
+
+
+# --------------------------------------------------------------------------- #
+#  RTMP relay (MediaMTX sidecar) — read-only status for the /control UI.
+#  Video never touches this server; we only parse a few values out of
+#  mediamtx.yml and poll MediaMTX's localhost API for live status.
+# --------------------------------------------------------------------------- #
+def _relay_config():
+    try:
+        with open(MEDIAMTX_YML, "r", encoding="utf-8") as f:
+            txt = f.read()
+    except OSError:
+        return None
+    m = re.search(r"^\s*rtmpAddress:\s*\S*?:(\d+)", txt, re.M)
+    port = int(m.group(1)) if m else 1935
+    um = re.search(r"user:\s*(\S+)\s*\n\s*pass:\s*([^\s#]*)", txt)
+    user = um.group(1) if um else "publish"
+    pw = um.group(2) if um else ""
+    dm = re.search(r"^\s*runOnAvailable:\s*.*\s(\S+)\s*$", txt, re.M)
+    dest = dm.group(1) if dm else ""
+    return {
+        "configured": True,
+        "ingestPort": port,
+        "publishUser": user,
+        "publishPass": pw,
+        "publishKey": "live?user=%s&pass=%s" % (user, pw),
+        "passIsDefault": pw == "CHANGE_ME_PUBLISH_PASSWORD",
+        "dest": dest,
+        "destIsDefault": (dest == "" or "EDIT_ROOM_HOST" in dest or "EDIT_STREAM_KEY" in dest),
+        "recording": bool(re.search(r"^\s*record:\s*true\b", txt, re.M)),
+    }
+
+
+def _relay_live():
+    try:
+        with urllib.request.urlopen(MEDIAMTX_API, timeout=1.0) as r:
+            d = json.loads(r.read().decode("utf-8"))
+    except Exception:
+        return (False, None)
+    src = d.get("source") or {}
+    return (True, {
+        "publishing": bool(d.get("ready")),
+        "sourceType": src.get("type"),
+        "bytesReceived": d.get("bytesReceived") or 0,
+        "readers": len(d.get("readers") or []),
+    })
+
+
+def relay_info():
+    cfg = _relay_config()
+    if cfg is None:
+        return {"configured": False}
+    running, live = _relay_live()
+    cfg["running"] = running
+    cfg["live"] = live
+    return cfg
 
 
 def broadcast():
@@ -601,6 +660,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._serve_sse()
         if path == "/healthz":
             return self._send(200, "ok")
+        if path == "/api/relay":
+            if not self._authed(qs):
+                return self._json(401, {"error": "unauthorized"})
+            return self._json(200, relay_info())
         if path == "/favicon.ico":
             return self._serve_path(os.path.join(PUBLIC, "pictures", "favicon.png"))
         # โลโก้ที่อัปโหลด (เก็บที่ data/uploads/ นอก public/)

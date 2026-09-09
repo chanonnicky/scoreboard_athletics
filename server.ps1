@@ -611,6 +611,48 @@ $Lib = {
     try { return $sr.ReadToEnd() } finally { $sr.Dispose() }
   }
 
+  # RTMP relay (MediaMTX sidecar) - read-only status for the /control UI.
+  # Video never touches this server; parse a few values from mediamtx.yml and
+  # poll MediaMTX's localhost API for live status.
+  function Relay-Info {
+    $yml = Join-Path $script:G.Root "mediamtx.yml"
+    if (-not (Test-Path $yml)) { return @{ configured = $false } }
+    $txt = [System.IO.File]::ReadAllText($yml, [System.Text.Encoding]::UTF8)
+    $port = 1935
+    if ($txt -match '(?m)^\s*rtmpAddress:\s*\S*?:(\d+)') { $port = [int]$Matches[1] }
+    $user = 'publish'; $pass = ''
+    if ($txt -match 'user:\s*(\S+)\s*\r?\n\s*pass:\s*([^\s#]*)') { $user = $Matches[1]; $pass = $Matches[2] }
+    $dest = ''
+    if ($txt -match '(?m)^\s*runOnAvailable:\s*.*\s(\S+)\s*$') { $dest = $Matches[1] }
+    $info = @{
+      configured    = $true
+      running       = $false
+      live          = $null
+      ingestPort    = $port
+      publishUser   = $user
+      publishPass   = $pass
+      publishKey    = ("live?user={0}&pass={1}" -f $user, $pass)
+      passIsDefault = ($pass -eq 'CHANGE_ME_PUBLISH_PASSWORD')
+      dest          = $dest
+      destIsDefault = ($dest -eq '' -or $dest -like '*EDIT_ROOM_HOST*' -or $dest -like '*EDIT_STREAM_KEY*')
+      recording     = [bool]($txt -match '(?m)^\s*record:\s*true\b')
+    }
+    try {
+      $resp = Invoke-WebRequest -Uri 'http://127.0.0.1:9997/v3/paths/get/live' -UseBasicParsing -TimeoutSec 2
+      $d = $script:JS.DeserializeObject($resp.Content)
+      $info.running = $true
+      $rc = 0; if ($d['readers']) { $rc = @($d['readers']).Count }
+      $src = $d['source']
+      $info.live = @{
+        publishing    = [bool]$d['ready']
+        sourceType    = $(if ($src) { [string]$src['type'] } else { $null })
+        bytesReceived = $(if ($d.ContainsKey('bytesReceived')) { $d['bytesReceived'] } else { 0 })
+        readers       = $rc
+      }
+    } catch { }
+    return $info
+  }
+
   function Handle-Request($ctx) {
     $req = $ctx.Request
     $path = $req.Url.AbsolutePath
@@ -631,6 +673,10 @@ $Lib = {
     }
     if ($path -eq "/api/events") {
       Send-Text $ctx 404 "SSE not supported by server.ps1 - client falls back to polling"; return
+    }
+    if ($path -eq "/api/relay" -and $method -eq "GET") {
+      if (-not (Test-Token $req)) { Send-Text $ctx 401 '{"error":"unauthorized"}' "application/json; charset=utf-8"; return }
+      Send-Text $ctx 200 ($script:JS.Serialize((Relay-Info))) "application/json; charset=utf-8"; return
     }
     if ($path -eq "/api/command" -and $method -eq "POST") {
       if (-not (Test-Token $req)) { Send-Text $ctx 401 '{"error":"unauthorized"}' "application/json; charset=utf-8"; return }
