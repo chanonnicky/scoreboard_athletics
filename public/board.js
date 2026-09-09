@@ -18,8 +18,8 @@
   var INTERVAL = (parseFloat(params.get("page") || "9") || 9) * 1000;
   // ธีมแสดงผล (สกินพื้นผิว): URL ?theme=<slug> บังคับเฉพาะจอ; ไม่ใส่ = ตาม settings.theme
   // ?theme=default (หรือ classic) = ปิดทุกสกิน · ?glass=1 = ทางลัดเก่าของ glass
-  var THEMES = ["glass", "clay", "neu", "retro", "editorial", "broken",
-                "bauhaus", "techno", "popart", "illustrative", "y2k", "swiss"];
+  var THEMES = ["glass", "clay", "claydark", "neu", "retro", "editorial", "broken",
+                "bauhaus", "techno", "popart", "illustrative", "y2k", "swiss", "pastel"];
   var themeParam = params.get("theme");
   function applyTheme(state) {
     var t = themeParam;

@@ -7,12 +7,12 @@
    ค่าเริ่มต้น / settings.theme ไม่ใช่ "editorial" = สไตล์เดิมทุกอย่าง
    ไฟล์นี้ทั้งไฟล์ scope ใต้ .editorial
 
-   โหลดต่อจาก overlay.css / board.css — override เฉพาะพื้นผิว/ตัวอักษร
-   (พื้นหลัง/ขอบ/มุม/เงา/ฟอนต์/สี/ระยะขอบการ์ด) ไม่แตะ layout / ตำแหน่ง /
-   ขนาดเวที / transform / overflow / keyframes
+   โหลดต่อจาก overlay.css / board.css — override เฉพาะพื้นผิว/สี
+   (พื้นหลัง/ขอบ/มุม/เงา/น้ำหนักอักษร/ระยะขอบการ์ด) ไม่แตะ layout / ตำแหน่ง /
+   ขนาดเวที / transform / overflow / keyframes / font-family (LINE Seed ทั้งเว็บ)
    เลี่ยง color-mix() และ backdrop-filter (CEF รุ่นเก่าของ OBS/vMix)
 
-   อารมณ์: นิตยสารพิมพ์ — พื้นกระดาษอุ่น หมึกเข้ม หัวข้อเซอริฟ การ์ดเป็นแผ่น
+   อารมณ์: นิตยสารพิมพ์ — พื้นกระดาษอุ่น หมึกเข้ม หัวข้อตัวหนา การ์ดเป็นแผ่น
    เกือบเหลี่ยม ขอบเส้นเดียว เงาแทบไม่มี · แถวลิสต์ไม่มีกล่อง คั่นด้วยเส้นบาง
    ทองสด (#ffd54a) มองไม่เห็นบนกระดาษ -> เปลี่ยนเป็นหมึกเข้ม / แดงเลือดหมู
    (#8a1f1f) และแดงจอสด -> แดงสำนักพิมพ์ที่สุขุม (#9b2226)
@@ -29,17 +29,8 @@
 .editorial body.board { color: #1c1a17; }
 .editorial body.board { background: #f6f3ec; background-color: #f6f3ec; }
 
-/* ---- หัวข้อ = เซอริฟ (ตัวพิมพ์แบบนิตยสาร) · ป้ายกำกับ/ตัวเลขคงแซนส์เดิม -- */
-.editorial .card-title,
-.editorial .card-sub,
-.editorial .t3-title-text,
-.editorial .t3-house,
-.editorial .live-name,
-.editorial .fbm-name,
-.editorial .sportbar-name,
-.editorial .fblv-h {
-  font-family: Georgia, "Times New Roman", "Noto Serif", serif;
-}
+/* หมายเหตุ: ฟอนต์คงเป็น LINE Seed ทั้งเว็บ (บังคับใน overlay.css) — ธีมนี้เล่นที่
+   น้ำหนัก/ระยะอักษร/เส้น hairline แทนการเปลี่ยนเป็นเซอริฟ */
 
 /* ---- การ์ดหลัก (results / schedule / sportMatches / sportLive) ---------- */
 .editorial .card {

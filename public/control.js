@@ -49,17 +49,19 @@
   var THEME_OPTS = [
     ["default", "ปกติ (ทึบ)"],
     ["glass", "🧊 Liquid Glass"],
-    ["clay", "🟤 Claymorphism"],
+    ["clay", "🟤 Claymorphism (สว่าง)"],
+    ["claydark", "🟤 Claymorphism (เข้ม)"],
     ["neu", "⚪ Neumorphism"],
     ["retro", "🌆 Retro-Futurism"],
     ["editorial", "📰 Editorial / Magazine"],
-    ["broken", "📐 Asymmetrical / Broken Grid"],
+    ["broken", "📐 Asymmetrical"],
     ["bauhaus", "🔺 Bauhaus"],
     ["techno", "🖤 Dark Techno / Techwear"],
     ["popart", "💥 Pop Art"],
     ["illustrative", "✏️ Illustrative"],
     ["y2k", "🫧 Y2K / Frutiger Aero"],
     ["swiss", "🔲 Swiss / International Typographic"],
+    ["pastel", "🍬 Pastel"],
   ];
   function themeLabel(slug) {
     for (var i = 0; i < THEME_OPTS.length; i++) if (THEME_OPTS[i][0] === slug) return THEME_OPTS[i][1];

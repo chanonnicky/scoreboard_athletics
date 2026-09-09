@@ -8,13 +8,14 @@
    ค่าเริ่มต้น / settings.theme ไม่ใช่ "swiss" = สไตล์เดิมทุกอย่าง
    ไฟล์นี้ทั้งไฟล์ scope ใต้ .swiss  (:root.swiss เฉพาะนิยามตัวแปร)
 
-   โหลดต่อจาก overlay.css / board.css — override เฉพาะพื้นผิว/ตัวอักษร
-   (พื้นหลัง/ขอบ/มุม/เงา/ฟอนต์/สี/ระยะขอบการ์ด) ไม่แตะ layout / ตำแหน่ง /
-   grid / flex / ขนาดเวที / transform / overflow / keyframes / transition
+   โหลดต่อจาก overlay.css / board.css — override เฉพาะพื้นผิว/สี
+   (พื้นหลัง/ขอบ/มุม/เงา/น้ำหนักอักษร/ระยะอักษร/ระยะขอบการ์ด) ไม่แตะ layout / ตำแหน่ง /
+   grid / flex / ขนาดเวที / transform / overflow / keyframes / font-family
+   (LINE Seed ทั้งเว็บ — บังคับใน overlay.css)
    เลี่ยง color-mix() และ backdrop-filter (CEF รุ่นเก่าของ OBS/vMix)
 
-   อารมณ์: austere กว่า editorial — ไม่มีเซอริฟ ไม่มีลวดลาย ไม่มีเงา ไม่มีมุมโค้ง
-   ทั้งระบบนิยามด้วยเส้น ช่องว่าง และสเกลตัวอักษรแซนส์กรอเทสก์
+   อารมณ์: austere กว่า editorial — ไม่มีลวดลาย ไม่มีเงา ไม่มีมุมโค้ง
+   ทั้งระบบนิยามด้วยเส้น ช่องว่าง น้ำหนักอักษร และช่องไฟ
    ทองสด (#ffd54a) มองไม่เห็นบนกระดาษ + อำพันจาง (rgba 255,213,74) -> แดง #e2001a
    ============================================================================ */
 
@@ -28,12 +29,9 @@
   --stroke:  #111;
 }
 
-/* ---- พื้น/หมึก + ฟอนต์ ------------------------------------------------- */
+/* ---- พื้น/หมึก (ฟอนต์คง LINE Seed ทั้งเว็บ — ธีมเล่นที่น้ำหนัก/ระยะอักษร/เส้น) --- */
 .swiss body.overlay,
-.swiss body.board {
-  color: #111;
-  font-family: Helvetica, "Helvetica Neue", "Arial", "LINE Seed Sans TH", "Leelawadee UI", sans-serif;
-}
+.swiss body.board { color: #111; }
 .swiss body.board {
   background: #fff;          /* ล้าง radial เข้มของ board.css -> กระดาษขาวเรียบ */
   background-color: #fff;

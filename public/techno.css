@@ -7,8 +7,9 @@
    ค่าเริ่มต้น / settings.theme ไม่ใช่ "techno" = สไตล์เดิมทุกอย่าง
    ไฟล์นี้ทั้งไฟล์ scope ใต้ .techno  (:root.techno ใช้ประกาศตัวแปรเท่านั้น)
 
-   โหลดต่อจาก overlay.css / board.css — override เฉพาะพื้นผิว (พื้นหลัง/ขอบ/เงา/ฟอนต์)
-   ไม่แตะ layout / grid / flex / position ของกล่องจริง / ขนาดเวที / transform / keyframes
+   โหลดต่อจาก overlay.css / board.css — override เฉพาะพื้นผิว (พื้นหลัง/ขอบ/เงา/ระยะอักษร)
+   ไม่แตะ layout / grid / flex / position ของกล่องจริง / ขนาดเวที / transform / keyframes /
+   font-family (LINE Seed ทั้งเว็บ)
    ทำงานได้ทั้งโหมดสีคณะและโหมดโรงเรียน — ใช้ var(--house)/var(--ink) ไม่ฮาร์ดโค้ดสีคณะ
    เลี่ยง color-mix() และ backdrop-filter เพื่อให้ CEF รุ่นเก่าของ OBS/vMix ยังใช้ได้
    หลักคิด: แผงแมตต์เกือบดำ · ขอบผมเส้นเดียว · มุมตัดบาง ๆ เฉพาะป้ายเล็ก ·
@@ -43,7 +44,7 @@
 /* /live โปร่งใส (ซ้อนวิดีโอ) — ไม่มีฉากเต็มจอ ธีมเฉพาะการ์ด */
 .techno body.overlay { background: transparent; }
 
-/* ---- ฟอนต์หัวข้อ: โมโน/อุตสาหกรรม ตัวพิมพ์ใหญ่ ระยะห่างอักษรกว้าง ---------- */
+/* ---- หัวข้อ: ตัวพิมพ์ใหญ่ ระยะห่างอักษรกว้าง (ฟอนต์คง LINE Seed ทั้งเว็บ) ------ */
 .techno .card-title,
 .techno .card-kicker,
 .techno .fblv-h,
@@ -51,8 +52,6 @@
 .techno .live-name,
 .techno .sportbar-name,
 .techno .sportbar-foot {
-  font-family: "DIN Alternate", "Bahnschrift", ui-monospace, "Cascadia Code",
-               "LINE Seed Sans TH", "Kanit", "Leelawadee UI", sans-serif;
   letter-spacing: 2px;
   text-transform: uppercase;
 }
@@ -202,7 +201,6 @@
 .techno .live-name { text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7); }
 .techno .live-score { text-shadow: 0 4px 14px rgba(0, 0, 0, 0.6); }
 .techno .live-clock {
-  font-family: ui-monospace, "Cascadia Code", "Bahnschrift", "DIN Alternate", monospace;
   background: #0a0b0d;
   border: 1px solid rgba(180, 190, 200, 0.22);
   border-radius: 4px;

@@ -39,6 +39,13 @@ body.overlay {
   text-rendering: optimizeLegibility;
 }
 
+/* บังคับฟอนต์ LINE Seed ทั้ง CG (Live + Scoreboard) — สกินธีมห้ามเปลี่ยน font-family
+   ให้ override เฉพาะพื้นผิว/สี/ตกแต่ง ตัวเลขยังใช้ tabular-nums ตามเดิม (คนละ property) */
+body.overlay, body.overlay *,
+body.board, body.board * {
+  font-family: "LINE Seed Sans TH", "Kanit", "Leelawadee UI", "Tahoma", sans-serif !important;
+}
+
 #stage {
   position: relative;
   width: 1920px;

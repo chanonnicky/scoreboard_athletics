@@ -133,10 +133,10 @@ Add Input → **More…** → **Web Browser**
 เลือกสกินของจอ **Live + Scoreboard** ได้จาก dropdown "ธีมแสดงผล" — มีผลทุกจอทันที
 (หน้าคุม/จดคะแนนไม่เปลี่ยน):
 
-`ปกติ` (ทึบ ค่าเริ่มต้น) · `🧊 Liquid Glass` · `🟤 Claymorphism` · `⚪ Neumorphism` ·
-`🌆 Retro-Futurism` · `📰 Editorial / Magazine` · `📐 Asymmetrical / Broken Grid` ·
+`ปกติ` (ทึบ ค่าเริ่มต้น) · `🧊 Liquid Glass` · `🟤 Claymorphism (สว่าง/เข้ม)` · `⚪ Neumorphism` ·
+`🌆 Retro-Futurism` · `📰 Editorial / Magazine` · `📐 Asymmetrical` ·
 `🔺 Bauhaus` · `🖤 Dark Techno / Techwear` · `💥 Pop Art` · `✏️ Illustrative` ·
-`🫧 Y2K / Frutiger Aero` · `🔲 Swiss / International Typographic`
+`🫧 Y2K / Frutiger Aero` · `🔲 Swiss / International Typographic` · `🍬 Pastel`
 
 - บังคับธีมเฉพาะจอเดียว: เติม `?theme=<ชื่อธีม>` ต่อท้าย URL (เช่น `/live?theme=bauhaus`,
   `/scoreboard?view=all&theme=techno`) — ไม่กระทบค่าที่ตั้งไว้ · `?theme=default` = ปิดสกิน

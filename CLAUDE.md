@@ -198,17 +198,21 @@ slots), `control.js` (control + score pages, with live preview via the same `T.*
 each, every rule scoped under `.<slug>` (and `:root.<slug>` for var-only blocks), all loaded after
 `overlay.css`/`board.css` in `overlay.html` + `board.html` (never in `control.html`, so the
 control/score pages are inherently un-themed): `glass.css` (liquid glass), `clay.css`
-(Claymorphism — light), `neu.css` (Neumorphism — dark), `retro.css` (Retro-Futurism),
-`editorial.css` (Editorial/Magazine), `broken.css` (Asymmetrical/Broken Grid), `bauhaus.css`,
-`techno.css` (Dark Techno/Techwear), `popart.css` (Pop Art), `illustrative.css`, `y2k.css`
-(Y2K / Frutiger Aero), `swiss.css` (International Typographic). `applyTheme(state)`
+(Claymorphism — light) + `claydark.css` (Claymorphism — dark), `neu.css` (Neumorphism — dark),
+`retro.css` (Retro-Futurism), `editorial.css` (Editorial/Magazine), `broken.css` (Asymmetrical),
+`bauhaus.css`, `techno.css` (Dark Techno/Techwear), `popart.css` (Pop Art), `illustrative.css`,
+`y2k.css` (Y2K / Frutiger Aero), `swiss.css` (International Typographic), `pastel.css`.
+`applyTheme(state)`
 in `overlay.js` / `board.js` picks **one** class for `<html>` from the `THEMES[]` list by
 `settings.theme` (`"default"` / absent = none); URL `?theme=<slug>` forces one screen, `?theme=default`
 (or `classic`) forces none, legacy `?glass=1` still means glass. Skins override surfaces /
 typography / decoration only — not the main layout, animations, HTML, or `templates.js` — so
 `sigOf` doesn't track the theme and `applyTheme` runs before the sig early-return
 (`board.js` ~160, `overlay.js` ~310). `glass` is the only skin that uses `backdrop-filter`; none
-use `color-mix()` (old OBS/vMix CEF). Default (no setting) = the original opaque look,
+use `color-mix()` (old OBS/vMix CEF). **Font is locked to LINE Seed Sans TH** across all CG —
+`overlay.css` has a `body.overlay *, body.board * { font-family: … !important }` guard, so skins
+must not set `font-family` (they lean on weight / letter-spacing / text-transform instead).
+Default (no setting) = the original opaque look,
 byte-identical. The theme is chosen from a `<select>` in `/control` → settings
 (`data-act="theme-set"` → `setSettings {theme}`).
 
