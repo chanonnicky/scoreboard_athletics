@@ -660,8 +660,16 @@ $Lib = {
       recording      = [bool]($txt -match '(?m)^\s*record:\s*true\b')
     }
     try {
-      $resp = Invoke-WebRequest -Uri 'http://127.0.0.1:9997/v3/paths/get/live' -UseBasicParsing -TimeoutSec 2
-      $d = $script:JS.DeserializeObject($resp.Content)
+      # raw HttpWebRequest with Proxy=$null - Invoke-WebRequest can hang on
+      # proxy auto-detect inside a runspace even with -TimeoutSec.
+      $wr = [System.Net.HttpWebRequest]::Create('http://127.0.0.1:9997/v3/paths/get/live')
+      $wr.Proxy = $null
+      $wr.Timeout = 1500
+      $wr.ReadWriteTimeout = 1500
+      $rs = $wr.GetResponse()
+      $sr = New-Object System.IO.StreamReader($rs.GetResponseStream())
+      $body = $sr.ReadToEnd(); $sr.Close(); $rs.Close()
+      $d = $script:JS.DeserializeObject($body)
       $info.running = $true
       $rc = 0; if ($d['readers']) { $rc = @($d['readers']).Count }
       $src = $d['source']

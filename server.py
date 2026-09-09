@@ -234,10 +234,14 @@ def _relay_config():
     }
 
 
+_NOPROXY_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+
 def _relay_live():
     try:
-        with urllib.request.urlopen(MEDIAMTX_API, timeout=1.0) as r:
-            d = json.loads(r.read().decode("utf-8"))
+        r = _NOPROXY_OPENER.open(MEDIAMTX_API, timeout=1.0)
+        d = json.loads(r.read().decode("utf-8"))
+        r.close()
     except Exception:
         return (False, None)
     src = d.get("source") or {}
