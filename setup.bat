@@ -18,13 +18,18 @@ if %errorLevel% neq 0 (
 
 echo.
 echo   Configuring port %PORT% ...
-netsh http add urlacl url=http://+:%PORT%/ user=Everyone
-netsh advfirewall firewall add rule name="CG Live %PORT%" dir=in action=allow protocol=TCP localport=%PORT%
+netsh http add urlacl url=http://+:%PORT%/ user=Everyone 2>nul
+if errorlevel 1 echo   (port %PORT% reservation already exists - OK)
+netsh advfirewall firewall delete rule name="CG Live %PORT%" >nul 2>nul
+netsh advfirewall firewall add rule name="CG Live %PORT%" dir=in action=allow protocol=TCP localport=%PORT% >nul
+echo   firewall rule "CG Live %PORT%" set.
 
 REM RTMP relay: open port 1935 so the venue OBS can push a stream in.
 REM (API 9997 is localhost-only; outbound to the broadcast room needs no rule.)
 echo   Configuring RTMP port 1935 ...
-netsh advfirewall firewall add rule name="CG Live RTMP 1935" dir=in action=allow protocol=TCP localport=1935
+netsh advfirewall firewall delete rule name="CG Live RTMP 1935" >nul 2>nul
+netsh advfirewall firewall add rule name="CG Live RTMP 1935" dir=in action=allow protocol=TCP localport=1935 >nul
+echo   firewall rule "CG Live RTMP 1935" set.
 
 echo.
 echo   Done - from now on just run start.bat (no Administrator needed).
