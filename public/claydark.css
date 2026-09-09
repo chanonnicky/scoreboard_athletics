@@ -1,0 +1,214 @@
+/* ============================================================================
+   claydark.css — ธีมทดลอง "claymorphism" ฉบับมืด (ดินน้ำมัน / นุ่มพอง / พื้นชาร์โคล)
+   ----------------------------------------------------------------------------
+   เปิดใช้:  ตั้งที่หน้า /control แท็บ "ตั้งค่า" -> settings.theme = "claydark"
+            (overlay.js / board.js เติม class .claydark ที่ <html> ทุกจอ)
+            หรือบังคับเฉพาะจอ: URL ?theme=claydark / ?theme=default (ทับค่าที่ตั้งไว้)
+   ค่าเริ่มต้น / settings.theme ไม่ใช่ "claydark" = สไตล์เดิมทุกอย่าง
+   ไฟล์นี้ทั้งไฟล์ scope ใต้ .claydark  (:root.claydark ใช้ประกาศตัวแปรเท่านั้น)
+
+   โหลดต่อจาก overlay.css / board.css — override เฉพาะพื้นผิว (พื้นหลัง/ขอบ/เงา/สีตัวอักษร)
+   ไม่แตะ layout / grid / flex / position / transform / แอนิเมชัน / ฟอนต์
+   ฝาแฝดด้านมืดของ clay.css: ภาษาดินน้ำมันเดียวกัน แต่พื้นชาร์โคลเข้ม ตัวอักษรขาว
+   จึงคงหมึกฐาน color:#fff ไว้ (ไม่รีหมึก) และคง accent สีทอง #ffd54a บนพื้นมืดได้เลย
+   ไฮไลต์ "กำลังแข่ง" ใช้เหลืองอำพันตระกูลเดิม แต่แต่งให้พองนุ่ม + เรืองอำพัน
+   เลี่ยง color-mix() + backdrop-filter เพื่อให้ CEF รุ่นเก่าของ OBS/vMix ยังใช้ได้
+   ============================================================================ */
+
+:root.claydark {
+  --panel:   #242a34;
+  --panel-2: rgba(255, 255, 255, 0.05);
+  --stroke:  rgba(255, 255, 255, 0.07);
+}
+
+/* ---- พื้นจอ + หมึกฐาน (base = color:#fff — คงไว้ ไม่รีหมึก) ---------------- */
+.claydark body.overlay { color: #fff; }
+.claydark body.board {
+  color: #fff;
+  background-color: #1a1e26;
+  background-image: radial-gradient(1300px 850px at 50% -6%,
+      rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0) 62%);
+}
+.claydark .board-empty { color: #9aa3b2; }
+
+/* ---- การ์ดหลัก (results / schedule / sportMatches / sportLive) ------------
+   ผิวดินน้ำมันด้านสว่างกว่าพื้นนิดหน่อย + มุมโค้งใหญ่ + เงาพองสามชั้น:
+   เงาทิ้งฟุ้งด้านนอกให้ลอย · inset ขอบบนสว่างจาง · inset ก้นมืดให้โค้งจมเงา */
+.claydark .card {
+  background: #242a34;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 34px;
+  box-shadow:
+      0 26px 56px rgba(0, 0, 0, 0.55),
+      inset 0 4px 9px rgba(255, 255, 255, 0.06),
+      inset 0 -12px 24px rgba(0, 0, 0, 0.45);
+}
+.claydark .card-head {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.claydark .card-kicker { color: #aab2c0; opacity: 0.8; }
+
+/* ---- แถวในลิสต์: ผลกรีฑา / แมตช์ / ตารางแข่ง — จมลงเล็กน้อย -------------
+   เงา inset คู่: มืดด้านบน + สว่างจาง ๆ ด้านล่าง  ผิวเท่าการ์ด มุมโค้งกลาง */
+.claydark .rrow2,
+.claydark .fbm,
+.claydark .srow,
+.claydark .fbt-row {
+  background: #242a34;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 18px;
+  box-shadow:
+      inset 0 3px 7px rgba(0, 0, 0, 0.5),
+      inset 0 -2px 4px rgba(255, 255, 255, 0.04);
+}
+.claydark .fbt-head { background: transparent; border: 0; box-shadow: none; }
+
+/* ไฮไลต์คู่/รายการที่กำลังแข่ง — เหลืองอำพันตระกูลเดิม แต่เนื้อดินน้ำมันพอง:
+   เนื้อในอำพันจาง + วงแหวน inset อำพัน + แสงเรืองอำพันนุ่ม ๆ ด้านนอก */
+.claydark .rrow2.cur,
+.claydark .fbm.cur,
+.claydark .srow.cur {
+  background: rgba(255, 213, 74, 0.16);
+  border: 1px solid rgba(255, 213, 74, 0.5);
+  box-shadow:
+      inset 0 0 0 2px rgba(255, 213, 74, 0.4),
+      inset 0 4px 10px rgba(255, 213, 74, 0.14),
+      0 8px 22px rgba(255, 180, 40, 0.22);
+}
+.claydark .rrow2.cur .rno,
+.claydark .srow.cur .smark { color: #ffd54a; }
+.claydark .rres.rlive,
+.claydark .fbm-live { color: #ffd54a; }
+
+/* หมึก accent อื่น ๆ — พื้นมืดอยู่แล้ว จึงคงสีทองเดิมไว้ได้ */
+.claydark .fblv-h { border-left-color: #ffd54a; border-bottom-color: rgba(255, 255, 255, 0.08); }
+.claydark .fbsub { border-left-color: rgba(255, 255, 255, 0.2); }
+.claydark .h-yellow.fbm-team.win .fbm-name,
+.claydark .comp-lightbg.fbm-team.win .fbm-name { color: #ffd54a; }
+
+/* ---- ชิปอันดับ (ผลกรีฑา) — เนื้อดินน้ำมันเคลือบสีคณะ -------------------- */
+.claydark .rchip,
+.claydark .pill {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  box-shadow:
+      inset 0 2px 3px rgba(255, 255, 255, 0.22),
+      inset 0 -4px 8px rgba(0, 0, 0, 0.38),
+      0 5px 12px rgba(0, 0, 0, 0.45);
+}
+.claydark .rchip b {
+  background: rgba(0, 0, 0, 0.3);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* ---- แถบล่าง TOP 3 — แผ่นดินน้ำมันมืด หัว+เส้นแบ่งจาง ------------------- */
+.claydark .t3 {
+  background: #242a34;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 28px;
+  box-shadow:
+      0 22px 46px rgba(0, 0, 0, 0.55),
+      inset 0 4px 9px rgba(255, 255, 255, 0.06),
+      inset 0 -11px 22px rgba(0, 0, 0, 0.45);
+}
+.claydark .t3-head {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0));
+  border-right-color: rgba(255, 255, 255, 0.08);
+}
+.claydark .t3-item + .t3-item { border-left-color: rgba(255, 255, 255, 0.06); }
+
+/* เหรียญ — คงไล่สีโลหะเดิม เพิ่มวงแหวนมืด + เงาทิ้งให้วางบนแผ่นดินน้ำมัน */
+.claydark .t3-medal-1,
+.claydark .t3-medal-2,
+.claydark .t3-medal-3 {
+  border-color: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 -4px 8px rgba(0, 0, 0, 0.4), 0 6px 14px rgba(0, 0, 0, 0.55);
+}
+
+/* ---- สกอร์บอร์ดคู่สด (เต็มจอ) ----------------------------------------- */
+.claydark .live-team {
+  background: #242a34;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 28px;
+  box-shadow:
+      inset 0 -8px 0 var(--house, #666),
+      inset 0 4px 9px rgba(255, 255, 255, 0.06),
+      0 20px 44px rgba(0, 0, 0, 0.5);
+}
+.claydark .live-team.win {
+  background: #2b323e;
+  box-shadow:
+      inset 0 -8px 0 var(--house, #666),
+      inset 0 4px 9px rgba(255, 255, 255, 0.08),
+      0 0 0 3px var(--house, #ffd54a),
+      0 26px 54px rgba(0, 0, 0, 0.6);
+}
+.claydark .live-team.win .live-name { text-shadow: 0 0 22px var(--house, transparent); }
+.claydark .live-score { text-shadow: 0 6px 16px rgba(0, 0, 0, 0.5); }
+.claydark .live-name { text-shadow: none; }
+
+.claydark .live-clock {
+  background: #1e232c;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #fff;
+  box-shadow:
+      inset 0 3px 7px rgba(0, 0, 0, 0.55),
+      inset 0 -2px 4px rgba(255, 255, 255, 0.04);
+}
+.claydark .live-clock.run { color: #8ff0c0; border-color: rgba(120, 235, 170, 0.35); }
+.claydark .live-clock.ended,
+.claydark .sportbar .live-clock.ended {
+  color: #ff8a8a; background: rgba(233, 60, 60, 0.2); border-color: rgba(233, 60, 60, 0.5);
+}
+.claydark .live-status {
+  background: rgba(233, 60, 60, 0.2); color: #ff8a8a;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.4), 0 5px 12px rgba(0, 0, 0, 0.4);
+}
+.claydark .live-status.done { background: rgba(255, 255, 255, 0.08); color: #cfd6df; }
+.claydark .live-wait {
+  color: #9aa3b2;
+  border-radius: 24px;
+  background: #1e232c;
+  box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.5), inset 0 -3px 8px rgba(255, 255, 255, 0.03);
+}
+
+/* ---- แถบล่างสกอร์สด (sportbar — เดิมโปร่ง ตัวขาว; ใส่แผ่นดินน้ำมันมืดให้ทอดเงาได้) ---
+   คงตัวหนังสือขาว + text-shadow บาง ๆ ให้อ่านออกบนวิดีโอ */
+.claydark .sportbar {
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  background: #242a34;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 32px;
+  padding: 22px 44px 20px;
+  box-shadow:
+      0 24px 52px rgba(0, 0, 0, 0.55),
+      inset 0 4px 9px rgba(255, 255, 255, 0.06),
+      inset 0 -12px 24px rgba(0, 0, 0, 0.45);
+}
+.claydark .sportbar-name,
+.claydark .sportbar-score,
+.claydark .sportbar-team.win .sportbar-name { text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7); }
+.claydark .sportbar .live-clock {
+  background: #1e232c;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+.claydark .sportbar-status { color: #ff8a8a; }
+.claydark .sportbar[data-done="1"] .sportbar-status { color: #cfd6df; }
+
+/* ---- ป้าย / chip อื่น ๆ ที่ใช้ var(--house) --------------------------- */
+.claydark .fbbr-champ {
+  background: rgba(255, 213, 74, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  box-shadow:
+      inset 6px 0 0 var(--house, #ffd54a),
+      inset 0 3px 6px rgba(0, 0, 0, 0.4),
+      0 16px 32px rgba(0, 0, 0, 0.45);
+}
+.claydark .fbt-row.lead {
+  background: rgba(255, 213, 74, 0.1);
+  border-color: rgba(255, 213, 74, 0.3);
+}

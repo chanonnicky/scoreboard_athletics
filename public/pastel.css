@@ -1,0 +1,211 @@
+/* ============================================================================
+   pastel.css — ธีมทดลอง "Pastel" (พาสเทลลูกกวาด / แบน / นุ่มละมุน / โปร่งสบายตา)
+   ----------------------------------------------------------------------------
+   เปิดใช้:  ตั้งที่หน้า /control แท็บ "ตั้งค่า" -> settings.theme = "pastel"
+            (overlay.js / board.js เติม class .pastel ที่ <html> ทุกจอ)
+            หรือบังคับเฉพาะจอ: URL ?theme=pastel / ?theme=default (ทับค่าที่ตั้งไว้)
+   ค่าเริ่มต้น / settings.theme ไม่ใช่ "pastel" = สไตล์เดิมทุกอย่าง
+   ไฟล์นี้ทั้งไฟล์ scope ใต้ .pastel (มี :root.pastel เฉพาะประกาศตัวแปร)
+
+   โหลดต่อจาก overlay.css / board.css — override เฉพาะพื้นผิว
+   (พื้นหลัง/ขอบ/มน/เงา/สีตัวอักษร/ตกแต่ง ::before-::after/padding ระดับการ์ด)
+   ไม่แตะ layout / grid / flex / position ของ layout / ขนาดเวที / transform ของกล่อง
+   / keyframes / transition / ฟอนต์
+   ทำงานได้ทั้งโหมดสีคณะและโหมดโรงเรียน — ใช้ var(--house)/var(--ink) ไม่ฮาร์ดโค้ดสีคณะ
+   เลี่ยง color-mix() + backdrop-filter (CEF รุ่นเก่าของ OBS/vMix)
+   ธีมนี้ "สว่างและเบา": พื้นพาสเทลจาง ตัวอักษรหมึกม่วงพลัมนุ่ม #4a4368 — ของเดิม
+   ตัวขาวบนพื้นเข้ม จึงรีอิงก์ accent สีทอง/ขาว เป็นอำพันเข้ม และไฮไลต์ "กำลังแข่ง"
+   เป็นเหลืองเนย   ต่างจาก clay (พองนูน 3D inset) และ y2k (อควาเงาวาว):
+   pastel = แบน เงาน้อย ไม่มันวาว ไม่มี 3D หนัก โทนลูกกวาดด้าน
+   ============================================================================ */
+
+:root.pastel {
+  --panel:   #fdfbff;
+  --panel-2: #f7f2fd;
+  --stroke:  #e6d9f5;
+}
+
+/* ---- พื้นจอ + หมึกฐาน (base = color:#fff จึงต้องรีเซ็ตเป็นหมึกม่วงพลัมนุ่ม) ------ */
+.pastel body.overlay { color: #4a4368; background: transparent; }
+.pastel body.board {
+  color: #4a4368;
+  background-color: #f2ecfb;
+  background-image: linear-gradient(165deg, #f2ecfb 0%, #eaf7f1 52%, #fdf0ec 100%);
+}
+.pastel .board-empty { color: #8a80a8; }
+
+/* วงกลมพาสเทลนุ่มมาก 2 วง — full-bleed หลัง CG เท่านั้น (จอทึบ) คอนทราสต์ต่ำมาก */
+.pastel body.board::before,
+.pastel body.board::after {
+  content: ""; position: fixed; pointer-events: none; z-index: -1;
+  border-radius: 50%;
+}
+.pastel body.board::before {
+  width: 820px; height: 820px; left: -220px; top: -260px;
+  background: radial-gradient(circle at 40% 38%,
+      rgba(255, 214, 224, 0.5), rgba(255, 214, 224, 0.14) 46%, rgba(255, 214, 224, 0) 72%);
+}
+.pastel body.board::after {
+  width: 640px; height: 640px; right: -180px; bottom: -220px;
+  background: radial-gradient(circle at 42% 42%,
+      rgba(198, 224, 246, 0.5), rgba(198, 224, 246, 0.13) 46%, rgba(198, 224, 246, 0) 72%);
+}
+
+/* ---- การ์ดหลัก (results / schedule / sportMatches / sportLive) — แผ่นขาวนวลแบน --- */
+.pastel .card {
+  background: #fdfbff;
+  border: 2px solid #e6d9f5;
+  border-radius: 24px;
+  box-shadow: 0 14px 34px rgba(120, 100, 170, 0.16);
+}
+.pastel .card-head {
+  background: linear-gradient(180deg, #f4edfb, #efe8f9);
+  border-bottom: 1px solid #e6d9f5;
+}
+.pastel .card-kicker { color: #8a80a8; opacity: 0.9; }
+.pastel .card-title { text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6); }
+
+/* ---- แถวในลิสต์: ผลกรีฑา / แมตช์ / ตารางแข่ง — พื้นพาสเทลจาง แบน ไม่มีเงา ------ */
+.pastel .rrow2,
+.pastel .fbm,
+.pastel .srow,
+.pastel .fbt-row {
+  background: #f7f2fd;
+  border: 1px solid #ece3fa;
+  border-radius: 14px;
+  box-shadow: none;
+}
+/* สลับโทนคู่/คี่ให้เป็นจังหวะลูกกวาดนุ่ม ๆ */
+.pastel .rrow2:nth-child(even),
+.pastel .fbm:nth-child(even),
+.pastel .srow:nth-child(even) {
+  background: #eef8f3;
+  border-color: #dcefe6;
+}
+.pastel .fbt-head { background: transparent; border: 0; box-shadow: none; }
+
+/* ไฮไลต์ "กำลังแข่ง" — เหลืองเนยนุ่มที่อ่านออกบนพื้นสว่าง (amber เดิมจางเกินไป) */
+.pastel .rrow2.cur,
+.pastel .fbm.cur,
+.pastel .srow.cur {
+  background: #fff2c9;
+  border: 2px solid #e8b84b;
+  box-shadow: none;
+}
+.pastel .rrow2.cur .rno,
+.pastel .srow.cur .smark { color: #a9791f; opacity: 1; }
+.pastel .rres.rlive,
+.pastel .fbm-live { color: #b9822a; text-shadow: none; }
+.pastel .fblv-h {
+  border-left-color: #d9a441;
+  border-bottom-color: rgba(74, 67, 104, 0.12);
+}
+.pastel .fbsub { border-left-color: rgba(74, 67, 104, 0.18); color: #8a80a8; }
+.pastel .h-yellow.fbm-team.win .fbm-name,
+.pastel .comp-lightbg.fbm-team.win .fbm-name { color: #a9791f; }
+
+/* ---- ชิปอันดับ (ผลกรีฑา) / pill — คงเนื้อสีคณะ แต่ทำให้ละมุนขึ้น -------------- */
+.pastel .rchip,
+.pastel .pill {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0) 46%);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 999px;
+  box-shadow: 0 3px 10px rgba(120, 100, 170, 0.18);
+  -webkit-filter: saturate(0.9) brightness(1.03);
+          filter: saturate(0.9) brightness(1.03);
+}
+.pastel .rchip b { background: rgba(255, 255, 255, 0.85); box-shadow: none; }
+
+/* ---- แถบล่าง TOP 3 — แผ่นพาสเทลทึบ (ของเดิมตัวขาวบนวิดีโอ -> หมึกบนพาสเทล) --- */
+.pastel .t3 {
+  color: #4a4368;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+  background: #f4eefb;
+  border: 2px solid #e6d9f5;
+  border-radius: 22px;
+  box-shadow: 0 14px 32px rgba(120, 100, 170, 0.18);
+}
+.pastel .t3-head {
+  background: linear-gradient(180deg, #efe7f8, rgba(239, 231, 248, 0));
+  border-right-color: #e6d9f5;
+}
+.pastel .t3-item + .t3-item { border-left-color: rgba(74, 67, 104, 0.1); }
+.pastel .t3-item::before { opacity: 0.14; }
+.pastel .t3-r1::before { opacity: 0.24; }
+
+/* เหรียญ 1/2/3 — คงเนื้อโลหะเดิม เพิ่มวงแหวนขาว + เงานุ่มให้ลอยบนแผ่นพาสเทล */
+.pastel .t3-medal-1,
+.pastel .t3-medal-2,
+.pastel .t3-medal-3 {
+  border: 3px solid #ffffff;
+  box-shadow:
+      inset 0 -4px 8px rgba(0, 0, 0, 0.22),
+      0 4px 12px rgba(120, 100, 170, 0.28);
+}
+
+/* ---- สกอร์บอร์ดคู่สด (เต็มจอ) — แผ่นขาวนวลแบน, เอมโบสอ่อนแทนเงาดำ ------------ */
+.pastel .live-team {
+  background: #fdfbff;
+  border: 1px solid #e6d9f5;
+  border-radius: 20px;
+  box-shadow:
+      inset 0 -8px 0 var(--house, #b7add6),
+      0 10px 26px rgba(120, 100, 170, 0.16);
+}
+.pastel .live-team.win {
+  background: #ffffff;
+  box-shadow:
+      inset 0 -8px 0 var(--house, #b7add6),
+      0 0 0 3px var(--house, #cbbdea),
+      0 16px 34px rgba(120, 100, 170, 0.24);
+}
+.pastel .live-team.win .live-name,
+.pastel .live-name { text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6); }
+.pastel .live-score { color: #4a4368; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7); }
+.pastel .live-clock {
+  color: #4a4368;
+  background: #f1ecfa;
+  border: 1px solid #e2d7f2;
+}
+.pastel .live-clock.run { color: #3f9a74; background: #e9f7f0; border-color: #bfe6d3; }
+.pastel .live-clock.ended,
+.pastel .sportbar .live-clock.ended {
+  color: #b5546a; background: #ffe6ec; border-color: #f2c2ce;
+}
+.pastel .live-status { color: #b5546a; background: #ffe6ec; box-shadow: none; }
+.pastel .live-status.done { color: #7c7398; background: #ece8f5; }
+.pastel .live-wait { color: #8a80a8; border-radius: 20px; background: #f4eefb; }
+
+/* ---- แถบล่างสกอร์สด (sportbar — เดิมโปร่ง ตัวขาว; ทำเป็นแผ่นพาสเทลทึบ) ------ */
+.pastel .sportbar {
+  color: #4a4368;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+  background: #f4eefb;
+  border: 2px solid #e6d9f5;
+  border-radius: 22px;
+  padding: 22px 44px 20px;
+  box-shadow: 0 14px 32px rgba(120, 100, 170, 0.18);
+}
+.pastel .sportbar-team { border-bottom-color: var(--house, #b7add6); }
+.pastel .sportbar-name,
+.pastel .sportbar-score,
+.pastel .sportbar-team.win .sportbar-name {
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+.pastel .sportbar .live-clock {
+  color: #4a4368;
+  background: #f1ecfa;
+  border: 1px solid #e2d7f2;
+}
+.pastel .sportbar-status { color: #b5546a; }
+.pastel .sportbar[data-done="1"] .sportbar-status { color: #7c7398; }
+.pastel .sportbar-foot { color: #8a80a8; }
+
+/* ---- ป้าย / chip อื่น ๆ ที่ใช้ var(--house) ------------------------------- */
+.pastel .fbbr-champ {
+  background: #f6f0fc;
+  border: 1px solid #e6d9f5;
+  border-radius: 14px;
+  box-shadow: inset 6px 0 0 var(--house, #d9a441), 0 10px 24px rgba(120, 100, 170, 0.14);
+}
+.pastel .fbt-row.lead { background: #fff4d6; border-color: #efd39a; }
