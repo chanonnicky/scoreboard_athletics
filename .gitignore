@@ -8,4 +8,5 @@ public/pictures/*
 !public/pictures/README.txt
 !public/pictures/logo.png
 !public/pictures/house-*.png
+!public/pictures/favicon.png
 /Picture/

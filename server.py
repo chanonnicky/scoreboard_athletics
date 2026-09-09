@@ -524,6 +524,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._serve_sse()
         if path == "/healthz":
             return self._send(200, "ok")
+        if path == "/favicon.ico":
+            return self._serve_path(os.path.join(PUBLIC, "pictures", "favicon.png"))
         # โลโก้ที่อัปโหลด (เก็บที่ data/uploads/ นอก public/)
         if path.startswith("/uploads/"):
             rel = os.path.normpath(path[len("/uploads/"):].lstrip("/")).replace("\\", "/")

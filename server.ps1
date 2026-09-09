@@ -522,6 +522,7 @@ $Lib = {
 
     if ($path -eq "/" -or $path -eq "/home") { Serve-File $ctx (Join-Path $script:G.Public "home.html"); return }
     if ($path -eq "/healthz") { Send-Text $ctx 200 "ok"; return }
+    if ($path -eq "/favicon.ico") { Serve-File $ctx (Join-Path $script:G.Public "pictures\favicon.png"); return }
     # control + score (incl. per-sport score /score/<sport>)
     if ($path -eq "/control" -or $path -eq "/score" -or $path.StartsWith("/score/")) { Serve-File $ctx (Join-Path $script:G.Public "control.html"); return }
     # Live overlay (/live is the new name for /overlay)
