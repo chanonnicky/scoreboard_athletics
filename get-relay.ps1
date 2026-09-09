@@ -78,11 +78,17 @@ try {
   Write-Host "ffmpeg ($FfZip)"
   Install-Tool 'ffmpeg' $FfZip $FfBase 'ffmpeg.exe' (Join-Path $PSScriptRoot 'bin\ffmpeg')
 
+  if (-not (Test-Path (Join-Path $PSScriptRoot 'mediamtx.yml'))) {
+    Copy-Item (Join-Path $PSScriptRoot 'mediamtx.example.yml') (Join-Path $PSScriptRoot 'mediamtx.yml')
+    Write-Host "created mediamtx.yml from template"
+  }
+
   Write-Host ""
   Write-Host "Done. Next:"
-  Write-Host "  1) edit mediamtx.yml  (publish password + broadcast-room URL)"
+  Write-Host "  1) edit mediamtx.yml  (the two passwords in authInternalUsers)"
   Write-Host "  2) setup.bat          (opens firewall for RTMP port 1935)"
   Write-Host "  3) start.bat          (launches the relay + the CG server)"
+  Write-Host "  4) /control -> settings -> 'RTMP relay' card: copy the URLs into OBS"
 }
 finally {
   Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue

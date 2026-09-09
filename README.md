@@ -124,85 +124,61 @@ Add Input → **More…** → **Web Browser**
 
 ---
 
-## รับสัญญาณ RTMP + ส่งต่อห้องถ่ายทอดสด (RTMP relay)
+## RTMP relay — OBS หน้างาน → เข้า OBS อีกตัว
 
-ใช้เมื่อ **OBS อยู่หน้างาน** แต่ **เครื่องที่รันระบบอยู่รีโมต** (มี public IP) และห้องถ่ายทอดสด
-อยู่อีกที่ — เครื่องรีโมตทำหน้าที่เป็นจุดพักสัญญาณ (contribution relay)
+ใช้เมื่อ **OBS อยู่หน้างาน** แต่ **เครื่องที่รันระบบอยู่รีโมต** (มี public IP) และ **OBS ตัวที่ตัดต่อ
+จริง (OBS #2) อยู่อีกที่** — เครื่องรีโมตเป็นจุดพักสัญญาณ (RTMP relay)
 
 ```
-OBS (หน้างาน) ──RTMP push──► เครื่องรีโมต ──push RTMP/SRT──► ห้องถ่ายทอดสด
-                             (MediaMTX + ffmpeg)                    │
-                             + อัด .mp4 สำรอง (ทางเลือก)   ซ้อน CG /live (โปร่งใส)
-                                                                   │
-                                                            LIVE ออกสาธารณะ
+OBS หน้างาน ──RTMP publish──► เครื่องรีโมต (MediaMTX) ──RTMP pull──► OBS #2
+                                    │                                  │ Media Source
+                              + อัด .mp4 สำรอง (option)         ซ้อน CG /live (โปร่งใส) แล้วออกอากาศ
 ```
 
-- **ไม่ re-encode** — ffmpeg `-c copy` ส่งผ่านอย่างเดียว → latency เพิ่มแค่ ~0.1–0.5 วิ + 1 hop
-  เน็ต, CPU แทบไม่ขยับ
+- **ไม่ re-encode** — MediaMTX รีเลย์สตรีมดิบ → latency เพิ่มแค่ ~0.1–0.5 วิ + 1 hop เน็ต, CPU แทบไม่ขยับ
 - CG server (`server.ps1`/`server.py`) **ไม่เกี่ยวกับวิดีโอเลย** — relay เป็นคนละโปรแกรม
-  (`mediamtx.exe`) รันคู่กันในหน้าต่างแยก วิดีโอไม่ผ่าน PowerShell/Python
-- ห้องถ่ายทอดสดยังดึง `http://<รีโมต>:8080/live` ไปซ้อนเองเหมือนเดิม
+  (`mediamtx.exe`) รันคู่กันในหน้าต่างแยก
+- OBS #2 ยังดึง `http://<รีโมต>:8080/live` ไปซ้อน CG เองเหมือนเดิม
 
 ### ติดตั้ง (เครื่องรีโมต, Windows)
 
 1. `powershell -ExecutionPolicy Bypass -File get-relay.ps1`
-   โหลด `mediamtx.exe` + `ffmpeg.exe` (ไฟล์พกพา ไม่ติดตั้ง) ลง `bin\` — ต้องมีเน็ตครั้งเดียว
+   โหลด `mediamtx.exe` + `ffmpeg.exe` (ไฟล์พกพา ไม่ติดตั้ง) ลง `bin\` — ต้องมีเน็ตครั้งเดียว ·
+   สร้าง `mediamtx.yml` จาก `mediamtx.example.yml` ให้ด้วย (`mediamtx.yml` ไม่เข้า git)
    *ไม่มีเน็ต:* โหลด [MediaMTX](https://github.com/bluenviron/mediamtx/releases) (windows_amd64)
    กับ [ffmpeg](https://github.com/BtbN/FFmpeg-Builds/releases) (win64-gpl) เอง แล้ววางเป็น
    `bin\mediamtx\mediamtx.exe` และ `bin\ffmpeg\ffmpeg.exe`
-2. แก้ **`mediamtx.yml`** 2 จุด:
-   - `pass: CHANGE_ME_PUBLISH_PASSWORD` → ตั้งรหัสจริง (รหัสที่ OBS หน้างานต้องใส่)
-   - บรรทัด `runOnAvailable:` ท้ายบรรทัด เปลี่ยน `rtmp://EDIT_ROOM_HOST/live/EDIT_STREAM_KEY`
-     เป็น URL ปลายทางของห้องถ่ายทอดสด
-     · SRT: เปลี่ยน `-f flv rtmp://...` เป็น `-f mpegts srt://ROOM_HOST:9000?streamid=KEY&latency=200000`
-     (ทนแพ็กเก็ตหายบน WAN ดีกว่า RTMP · ห้ามใส่ยัติภังค์/เว้นวรรค — MediaMTX ไม่ผ่าน shell)
-   - จะอัดไฟล์สำรองด้วย: `record: false` → `true` (ได้ไฟล์ใน `data\rec\` ~3.6 GB/ชม. ที่ 8 Mbps)
-   - ถ้า forward พอร์ตภายนอกเป็นเลขอื่น (เช่น 7445 → เครื่องนี้ 1935): แก้บรรทัดคอมเมนต์
-     `# cglive-public-rtmp-port: 1935` ให้เป็นเลขภายนอก — การ์ด RTMP relay ใน `/control`
-     จะโชว์เลขนั้นให้ OBS หน้างาน (MediaMTX ยังฟังที่ `rtmpAddress` เหมือนเดิม)
-3. `setup.bat` — เปิด firewall พอร์ต **1935** ให้ด้วยแล้ว (รันครั้งเดียว) + ทำ **port-forward
-   มาที่ 1935/tcp ของเครื่องนี้** ที่เราเตอร์/cloud (พอร์ตภายนอกจะเป็นเลขอะไรก็ได้)
-4. `start.bat` — ถ้าเจอ `bin\mediamtx\mediamtx.exe` จะเปิด relay ในหน้าต่าง "CG Relay" ให้เอง
-   (ปิด relay = ปิดหน้าต่างนั้น)
+2. แก้ **`mediamtx.yml`** — ตั้งรหัส 2 อันใน `authInternalUsers`:
+   - `user: publish` → `pass:` = รหัสที่ OBS หน้างานต้องใส่
+   - `user: read` → `pass:` = รหัสที่ OBS #2 ต้องใส่ตอนดึง
+   - (option) อัดไฟล์สำรอง: `record: false` → `true` (`data\rec\` ~3.6 GB/ชม. ที่ 8 Mbps)
+   - (option) ยิงต่อไปที่อื่นด้วย (YouTube/ห้องถ่ายทอด): เปิดคอมเมนต์ 2 บรรทัด `runOnAvailable`
+3. `setup.bat` — เปิด firewall **1935** ให้แล้ว (รันครั้งเดียว) + ทำ **port-forward มาที่ 1935/tcp
+   ของเครื่องนี้** ที่เราเตอร์/cloud (พอร์ตภายนอกจะเป็นเลขอะไรก็ได้ เช่น 7445)
+4. `start.bat` — เจอ `bin\mediamtx\mediamtx.exe` จะเปิด relay ในหน้าต่าง "CG Relay" ให้เอง
 
-### ตั้งค่า OBS หน้างาน
+### ตั้งค่า OBS ทั้งสองตัว — ดูจากในเว็บ
 
-> ค่าที่ต้องใส่ (Server / Stream Key / URL ปลายทาง) + สถานะว่ามีสัญญาณเข้ามาหรือยัง
-> โชว์อยู่ในหน้า **`/control` → แท็บ "ตั้งค่า" → การ์ด "RTMP relay"** กดคัดลอกได้เลย
+**`/control` → แท็บ "ตั้งค่า" → การ์ด "RTMP relay"** โชว์ URL พร้อมปุ่มคัดลอก + สถานะสด:
 
-Settings → Stream → Service **Custom**
-- Server: `rtmp://<ip-รีโมต>:<พอร์ตภายนอก>`   (ไม่มี `/live` ต่อท้าย · ก๊อปจากการ์ดใน `/control` ได้เลย)
-- Stream Key: `live?user=publish&pass=<รหัสที่ตั้งใน mediamtx.yml>`
+- **พอร์ตภายนอก** — ใส่เลขที่ port-forward มาจากภายนอก (เช่น 7445) · เก็บในเว็บ ไม่ต้องแก้ไฟล์
+- **1) OBS หน้างาน — ส่งเข้า:** Settings → Stream → Custom · Server + Stream Key จากการ์ด
+  · ฝั่ง Output: CBR, **Keyframe 1s**, preset latency ต่ำ
+- **2) OBS #2 — ดึงออก:** Sources → ➕ → **Media Source** → เอาติ๊ก "Local File" ออก →
+  วาง URL จากการ์ดในช่อง Input → เปิด "Reconnect"
 
-Settings → Output (โหมด Advanced)
-- Rate Control **CBR**, Bitrate ตามที่ห้องถ่ายทอดต้องการ (1080p ~8–12 Mbps)
-- **Keyframe Interval `1` วินาที** (สำคัญต่อ latency)
-- Encoder preset เน้น latency ต่ำ (`P1`/`ultrafast` หรือ NVENC low-latency)
+### latency / โหลด / แบนด์วิดท์
 
-### latency ให้ต่ำ — เช็กลิสต์
-
-| จุด | ตั้ง |
+| จุด | หมายเหตุ |
 |---|---|
-| OBS | keyframe 1s, CBR, preset low-latency, buffer เล็ก |
-| relay | `-c copy` (ไม่ transcode — ตั้งมาให้แล้ว) |
-| ขาออก | ใช้ SRT ถ้าห้องถ่ายทอดรับได้ · RTMP ก็ได้ถ้าเส้นทางเสถียร |
-| เครื่องรีโมต | วางใกล้เส้นทาง/ภูมิภาคระหว่างสนามกับห้องถ่ายทอด |
+| OBS หน้างาน | keyframe 1s, CBR, preset low-latency, buffer เล็ก |
+| relay | รีเลย์ดิบ ไม่ transcode — CPU ~2–5% ของ 1 core, RAM หลักสิบ MB |
+| OBS #2 (Media Source) | buffer ~2–4 วิ · ถ้าต้องต่ำกว่านี้มากใช้ SRT แทน (แก้ `srt: true` + streamid) |
+| แบนด์วิดท์เครื่องรีโมต | ≈ บิตเรตเข้า + (บิตเรต × จำนวน OBS ที่ดึง) · 1080p 10 Mbps + ดึง 1 ตัว ≈ 20 Mbps ทั้ง up/down |
+| ดิสก์ (ถ้าอัด) | ~3.6 GB/ชม. ที่ 8 Mbps |
 
 > hop สนาม→รีโมต เป็น latency ที่เลี่ยงไม่ได้เพราะเครื่องอยู่รีโมต — relay เองเพิ่มน้อยมาก
-
-### โหลดไหวไหม / แบนด์วิดท์
-
-- **CPU/RAM:** passthrough = แทบไม่กิน (~2–5% ของ 1 core, RAM หลักสิบ MB ต่อสตรีม)
-- **แบนด์วิดท์ (ตัวชี้ขาด):** ต้องมี ≈ `บิตเรตเข้า + ทุกก๊อปขาออก`
-  ตัวอย่าง 1080p 10 Mbps: เข้า 10 + push ห้องถ่ายทอด 10 (+ สำรอง YouTube 6) ≈ **26–36 Mbps
-  ต่อเนื่อง ทั้ง up และ down** → ต้องเช็กเน็ตเครื่องรีโมตมี headroom ก่อนงาน
-- **ดิสก์ (ถ้าอัด):** ~3.6 GB/ชม. ที่ 8 Mbps · งาน 4 ชม. ≈ 15 GB
-- หน้าคุม/พรีวิว/จอ CG แทบไม่กินแบนด์วิดท์ (<0.1 Mbps ต่อจอ) — ไม่ต้องคิดรวม
-
-### OBS หลุดกลางคัน
-
-MediaMTX รอรับใหม่อัตโนมัติ · `runOnAvailableRestart: true` ทำให้ ffmpeg ขาออกสตาร์ทใหม่เองเมื่อ
-OBS กลับมา ไม่ต้องแตะอะไร
+> · OBS หลุดแล้วต่อใหม่: MediaMTX รับต่อเอง, OBS #2 (เปิด Reconnect) ดึงต่อเอง
 
 ---
 
@@ -356,7 +332,8 @@ start.bat                         ตัวเปิด (เรียก server.
 start.sh                          ตัวเปิดบน macOS / Linux (เรียก server.py)
 setup.bat                         ตั้งค่าพอร์ต + firewall ครั้งเดียว (ขอสิทธิ์ admin)
 get-relay.ps1                     โหลด mediamtx.exe + ffmpeg.exe ลง bin\ (ทางเลือก, RTMP relay)
-mediamtx.yml                      คอนฟิก RTMP relay (แก้รหัส publish + URL ห้องถ่ายทอด)
+mediamtx.example.yml              เทมเพลตคอนฟิก RTMP relay (ก๊อปเป็น mediamtx.yml อัตโนมัติ)
+mediamtx.yml                      คอนฟิก relay ที่ใช้จริง (แก้รหัส 2 อัน · ไม่เข้า git)
 bin/                              ไบนารี relay (สร้างจาก get-relay.ps1, ไม่เข้า git)
 data/rec/                         ไฟล์อัดสำรองจาก relay (สร้างอัตโนมัติ, ไม่เข้า git)
 public/                           หน้าเว็บ (control / overlay / board / home)

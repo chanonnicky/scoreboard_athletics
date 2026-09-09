@@ -20,6 +20,7 @@ echo   [i] RTMP relay not started - bin\mediamtx\mediamtx.exe not found
 echo       To enable:  powershell -ExecutionPolicy Bypass -File get-relay.ps1
 goto relay_done
 :relay_on
+if not exist "%~dp0mediamtx.yml" copy /y "%~dp0mediamtx.example.yml" "%~dp0mediamtx.yml" >nul
 echo   Starting RTMP relay (MediaMTX) ...
 start "CG Relay (MediaMTX)" "%~dp0bin\mediamtx\mediamtx.exe" "%~dp0mediamtx.yml"
 :relay_done

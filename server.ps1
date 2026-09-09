@@ -622,23 +622,42 @@ $Lib = {
     if ($txt -match '(?m)^\s*rtmpAddress:\s*\S*?:(\d+)') { $port = [int]$Matches[1] }
     $publicPort = $port
     if ($txt -match '(?m)^\s*#\s*cglive-public-rtmp-port:\s*(\d+)') { $publicPort = [int]$Matches[1] }
-    $user = 'publish'; $pass = ''
-    if ($txt -match 'user:\s*(\S+)\s*\r?\n\s*pass:\s*([^\s#]*)') { $user = $Matches[1]; $pass = $Matches[2] }
+    # parse authInternalUsers: publish account + external (non-localhost) read account
+    $pubUser = 'publish'; $pubPass = ''; $rdUser = ''; $rdPass = ''
+    $sect = ''
+    if ($txt -match '(?ms)^authInternalUsers:[ \t]*\r?\n(.*?)(?=^\S|\Z)') { $sect = $Matches[1] }
+    $chunks = [regex]::Split($sect, '(?m)^[ \t]*-[ \t]*user:[ \t]*')
+    foreach ($chunk in $chunks) {
+      if ($chunk.Trim() -eq '') { continue }
+      $name = ($chunk -split '\s', 2)[0].Trim()
+      $cp = ''
+      if ($chunk -match '(?m)^[ \t]*pass:[ \t]*([^\s#]*)') { $cp = $Matches[1] }
+      $localhostOnly = $chunk.Contains('127.0.0.1')
+      if ($chunk -match 'action:[ \t]*publish') { $pubUser = $name; $pubPass = $cp }
+      elseif (($chunk -match 'action:[ \t]*read') -and -not $localhostOnly) { $rdUser = $name; $rdPass = $cp }
+    }
     $dest = ''
     if ($txt -match '(?m)^\s*runOnAvailable:\s*.*\s(\S+)\s*$') { $dest = $Matches[1] }
+    $pullKey = if ($rdUser) { "live?user={0}&pass={1}" -f $rdUser, $rdPass } else { 'live' }
     $info = @{
-      configured    = $true
-      running       = $false
-      live          = $null
-      ingestPort    = $port
-      publicPort    = $publicPort
-      publishUser   = $user
-      publishPass   = $pass
-      publishKey    = ("live?user={0}&pass={1}" -f $user, $pass)
-      passIsDefault = ($pass -eq 'CHANGE_ME_PUBLISH_PASSWORD')
-      dest          = $dest
-      destIsDefault = ($dest -eq '' -or $dest -like '*EDIT_ROOM_HOST*' -or $dest -like '*EDIT_STREAM_KEY*')
-      recording     = [bool]($txt -match '(?m)^\s*record:\s*true\b')
+      configured     = $true
+      running        = $false
+      live           = $null
+      ingestPort     = $port
+      publicPort     = $publicPort
+      publishUser    = $pubUser
+      publishPass    = $pubPass
+      publishKey     = ("live?user={0}&pass={1}" -f $pubUser, $pubPass)
+      passIsDefault  = ($pubPass -eq '' -or $pubPass -eq 'CHANGE_ME_PUBLISH_PASSWORD')
+      readConfigured = [bool]$rdUser
+      readUser       = $rdUser
+      readPass       = $rdPass
+      pullKey        = $pullKey
+      readIsDefault  = ($rdPass -eq '' -or $rdPass -eq 'CHANGE_ME_READ_PASSWORD')
+      pushConfigured = [bool]$dest
+      dest           = $dest
+      destIsDefault  = ($dest -like '*EDIT_ROOM_HOST*' -or $dest -like '*EDIT_STREAM_KEY*')
+      recording      = [bool]($txt -match '(?m)^\s*record:\s*true\b')
     }
     try {
       $resp = Invoke-WebRequest -Uri 'http://127.0.0.1:9997/v3/paths/get/live' -UseBasicParsing -TimeoutSec 2

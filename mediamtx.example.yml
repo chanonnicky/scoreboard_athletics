@@ -1,0 +1,84 @@
+###############################################################################
+# CG Live - RTMP relay for a remote OBS   (TEMPLATE)
+#
+# start.bat / start.sh / get-relay.ps1 copy this to  mediamtx.yml  on first run.
+# Edit mediamtx.yml (NOT this file) - it is gitignored so your passwords and
+# your `git pull` never collide.
+#
+# Flow:  OBS (at venue) --RTMP publish--> THIS box (MediaMTX) --RTMP pull--> OBS #2
+#        OBS #2 adds a Media Source with the pull URL, composites the /live CG
+#        overlay, and airs it.
+#
+# The relay is a separate process (mediamtx.exe); the CG server never sees video.
+#
+# >>> IN mediamtx.yml, EDIT the two passwords in authInternalUsers below.
+# >>> The /control "RTMP relay" card shows both ready-to-copy URLs + live status.
+###############################################################################
+
+logLevel: info
+logDestinations: [stdout]
+
+# Control API - localhost only (used for the /control status card, never exposed)
+api: true
+apiAddress: 127.0.0.1:9997
+
+# Only the RTMP listener is public (publish in + pull out). Everything else off.
+rtmp: true
+rtmpAddress: :1935
+rtmpEncryption: "no"
+rtsp: false
+hls: false
+webrtc: false
+srt: false
+moq: false
+
+# If the router forwards a DIFFERENT external port to this box (external 7445 ->
+# this box :1935), put the external number here - the /control card will show it.
+# Leave equal to the rtmpAddress port when there is no remap.
+# cglive-public-rtmp-port: 1935
+
+# --- Accounts -------------------------------------------------------------------
+# publish = the venue OBS (push a stream IN).   read = OBS #2 (pull the stream OUT).
+# Keep the two "path: live" entries; edit only the passwords. "any" from 127.0.0.1
+# is the local status API and stays as-is.
+authInternalUsers:
+  - user: publish
+    pass: CHANGE_ME_PUBLISH_PASSWORD      # EDIT: password the venue OBS sends
+    ips: []
+    permissions:
+      - action: publish
+        path: live
+  - user: read
+    pass: CHANGE_ME_READ_PASSWORD         # EDIT: password OBS #2 uses to pull
+    ips: []
+    permissions:
+      - action: read
+        path: live
+  - user: any
+    pass:
+    ips: [127.0.0.1, "::1"]
+    permissions:
+      - action: read
+      - action: playback
+      - action: api
+      - action: metrics
+
+# --- The single relay path ---------------------------------------------------
+paths:
+  live:
+    # OBS #2 pulls this path directly - no re-encode, MediaMTX just relays.
+    #
+    # Want to ALSO push somewhere (a CDN / YouTube / a second room)? Uncomment
+    # the two lines below and set the URL at the end. -c copy = passthrough.
+    # Command runs directly, NOT via a shell: no pipes, no quotes, no env vars.
+    #   RTMP:  ... -c copy -f flv     rtmp://HOST/app/streamkey
+    #   SRT :  ... -c copy -f mpegts  srt://HOST:9000?streamid=KEY&latency=200000
+    # runOnAvailable: bin/ffmpeg/ffmpeg.exe -nostdin -hide_banner -loglevel warning -i rtmp://127.0.0.1:1935/live -c copy -f flv rtmp://EDIT_ROOM_HOST/live/EDIT_STREAM_KEY
+    # runOnAvailableRestart: true
+
+    # Local backup recording. Flip to "true" to record every ingested stream to
+    # data/rec/ (~3.6 GB per hour at 8 Mbps). data/rec/ is gitignored.
+    record: false
+    recordPath: data/rec/%path/%Y-%m-%d_%H-%M-%S-%f
+    recordFormat: fmp4
+    recordSegmentDuration: 1h

@@ -181,6 +181,25 @@ def save_soon():
 #  Video never touches this server; we only parse a few values out of
 #  mediamtx.yml and poll MediaMTX's localhost API for live status.
 # --------------------------------------------------------------------------- #
+def _relay_users(txt):
+    """(publishUser, publishPass, readUser, readPass) from authInternalUsers.
+    readUser is None when no external (non-localhost) read account exists."""
+    m = re.search(r"(?ms)^authInternalUsers:[ \t]*\n(.*?)(?=^\S|\Z)", txt)
+    sect = m.group(1) if m else ""
+    pub = ("publish", "")
+    rd = (None, None)
+    for chunk in re.split(r"(?m)^[ \t]*-[ \t]*user:[ \t]*", sect)[1:]:
+        name = chunk.split(None, 1)[0].strip() if chunk.strip() else ""
+        pm = re.search(r"(?m)^[ \t]*pass:[ \t]*([^\s#]*)", chunk)
+        pw = pm.group(1) if pm else ""
+        localhost_only = "127.0.0.1" in chunk
+        if re.search(r"action:[ \t]*publish", chunk):
+            pub = (name, pw)
+        elif re.search(r"action:[ \t]*read", chunk) and not localhost_only:
+            rd = (name, pw)
+    return pub[0], pub[1], rd[0], rd[1]
+
+
 def _relay_config():
     try:
         with open(MEDIAMTX_YML, "r", encoding="utf-8") as f:
@@ -191,21 +210,26 @@ def _relay_config():
     port = int(m.group(1)) if m else 1935
     pm = re.search(r"^\s*#\s*cglive-public-rtmp-port:\s*(\d+)", txt, re.M)
     public_port = int(pm.group(1)) if pm else port
-    um = re.search(r"user:\s*(\S+)\s*\n\s*pass:\s*([^\s#]*)", txt)
-    user = um.group(1) if um else "publish"
-    pw = um.group(2) if um else ""
+    pu, pp, ru, rp = _relay_users(txt)
     dm = re.search(r"^\s*runOnAvailable:\s*.*\s(\S+)\s*$", txt, re.M)
     dest = dm.group(1) if dm else ""
+    pull_key = "live?user=%s&pass=%s" % (ru, rp) if ru else "live"
     return {
         "configured": True,
         "ingestPort": port,
         "publicPort": public_port,
-        "publishUser": user,
-        "publishPass": pw,
-        "publishKey": "live?user=%s&pass=%s" % (user, pw),
-        "passIsDefault": pw == "CHANGE_ME_PUBLISH_PASSWORD",
+        "publishUser": pu,
+        "publishPass": pp,
+        "publishKey": "live?user=%s&pass=%s" % (pu, pp),
+        "passIsDefault": pp in ("", "CHANGE_ME_PUBLISH_PASSWORD"),
+        "readConfigured": bool(ru),
+        "readUser": ru or "",
+        "readPass": rp or "",
+        "pullKey": pull_key,
+        "readIsDefault": (rp or "") in ("", "CHANGE_ME_READ_PASSWORD"),
+        "pushConfigured": bool(dest),
         "dest": dest,
-        "destIsDefault": (dest == "" or "EDIT_ROOM_HOST" in dest or "EDIT_STREAM_KEY" in dest),
+        "destIsDefault": ("EDIT_ROOM_HOST" in dest or "EDIT_STREAM_KEY" in dest),
         "recording": bool(re.search(r"^\s*record:\s*true\b", txt, re.M)),
     }
 

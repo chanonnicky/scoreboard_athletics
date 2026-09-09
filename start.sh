@@ -54,6 +54,7 @@ fi
 #          — บน mac/Linux ต้องแก้ runOnAvailable ใน mediamtx.yml เอง
 RELAY_PID=""
 if [ -x bin/mediamtx/mediamtx ]; then
+  [ -f mediamtx.yml ] || cp mediamtx.example.yml mediamtx.yml
   echo "  กำลังเริ่ม RTMP relay (MediaMTX) ..."
   bin/mediamtx/mediamtx mediamtx.yml &
   RELAY_PID=$!

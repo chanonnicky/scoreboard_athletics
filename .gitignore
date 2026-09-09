@@ -5,6 +5,7 @@ data/state.json.tmp
 data/uploads/
 data/rec/
 bin/
+mediamtx.yml
 .DS_Store
 public/pictures/*
 !public/pictures/README.txt

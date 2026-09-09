@@ -294,6 +294,7 @@ table.tbl .hcell { width: 150px; }
 .dirty-badge { color: var(--warn); font-size: 12px; margin-left: 8px; }
 
 /* RTMP relay status card */
+#relayBody h3 { font-size: 14px; font-weight: 600; margin: 16px 0 0; }
 .relay-warn { color: var(--danger); font-size: 13px; margin: 6px 0 0; }
 .relay-pill {
   display: inline-block; padding: 2px 10px; border-radius: 999px;

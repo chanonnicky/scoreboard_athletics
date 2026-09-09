@@ -1033,7 +1033,7 @@
   var relayTimer = null;
   function stopRelayPoll() { if (relayTimer) { clearInterval(relayTimer); relayTimer = null; } }
   function relayCardHtml() {
-    return '<div class="card"><h2>RTMP relay — รับสัญญาณ OBS หน้างาน</h2>' +
+    return '<div class="card"><h2>RTMP relay — OBS หน้างาน → เข้า OBS อีกตัว</h2>' +
       '<div id="relayBody"><p class="muted">กำลังโหลด…</p></div></div>';
   }
   function fmtBytes(n) {
@@ -1045,11 +1045,16 @@
   function renderRelayBody(d) {
     var box = document.getElementById("relayBody");
     if (!box) { stopRelayPoll(); return; }
+    // อย่า re-render ทับถ้ากำลังพิมพ์ช่องพอร์ตอยู่
+    var ae = document.activeElement;
+    if (ae && ae.getAttribute && ae.getAttribute("data-act") === "relay-port" && box.contains(ae)) return;
     if (!d || !d.configured) {
       box.innerHTML = '<p class="muted">ยังไม่ได้ตั้งค่า relay — รัน <code>get-relay.ps1</code> แล้วแก้ <code>mediamtx.yml</code> (ดู README)</p>';
       return;
     }
-    var ingest = "rtmp://" + location.hostname + ":" + (d.publicPort || d.ingestPort);
+    var s = state.settings || {};
+    var pubPort = Number(s.relayPublicPort) > 0 ? Number(s.relayPublicPort) : (d.publicPort || d.ingestPort);
+    var base = "rtmp://" + location.hostname + ":" + pubPort;
     var warn = function (t) { return '<p class="relay-warn">⚠ ' + esc(t) + "</p>"; };
     var urlRow = function (label, id, val) {
       return '<div class="field" style="margin-top:8px">' + esc(label) +
@@ -1058,17 +1063,33 @@
     };
     var st;
     if (!d.running) st = '<span class="relay-pill off">● relay ไม่ทำงาน</span> <span class="muted">— เปิด start.bat บนเครื่อง relay</span>';
-    else if (!d.live || !d.live.publishing) st = '<span class="relay-pill idle">● พร้อมรับ</span> <span class="muted">— ยังไม่มีสัญญาณจาก OBS</span>';
+    else if (!d.live || !d.live.publishing) st = '<span class="relay-pill idle">● พร้อมรับ</span> <span class="muted">— ยังไม่มีสัญญาณจาก OBS หน้างาน</span>';
     else st = '<span class="relay-pill on">● กำลังรับสัญญาณ</span> <span class="muted">— ' + esc(fmtBytes(d.live.bytesReceived)) +
-      " · ปลายทางดึงต่อ " + (d.live.readers || 0) + "</span>";
+      " · OBS ปลายทางต่ออยู่ " + (d.live.readers || 0) + "</span>";
     box.innerHTML =
-      '<p class="muted">ใส่ค่าพวกนี้ที่ OBS ของเครื่องหน้างาน (Settings → Stream → Custom)</p>' +
-      urlRow("Server", "relayIngest", ingest) +
-      urlRow("Stream Key", "relayKey", d.publishKey) +
-      (d.passIsDefault ? warn("ยังไม่ได้ตั้งรหัส publish — แก้ pass: ใน mediamtx.yml") : "") +
-      urlRow("ปลายทาง (ห้องถ่ายทอดสด)", "relayDest", d.dest) +
-      (d.destIsDefault ? warn("ยังไม่ได้ตั้ง URL ปลายทาง — แก้บรรทัด runOnAvailable ใน mediamtx.yml") : "") +
-      '<p style="margin-top:12px">สถานะ: ' + st + (d.recording ? ' <span class="muted">· อัดไฟล์สำรองอยู่</span>' : "") + "</p>";
+      '<label class="field" style="max-width:260px">พอร์ตภายนอก (ตาม port-forward)' +
+        '<input type="number" min="1" max="65535" data-act="relay-port" value="' + pubPort + '"></label>' +
+      '<p class="muted" style="margin-top:4px">MediaMTX ฟังที่ ' + (d.ingestPort || 1935) +
+        ' — ใส่เลขที่ forward มาจากภายนอก (ค่านี้เก็บในเว็บ ไม่แตะ mediamtx.yml)</p>' +
+
+      '<h3 style="margin:16px 0 0">1) OBS หน้างาน — ส่งเข้า</h3>' +
+      '<p class="muted">Settings → Stream → Service = Custom</p>' +
+      urlRow("Server", "relayIn", base) +
+      urlRow("Stream Key", "relayInKey", d.publishKey) +
+      (d.passIsDefault ? warn("ยังไม่ได้ตั้งรหัส (user publish) — แก้ pass: ใน mediamtx.yml") : "") +
+
+      '<h3 style="margin:16px 0 0">2) OBS ปลายทาง — ดึงออก</h3>' +
+      '<p class="muted">Sources → + → Media Source → เอาติ๊ก "Local File" ออก → วางที่ช่อง Input · เปิด "Reconnect"</p>' +
+      urlRow("Input", "relayOut", base + "/" + d.pullKey) +
+      (d.readConfigured ? (d.readIsDefault ? warn("ยังไม่ได้ตั้งรหัส (user read) — แก้ pass: ใน mediamtx.yml") : "")
+        : warn("ยังไม่มี user read ใน mediamtx.yml — OBS ปลายทางจะดึงไม่ได้ถ้าไม่ได้อยู่ในวงเดียวกัน")) +
+
+      (d.pushConfigured
+        ? '<h3 style="margin:16px 0 0">+ push อัตโนมัติไปที่</h3>' + urlRow("ปลายทาง push", "relayPush", d.dest) +
+          (d.destIsDefault ? warn("ยังไม่ได้ตั้ง URL — แก้บรรทัด runOnAvailable ใน mediamtx.yml") : "")
+        : "") +
+
+      '<p style="margin-top:16px">สถานะ: ' + st + (d.recording ? ' <span class="muted">· อัดไฟล์สำรองอยู่</span>' : "") + "</p>";
   }
   function startRelayPoll() {
     stopRelayPoll();
@@ -1828,6 +1849,14 @@
     if (t.dataset && t.dataset.act === "chart-title") {
       cmd({ action: "setSettings", settings: { chartTitle: t.value.trim() } })
         .then(function (ok) { if (ok) toast("บันทึกชื่อกราฟแล้ว"); });
+      return;
+    }
+    if (t.dataset && t.dataset.act === "relay-port") {
+      var rp = parseInt(t.value, 10);
+      if (rp > 0 && rp < 65536) {
+        cmd({ action: "setSettings", settings: { relayPublicPort: rp } })
+          .then(function (ok) { if (ok) toast("พอร์ตภายนอก: " + rp); });
+      }
       return;
     }
     // ติ๊ก "จบการแข่งขัน" ในแผงคู่สด

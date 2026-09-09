@@ -46,30 +46,36 @@ There is **no test suite and no build step**. The frontend is plain ES5 served s
 
 ### RTMP relay sidecar (optional, Windows) — video never touches the CG server
 
-For the "OBS at the venue, this box is remote, broadcast room elsewhere" deployment,
-`start.bat`/`start.sh` also launch **MediaMTX** (`bin/mediamtx/mediamtx.exe`, config
-`mediamtx.yml`) if that binary is present — an RTMP ingest on :1935 that pushes the stream on
-to the broadcast room via a `runOnAvailable` **ffmpeg `-c copy`** (passthrough, no re-encode) and
-optionally records to `data/rec/`. `get-relay.ps1` downloads MediaMTX (pinned `v1.21.0`,
-checksum-verified) + ffmpeg (BtbN win64-gpl) into `bin/` (gitignored). `setup.bat` opens
-firewall 1935.
+For "OBS at the venue, this box remote, the editing OBS (#2) elsewhere": `start.bat`/`start.sh`
+also launch **MediaMTX** (`bin/mediamtx/mediamtx.exe`) if present — an RTMP server on :1935 that
+the venue OBS **publishes** to (`user: publish`) and OBS #2 **pulls** from as a Media Source
+(`user: read`). Pure relay, no re-encode; optional `runOnAvailable` ffmpeg `-c copy` push to a
+further destination (commented out by default); optional recording to `data/rec/`.
+`get-relay.ps1` downloads MediaMTX (pinned `v1.21.0`, checksum-verified) + ffmpeg (BtbN
+win64-gpl) into `bin/` (gitignored) and seeds `mediamtx.yml` from `mediamtx.example.yml`.
+`mediamtx.yml` is **gitignored** (holds passwords) — `mediamtx.example.yml` is the tracked
+template, copied on first run by `start.bat`/`start.sh`/`get-relay.ps1`. `setup.bat` opens
+firewall 1935. MediaMTX v1.21 gotchas: `recordPath` must contain `%path`; `moq: false` (new
+default-on server).
 
 **Invariants:** `server.py`/`server.ps1` carry **no RTMP/video code**. The one exception is a
-read-only `GET /api/relay` (token-gated like the write endpoints) that parses a few values out
-of `mediamtx.yml` (ingest port, publish user/pass, `runOnAvailable` destination, `record`) and
-polls MediaMTX's localhost API (`:9997/v3/paths/get/live`, 1–2s timeout) for live status —
-`relay_info()` / `Relay-Info`, kept in parity. The `/control` settings view renders it as a
-copy-only "RTMP relay" card (`relayCardHtml`/`startRelayPoll` in `control.js`, polled every 5s,
-shown in both the sports and general settings). Video itself bypasses PowerShell/Python
-entirely, so relay load never affects the HTTP server.
-When `bin/mediamtx/mediamtx.exe` is absent, `start.bat`/`start.sh` must behave **exactly** as
-before (print one hint line, then launch the CG server unchanged) — this is part of the
-start.bat/start.sh parity rule. The broadcast room still composites the transparent `/live`
-overlay itself; the relay carries only the clean feed.
+read-only `GET /api/relay` (token-gated) — `relay_info()` / `Relay-Info`, kept in parity — which
+parses `mediamtx.yml` (`_relay_users` generically classifies `authInternalUsers` blocks: the
+`publish`-action user, and the non-localhost `read`-action user) plus the `# cglive-public-rtmp-port`
+comment and `runOnAvailable`, and polls MediaMTX's localhost API (`:9997/v3/paths/get/live`,
+1–2s timeout). The `/control` settings view renders a copy-only "RTMP relay" card
+(`relayCardHtml`/`renderRelayBody`/`startRelayPoll` in `control.js`, polled every 5s, in both
+sports and general settings) showing the publish URL, the pull URL for OBS #2, live status, and
+an editable **public RTMP port** stored as `settings.relayPublicPort` (plain `setSettings`
+shallow-merge, overrides the yml comment). Video bypasses PowerShell/Python entirely, so relay
+load never affects the HTTP server. When `bin/mediamtx/mediamtx.exe` is absent,
+`start.bat`/`start.sh` behave **exactly** as before (one hint line, then the CG server unchanged)
+— part of the start.bat/start.sh parity rule.
 
-Loopback test (Windows): `get-relay.ps1`, point `mediamtx.yml`'s `runOnReady` target at a
-second local path, publish with `bin\ffmpeg\ffmpeg.exe -re -f lavfi -i testsrc2=size=1920x1080:rate=30 -f lavfi -i sine -c:v libx264 -g 30 -c:a aac -f flv "rtmp://127.0.0.1:1935/live?user=publish&pass=..."`,
-confirm the egress ffmpeg starts (MediaMTX log) and `/healthz` on the CG server stays green.
+Loopback test (Windows, verified): run `mediamtx.exe mediamtx.yml`; publish with
+`bin\ffmpeg\ffmpeg.exe -re -f lavfi -i testsrc2=size=640x360:rate=25 -f lavfi -i sine -c:v libx264 -preset ultrafast -pix_fmt yuv420p -c:a aac -t 8 -f flv "rtmp://127.0.0.1:1935/live?user=<pubuser>&pass=<pubpass>"`;
+confirm a reader with the `read` creds works and wrong publish creds get `authentication failed`
+in the MediaMTX log; `/healthz` on the CG server stays green throughout.
 
 ### Verifying changes without a browser
 
