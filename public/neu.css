@@ -91,22 +91,21 @@
       inset 0 1px 1px rgba(255, 255, 255, 0.25);
 }
 
-/* ---- แถบล่าง TOP 3 — แผงมืดปั๊มนูน ------------------------------------- */
-.neu .t3 {
+/* ---- แท่นรางวัล TOP 3 — แผงมืดปั๊มนูน ----------------------------------- */
+.neu .t3-head {
   background: #161a21;
   border: 1px solid rgba(255, 255, 255, 0.03);
-  border-radius: 20px;
+  border-radius: 16px;
   box-shadow:
-      -10px -10px 22px rgba(255, 255, 255, 0.04),
-       10px  10px 22px rgba(0, 0, 0, 0.58);
+      -8px -8px 18px rgba(255, 255, 255, 0.04),
+       8px  8px 18px rgba(0, 0, 0, 0.58);
 }
-.neu .t3-head {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(0, 0, 0, 0.12));
-  border-right-color: rgba(255, 255, 255, 0.04);
+.neu .t3-step {
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  box-shadow:
+      -8px -8px 18px rgba(255, 255, 255, 0.04),
+       8px  8px 18px rgba(0, 0, 0, 0.58);
 }
-.neu .t3-item + .t3-item { border-left-color: rgba(255, 255, 255, 0.04); }
-.neu .t3-item::before { opacity: 0.14; }
-.neu .t3-r1::before { opacity: 0.26; }
 
 /* ---- สกอร์บอร์ดคู่สด (เต็มจอ) ---------------------------------------- */
 .neu .live-team {

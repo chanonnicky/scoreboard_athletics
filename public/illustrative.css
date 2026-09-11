@@ -149,23 +149,22 @@
   box-shadow: 1.5px 1.5px 0 rgba(51,48,42,.5), inset 0 -4px 8px rgba(0,0,0,.24);
 }
 
-/* ---- แถบล่าง TOP 3 — แผ่นกระดาษทึบ (ของเดิมตัวขาวบนวิดีโอ) ------------- */
-.illustrative .t3 {
-  background: #fffdf7;
+/* ---- แท่นรางวัล TOP 3 — แผ่นกระดาษทึบ ---------------------------------- */
+.illustrative .t3-head {
+  background: #fbf4e4;
   color: #33302a;
   text-shadow: none;
   border: 2.5px solid #33302a;
   border-radius: 16px 24px 14px 22px;
-  box-shadow: 3px 3px 0 rgba(51,48,42,.9), 0 10px 24px rgba(51,48,42,.16);
+  box-shadow: 3px 3px 0 rgba(51,48,42,.9), 0 8px 18px rgba(51,48,42,.16);
 }
-.illustrative .t3-head {
-  background: #fbf4e4;
-  border-right: 2px solid #33302a;
+.illustrative .t3-step {
+  background: var(--house, #666);
+  border: 2.5px solid #33302a;
+  border-radius: 14px 14px 0 0;
+  box-shadow: 3px 3px 0 rgba(51,48,42,.9), 0 8px 18px rgba(51,48,42,.16);
 }
 .illustrative .t3-title-text { text-shadow: 1px 1px 0 rgba(51,48,42,.14); }
-.illustrative .t3-item + .t3-item { border-left: 2px solid rgba(51,48,42,.2); }
-.illustrative .t3-item::before { opacity: .2; }
-.illustrative .t3-r1::before { opacity: .34; }
 .illustrative .t3-house { text-shadow: 1px 1px 0 rgba(51,48,42,.12); }
 
 /* ---- สกอร์บอร์ดคู่สด (เต็มจอ) ----------------------------------------- */

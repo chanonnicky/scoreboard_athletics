@@ -96,21 +96,23 @@
   box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.18);
 }
 
-/* ---- แถบล่าง TOP 3 — แผ่นดินน้ำมันพาสเทล (ของเดิมตัวขาวบนวิดีโอ) --------- */
-.clay .t3 {
+/* ---- แท่นรางวัล TOP 3 — แผ่นดินน้ำมันพาสเทล ----------------------------- */
+.clay .t3-head {
   background: #f4f4fb;
   border: 1px solid rgba(255, 255, 255, 0.75);
-  border-radius: 28px;
+  border-radius: 22px;
   box-shadow:
-      0 22px 46px rgba(43, 39, 64, 0.20),
+      0 16px 32px rgba(43, 39, 64, 0.20),
       inset 0 4px 9px rgba(255, 255, 255, 0.95),
       inset 0 -9px 20px rgba(166, 158, 199, 0.34);
 }
-.clay .t3-head {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.70), rgba(255, 255, 255, 0));
-  border-right-color: rgba(255, 255, 255, 0.70);
+.clay .t3-step {
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow:
+      0 14px 28px rgba(43, 39, 64, 0.20),
+      inset 0 4px 9px rgba(255, 255, 255, 0.65),
+      inset 0 -9px 20px rgba(166, 158, 199, 0.34);
 }
-.clay .t3-item + .t3-item { border-left-color: rgba(43, 39, 64, 0.08); }
 
 /* ---- สกอร์บอร์ดคู่สด (เต็มจอ) ----------------------------------------- */
 .clay .live-team {

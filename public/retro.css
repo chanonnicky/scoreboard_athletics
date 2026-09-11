@@ -104,24 +104,23 @@
 }
 .retro .rchip b { background: rgba(10, 6, 20, 0.55); color: #fff; }
 
-/* ---- แถบล่าง TOP 3 ---------------------------------------------------- */
-.retro .t3 {
+/* ---- แท่นรางวัล TOP 3 — ขอบเรืองนีออน --------------------------------- */
+.retro .t3-head {
   background-color: rgba(14, 10, 26, 0.90);
   background-image: linear-gradient(160deg, rgba(34,211,238,0.12), rgba(14,10,26,0) 45%, rgba(244,114,182,0.12));
-  border: 1px solid rgba(244, 114, 182, 0.55);
-  border-radius: 16px;
-  box-shadow: 0 0 22px rgba(244, 114, 182, 0.35), 0 18px 48px rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(34, 211, 238, 0.45);
+  border-radius: 14px;
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.3), 0 14px 36px rgba(0, 0, 0, 0.55);
 }
-.retro .t3-head {
-  background: linear-gradient(180deg, rgba(34,211,238,0.14), rgba(34,211,238,0));
-  border-right: 1px solid rgba(34, 211, 238, 0.45);
+.retro .t3-step {
+  border: 1px solid rgba(244, 114, 182, 0.55);
+  box-shadow: 0 0 18px rgba(244, 114, 182, 0.35), 0 14px 36px rgba(0, 0, 0, 0.55);
 }
 .retro .t3-title-text { letter-spacing: 1px; text-shadow: 0 0 10px rgba(34, 211, 238, 0.5); }
 .retro .t3-house {
   letter-spacing: 1px;
   text-shadow: 0 0 14px var(--house, rgba(244,114,182,0.6)), 0 2px 6px rgba(0, 0, 0, 0.6);
 }
-.retro .t3-item + .t3-item { border-left: 1px solid rgba(34, 211, 238, 0.3); }
 /* เหรียญ — คงหน้าตาเดิมให้อ่านออก เพิ่มแค่ขอบสว่าง + เรืองบาง ๆ */
 .retro .t3-medal {
   border-color: rgba(255, 255, 255, 0.7);

@@ -140,22 +140,21 @@
 .bauhaus .rchip-logo,
 .bauhaus .dot { border-radius: 0; }
 
-/* ---- แถบล่าง TOP 3 ------------------------------------------------------- */
-.bauhaus .t3 {
-  background: #f4f1e8;
-  color: #111;
+/* ---- แท่นรางวัล TOP 3 ----------------------------------------------------- */
+.bauhaus .t3-head {
+  background: var(--bh-blue);
+  color: #f4f1e8;
   border: 3px solid #111;
   border-radius: 0;
   box-shadow: 6px 6px 0 #111;
   text-shadow: none;
 }
-.bauhaus .t3-head {
-  background: var(--bh-blue);
-  color: #f4f1e8;
-  border-right: 3px solid #111;
+.bauhaus .t3-step {
+  border: 3px solid #111;
+  border-radius: 0;
+  box-shadow: 6px 0 0 #111;
 }
-.bauhaus .t3-item + .t3-item { border-left: 3px solid #111; }
-.bauhaus .t3-item::before { opacity: .2; }
+.bauhaus .t3-house { text-shadow: none; }
 .bauhaus .t3-medal {
   border: 3px solid #111;
   box-shadow: none;

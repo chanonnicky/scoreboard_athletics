@@ -94,21 +94,21 @@
 .broken .rchip { border-radius: 3px 999px 999px 3px; }
 .broken .pill  { border-radius: 3px 999px 999px 3px; }
 
-/* ---- แถบล่าง TOP 3 — ขอบล่างหนาเฉพาะช่องอันดับ 1, เงาเทข้างเดียว --------- */
-.broken .t3 {
+/* ---- แท่นรางวัล TOP 3 — ขอบซ้ายหนาเน้นสี, เงาเทข้างเดียว, มุมไม่สมมาตร --- */
+.broken .t3-head {
   border: 1px solid var(--brk-hair);
   border-left: 6px solid var(--brk-edge);
   border-radius: 2px 16px 2px 16px;
-  box-shadow: -14px 16px 44px rgba(0, 0, 0, 0.42);
-}
-.broken .t3-head {
-  border-right: 1px solid var(--brk-hair);
   background: linear-gradient(100deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0));
+  box-shadow: -10px 12px 32px rgba(0, 0, 0, 0.38);
 }
-.broken .t3-item + .t3-item { border-left: 1px solid var(--brk-hair); }
-/* อันดับ 1 กว้างกว่าอยู่แล้ว (flex 1.6) — เพิ่มเส้นใต้หนาให้เด่นข้างเดียว */
-.broken .t3-r1 { border-bottom-width: 9px; }
-.broken .t3-r2, .broken .t3-r3 { border-bottom-width: 3px; }
+.broken .t3-step {
+  border: 1px solid var(--brk-hair);
+  border-left: 6px solid var(--brk-edge);
+  border-radius: 2px 12px 0 0;
+  box-shadow: -10px 12px 28px rgba(0, 0, 0, 0.38);
+}
+.broken .t3-r1 .t3-step { border-left-width: 9px; }
 
 /* ---- สกอร์บอร์ดคู่สด (เต็มจอ) — ทีมที่นำเด่นข้างเดียว, อีกฝั่งถอย --------- */
 .broken .live-team {

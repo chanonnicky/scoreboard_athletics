@@ -146,28 +146,39 @@ window.T = (function () {
            '" alt="" onerror="this.style.display=\'none\'">';
   }
 
-  /* ---- TOP 3 (lower third) — แถบยาวแถวเดียว, อันดับ 1 เด่นสุด ------- */
+  /* ---- TOP 3 (lower third) — แท่นรางวัล: อันดับ 1 อยู่กลาง-สูงสุด, 2-3 เตี้ยลงมาด้านข้าง
+     ลำดับ DOM ตั้งใจเรียง 2,1,3 (ไม่ใช่ 1,2,3) เพื่อให้อันดับ 1 อยู่กึ่งกลางแถวโดยไม่ต้องใช้
+     CSS order — ข้อมูลรายการ/ระดับ อยู่เป็นแถบใต้แท่น (ไม่ใช่หัวด้านบนแบบเดิม)             */
   function top3(state, ev, results) {
-    var items = [1, 2, 3].map(function (rank) {
-      var r = (results || []).find(function (x) { return Number(x.rank) === rank; });
+    var rows = {};
+    (results || []).forEach(function (r) {
+      var rk = Number(r.rank);
+      if (rk >= 1 && rk <= 3 && !rows[rk]) rows[rk] = r;
+    });
+    var cols = [2, 1, 3].map(function (rank) {
+      var r = rows[rank];
       if (!r) return "";
       return (
-        '<div class="t3-item t3-r' + rank + " " + compCls(state, r.house) + '"' + compStyle(state, r.house) + ">" +
-          '<div class="t3-medal t3-medal-' + rank + '">' + rank + "</div>" +
-          houseLogoImg(state, r.house, "t3-logo") +
-          '<div class="t3-house">' + esc(houseName(state, r.house)) + "</div>" +
+        '<div class="t3-col t3-r' + rank + " " + compCls(state, r.house) + '"' + compStyle(state, r.house) + ">" +
+          '<div class="t3-figure">' +
+            '<div class="t3-medal t3-medal-' + rank + '">' + rank + "</div>" +
+            houseLogoImg(state, r.house, "t3-logo") +
+            '<div class="t3-house">' + esc(houseName(state, r.house)) + "</div>" +
+          "</div>" +
+          '<div class="t3-step"></div>' +
         "</div>"
       );
     }).join("");
-    if (!items) return null;
+    if (!cols) return null;
 
     var title = esc(ev.title || "");
     var lv = eventLevel(ev);
     if (lv) title += " &nbsp;·&nbsp; " + esc(lv);
     return '<div class="t3">' +
+             '<div class="t3-stage">' + cols + "</div>" +
              '<div class="t3-head">' + logoImg(state) +
                '<span class="t3-title-text">' + title + "</span></div>" +
-             '<div class="t3-list">' + items + "</div></div>";
+           "</div>";
   }
 
   /* ---- ผลการแข่งขัน (full) — ทุกรายการ + สีคณะที่ได้อันดับ 1/2/3 ----

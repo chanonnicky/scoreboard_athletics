@@ -27,7 +27,16 @@
   applyTheme(null);
 
   var stage = document.getElementById("stage");
-  stage.style.transform = "scale(" + scale + ")";
+  // ย่อ/ขยาย + จัดกึ่งกลางเวที 1920x1080 ให้พอดี viewport จริงเสมอ — OBS Browser Source
+  // ปกติได้ viewport ตรงตามที่ตั้งอยู่แล้ว (s ~= scale พารามิเตอร์ ไม่ต่างจากเดิม) แต่ vMix Web
+  // Browser บางเครื่อง (DPI scaling ของ Windows ฯลฯ) ได้ viewport จริงไม่เท่าที่ตั้งไว้ ทำให้จอ
+  // เพี้ยนไปด้านใดด้านหนึ่งถ้าไม่คำนวณสัดส่วนใหม่ทุกครั้ง
+  function fit() {
+    var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080) * scale;
+    stage.style.transform = "translate(-50%, -50%) scale(" + s + ")";
+  }
+  window.addEventListener("resize", fit);
+  fit();
 
   var SLOTS = ["full", "lower", "bug"];
   var last = {}; // slot -> { template, eventId, visible, sig }
@@ -182,20 +191,25 @@
       "~" + (s.mode || "house") + "~" + JSON.stringify(s.schools || []);
   }
   // แก้ค่าในที่ให้ทั้ง .sportbar (แถบล่าง) และ .scorebug (มุมจอ) — โครงสร้างต่างกันแค่ prefix
+  // สกอร์/สถานะจบที่เปลี่ยน ต้องมี animation (เด้งสกอร์ + วูบตอนจบ) เหมือน sportLive ไม่ใช่แค่
+  // สลับข้อความเงียบ ๆ — เทียบค่าเก่า/ใหม่ก่อนเขียนทับเสมอ
   function patchLiveBar(bar, html, rootSel, homeSel, awaySel) {
     var tmp = document.createElement("div");
     tmp.innerHTML = html;
     var next = tmp.querySelector(rootSel);
     if (!bar || !next) return false;
-    function txt(sel) {
-      var a = bar.querySelector(sel), b = next.querySelector(sel);
-      if (a && b && a.textContent !== b.textContent) a.textContent = b.textContent;
-    }
     function cls(sel) {
       var a = bar.querySelector(sel), b = next.querySelector(sel);
       if (a && b && a.className !== b.className) a.className = b.className;
     }
-    txt(".ls-h"); txt(".ls-a");
+    ["h", "a"].forEach(function (side) {
+      var sel = ".ls-" + side;
+      var a = bar.querySelector(sel), b = next.querySelector(sel);
+      if (a && b && a.textContent !== b.textContent) {
+        a.textContent = b.textContent;
+        bumpEl(bar, sel);
+      }
+    });
     cls(homeSel); cls(awaySel);
     var oc = bar.querySelector(".live-clock"), nc = next.querySelector(".live-clock");
     if (oc && nc) {
@@ -207,7 +221,14 @@
       if (oc.textContent !== nc.textContent) oc.textContent = nc.textContent;
     }
     var d = next.getAttribute("data-done") || "0";
-    if (bar.getAttribute("data-done") !== d) bar.setAttribute("data-done", d);
+    if (bar.getAttribute("data-done") !== d) {
+      bar.setAttribute("data-done", d);
+      if (d === "1") {
+        bar.classList.remove("just-final");
+        void bar.offsetWidth;
+        bar.classList.add("just-final");
+      }
+    }
     return true;
   }
   function patchSportbar(bar, html) {

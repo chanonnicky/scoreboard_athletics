@@ -137,19 +137,16 @@
 .editorial .rchip b { border-radius: 3px; background: rgba(255, 255, 255, 0.6); }
 .editorial .rchip-logo { border-radius: 3px; }
 
-/* ---- แถบล่าง TOP 3 — แผ่นกระดาษ หมึกเข้ม ไม่มีเงาวิดีโอ ------------------ */
-.editorial .t3 {
-  background: #fffdf8;
-  color: #1c1a17;
-  border: 1px solid #1c1a17;
-  border-radius: 3px;
+/* ---- แท่นรางวัล TOP 3 — แผ่นกระดาษ หมึกเข้ม ไม่มีเงาวิดีโอ --------------- */
+.editorial .t3-head {
+  background: #fffdf8; color: #1c1a17;
+  border: 1px solid #1c1a17; border-radius: 3px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
-.editorial .t3-head {
-  background: #fffdf8;
-  border-right-color: #d8d1c2;
+.editorial .t3-step {
+  border: 1px solid #1c1a17; border-radius: 3px 3px 0 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
-.editorial .t3-item + .t3-item { border-left-color: #d8d1c2; }
 
 /* ---- สกอร์บอร์ดคู่สด (เต็มจอ) ----------------------------------------- */
 .editorial .live-team {

@@ -137,20 +137,19 @@
 }
 .techno .rchip b { background: rgba(255, 255, 255, 0.45); border-radius: 2px; }
 
-/* ---- แถบล่าง TOP 3 — แผงเทคโนทึบ ------------------------------------- */
-.techno .t3 {
-  background: #111316;
-  border: 1px solid rgba(180, 190, 200, 0.14);
-  border-radius: 6px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
-}
+/* ---- แท่นรางวัล TOP 3 — แผงเทคโนทึบ ------------------------------------ */
 .techno .t3-head {
   background: #0d0f11;
-  border-right-color: rgba(180, 190, 200, 0.14);
+  border: 1px solid rgba(180, 190, 200, 0.14);
+  border-radius: 6px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+.techno .t3-step {
+  border: 1px solid rgba(180, 190, 200, 0.14);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
 }
 .techno .t3-title-text { letter-spacing: 1px; }
 .techno .t3-house { letter-spacing: 0.5px; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
-.techno .t3-item + .t3-item { border-left-color: rgba(180, 190, 200, 0.14); }
 /* เหรียญ — คงเนื้อโลหะเดิม แค่รัดเส้นขอบให้บางสว่างพอดีอ่านบนแผงเข้ม */
 .techno .t3-medal {
   border-color: rgba(255, 255, 255, 0.3);

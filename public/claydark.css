@@ -102,21 +102,23 @@
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
 }
 
-/* ---- แถบล่าง TOP 3 — แผ่นดินน้ำมันมืด หัว+เส้นแบ่งจาง ------------------- */
-.claydark .t3 {
+/* ---- แท่นรางวัล TOP 3 — แผ่นดินน้ำมันมืด ------------------------------- */
+.claydark .t3-head {
   background: #242a34;
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 28px;
+  border-radius: 22px;
   box-shadow:
-      0 22px 46px rgba(0, 0, 0, 0.55),
+      0 16px 32px rgba(0, 0, 0, 0.55),
       inset 0 4px 9px rgba(255, 255, 255, 0.06),
       inset 0 -11px 22px rgba(0, 0, 0, 0.45);
 }
-.claydark .t3-head {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0));
-  border-right-color: rgba(255, 255, 255, 0.08);
+.claydark .t3-step {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+      0 14px 28px rgba(0, 0, 0, 0.55),
+      inset 0 4px 9px rgba(255, 255, 255, 0.06),
+      inset 0 -11px 22px rgba(0, 0, 0, 0.45);
 }
-.claydark .t3-item + .t3-item { border-left-color: rgba(255, 255, 255, 0.06); }
 
 /* เหรียญ — คงไล่สีโลหะเดิม เพิ่มวงแหวนมืด + เงาทิ้งให้วางบนแผ่นดินน้ำมัน */
 .claydark .t3-medal-1,

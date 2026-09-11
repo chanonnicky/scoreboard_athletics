@@ -118,17 +118,13 @@
 .swiss .rchip b { border-radius: 0; background: rgba(255, 255, 255, .55); }
 .swiss .rchip-logo { border-radius: 0; }
 
-/* ---- แถบล่าง TOP 3 — แผ่นกระดาษ หมึกดำ ไม่มีเงา -------------------- */
-.swiss .t3 {
-  background: #fff;
-  color: #111;
-  border: 1px solid #111;
-  border-radius: 0;
-  box-shadow: none;
-  text-shadow: none;
+/* ---- แท่นรางวัล TOP 3 — แผ่นกระดาษ หมึกดำ ไม่มีเงา ------------------ */
+.swiss .t3-head {
+  background: #fff; color: #111;
+  border: 1px solid #111; border-radius: 0; box-shadow: none; text-shadow: none;
 }
-.swiss .t3-head { background: #fff; border-right-color: #111; }
-.swiss .t3-item + .t3-item { border-left-color: #111; }
+.swiss .t3-step { border: 1px solid #111; border-radius: 0; box-shadow: none; }
+.swiss .t3-house { text-shadow: none; }
 /* เหรียญ: แบนราบ 1=แดง 2=ดำ 3=เทา ตัวเลขขาว วงกลมได้ (รูปทรงเดียวที่อนุญาต) */
 .swiss .t3-medal { color: #fff; border: 0; box-shadow: none; }
 .swiss .t3-medal-1 { background: var(--sw-red); }
