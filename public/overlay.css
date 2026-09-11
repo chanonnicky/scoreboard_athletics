@@ -676,7 +676,7 @@ body.is-offline #offline { opacity: 1; }
 
 /* ชื่อกีฬา — ล่างสุดของแถบ */
 .sportbar-foot {
-  font-size: 21px; font-weight: 700; letter-spacing: 1.5px; opacity: .95;
+  font-size: 30px; font-weight: 700; letter-spacing: 1.5px; opacity: .95;
 }
 
 /* ==== score bug — กราฟิกเล็กมุมบนซ้าย โชว์คะแนน + นาฬิกานับถอยหลังตลอดเวลา ====
