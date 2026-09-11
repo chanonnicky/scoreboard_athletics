@@ -30,6 +30,22 @@
   var selOverride = null;   // ค่ารายการที่เลือกแบบชั่วคราว (optimistic) จนกว่าเซิร์ฟเวอร์จะสะท้อนกลับ
   var lastSelfSet = null;   // รายการที่ "เครื่องนี้" เป็นคนเปลี่ยนล่าสุด (กัน toast เด้งใส่ตัวเอง)
   var selTimer = null;      // debounce ส่ง setSettings.selEventId
+
+  // /score (จดกรีฑา): รายการที่กำลังดู/กรอกผล เป็นค่า "ส่วนตัวต่อเบราว์เซอร์" — ไม่แชร์กับคนอื่น
+  // (ต่างจาก /control ที่ selEventId แชร์ทั้งงาน) กันไม่ให้จอของคนจดคะแนนคนอื่นกระโดดตามกัน
+  var SCORE_SEL_KEY = "cglive_scoreSelEventId";
+  var scoreLocalSel = undefined; // undefined = ยังไม่ได้โหลดจาก localStorage
+  function scoreSelectedEventId(evs) {
+    if (scoreLocalSel === undefined) {
+      try { scoreLocalSel = localStorage.getItem(SCORE_SEL_KEY) || ""; } catch (e) { scoreLocalSel = ""; }
+    }
+    for (var i = 0; i < evs.length; i++) if (evs[i].id === scoreLocalSel) return scoreLocalSel;
+    return evs[0] ? evs[0].id : "";
+  }
+  function setScoreSelectedEventId(id) {
+    scoreLocalSel = id;
+    try { localStorage.setItem(SCORE_SEL_KEY, id); } catch (e) {}
+  }
   var editing = null; // draft ของ event ที่กำลังแก้
   var resDraft = { eid: null, rows: [] }; // ผลอันดับที่กำลังแก้ (array ของ house key เรียงตามอันดับ)
   var sportSel = null;      // key กีฬาที่กำลังแก้ในแท็บกีฬา
@@ -199,16 +215,19 @@
     renderScoreBrand();
     renderHeader();
 
-    // รายการที่เลือก = แชร์ทั้งงาน — เคลียร์ override เมื่อเซิร์ฟเวอร์สะท้อนค่าเรากลับมา
-    // และเด้ง toast เมื่อ "เครื่องอื่น" เปลี่ยนรายการ
-    var srvSel = (state.settings && state.settings.selEventId) || "";
-    var mine = (srvSel === selOverride) || (srvSel === lastSelfSet);
-    if (selOverride && srvSel === selOverride) selOverride = null;
-    if (firstLoaded && srvSel && !mine && srvSel !== onState._lastSel) {
-      var ev = (state.events || []).find(function (e) { return e.id === srvSel; });
-      if (ev) toast("รายการถูกเปลี่ยนเป็น: " + ev.title);
+    // รายการที่เลือก = แชร์ทั้งงาน เฉพาะหน้า /control — เคลียร์ override เมื่อเซิร์ฟเวอร์สะท้อนค่า
+    // เรากลับมา และเด้ง toast เมื่อ "เครื่องอื่น" เปลี่ยนรายการ (หน้า /score ไม่แชร์ค่านี้แล้ว จึง
+    // ไม่ต้องเด้ง toast หรือเคลียร์ override — แต่ละคนจดของตัวเองอย่างอิสระ)
+    if (MODE === "control") {
+      var srvSel = (state.settings && state.settings.selEventId) || "";
+      var mine = (srvSel === selOverride) || (srvSel === lastSelfSet);
+      if (selOverride && srvSel === selOverride) selOverride = null;
+      if (firstLoaded && srvSel && !mine && srvSel !== onState._lastSel) {
+        var ev = (state.events || []).find(function (e) { return e.id === srvSel; });
+        if (ev) toast("รายการถูกเปลี่ยนเป็น: " + ev.title);
+      }
+      onState._lastSel = srvSel;
     }
-    onState._lastSel = srvSel;
 
     renderSidebar();
 
@@ -358,9 +377,13 @@
     return '<select id="' + id + '"' + (extra || "") + ">" +
       (opts || '<option value="">— ยังไม่มีรายการ —</option>') + "</select>";
   }
-  // ---- รายการที่เลือก (แชร์ทั้งงาน = state.settings.selEventId) ---- //
+  // ---- รายการที่เลือก ----
+  // /control: แชร์ทั้งงาน (state.settings.selEventId) — ใช้ตาม "ตารางแข่ง" ที่ออกอากาศ
+  // /score (จดกรีฑา): ส่วนตัวต่อเบราว์เซอร์ (scoreLocalSel/localStorage) — แต่ละคนดูรายการ
+  // ของตัวเองได้อย่างอิสระ ไม่ถูกคนอื่นเปลี่ยนหน้าจอให้
   function selectedEventId() {
     var evs = (state && state.events) || [];
+    if (MODE === "score" && !SCORE_SPORT) return scoreSelectedEventId(evs);
     function ok(id) { for (var i = 0; i < evs.length; i++) if (evs[i].id === id) return true; return false; }
     if (selOverride && ok(selOverride)) return selOverride;
     var s = (state && state.settings && state.settings.selEventId) || "";
@@ -369,6 +392,7 @@
   function setSelectedEvent(id) {
     if (!id || id === selectedEventId()) return;
     saveResultsNow();                 // เซฟผลรายการเดิมที่ค้างอยู่ก่อนสลับ
+    if (MODE === "score" && !SCORE_SPORT) { setScoreSelectedEventId(id); render(); return; }
     selOverride = id;
     lastSelfSet = id;
     if (selTimer) clearTimeout(selTimer);

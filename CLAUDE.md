@@ -280,11 +280,20 @@ acting. The product toggle (`app-sports`/`app-general` → `switchApp()` → `se
 settings views. `home.html` has the same picker (POSTs `setApp` with the `cg_token` from
 localStorage; 401 → tells the user to set the token in `/control`).
 
-The **selected event** is meet-wide shared state at `settings.selEventId` (written via
-`setSettings`, which shallow-merges — no new command). `control.js` reads it through
+The **selected event** on `/control` is meet-wide shared state at `settings.selEventId` (written
+via `setSettings`, which shallow-merges — no new command). `control.js` reads it through
 `selectedEventId()` (optimistic `selOverride` until the server echoes) and writes via
-`setSelectedEvent()` (debounced 250ms); every operator page follows it. `followSelection()` (move
-the on-air `schedule` window when the pointer moves) is gated to `/control`.
+`setSelectedEvent()` (debounced 250ms) — this drives the results template's "กำลังแข่ง" row
+highlight (see above) and `followSelection()` (move the on-air `schedule` window when the pointer
+moves), both gated to `/control`. **`/score`** (athletics scoring, not `/score/<sport>`)
+deliberately does **not** share this — each scorer's "which event am I entering results for" is
+private per browser (`scoreLocalSel`, persisted to `localStorage` under `cglive_scoreSelEventId`),
+so multiple people can score different events concurrently without one person's navigation
+yanking another's screen to a different event or popping the "รายการถูกเปลี่ยนเป็น" toast (that
+toast + the `selOverride`/`lastSelfSet` reconciliation in `onState()` are gated to `MODE ===
+"control"` for the same reason). `selectedEventId()`/`setSelectedEvent()` branch on `MODE` to pick
+the local-vs-shared path; only the actually-submitted `state.results` stay fully shared/broadcast
+regardless of mode.
 
 ### Frontend: one template module, shared by every consumer
 
