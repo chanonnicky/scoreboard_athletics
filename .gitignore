@@ -15,3 +15,5 @@ public/pictures/*
 /Picture/
 auto.crt
 auto.key
+native/lower-third/.build/
+native/lower-third/dist/

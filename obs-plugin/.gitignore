@@ -1,0 +1,6 @@
+.build/
+.deps/
+.CMakeBuildNumber
+build_*/
+dist/
+test-output/

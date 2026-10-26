@@ -1,4 +1,9 @@
-@import url('https://cdn.jsdelivr.net/gh/lazywasabi/thai-web-fonts@7/fonts/LINESeedSansTH/LINESeedSansTH.css');
+/* ฟอนต์: LINE Seed Sans TH — ฝังในโปรเจกต์แล้ว (ไม่ต้องต่อเน็ต) ดู public/fonts/README.txt */
+@font-face { font-family:"LINE Seed Sans TH"; src:url("/fonts/LINESeedSansTH-Thin.woff2") format("woff2"); font-weight:100; font-style:normal; font-display:swap; }
+@font-face { font-family:"LINE Seed Sans TH"; src:url("/fonts/LINESeedSansTH-Regular.woff2") format("woff2"); font-weight:400; font-style:normal; font-display:swap; }
+@font-face { font-family:"LINE Seed Sans TH"; src:url("/fonts/LINESeedSansTH-Bold.woff2") format("woff2"); font-weight:700; font-style:normal; font-display:swap; }
+@font-face { font-family:"LINE Seed Sans TH"; src:url("/fonts/LINESeedSansTH-ExtraBold.woff2") format("woff2"); font-weight:800; font-style:normal; font-display:swap; }
+@font-face { font-family:"LINE Seed Sans TH"; src:url("/fonts/LINESeedSansTH-Black.woff2") format("woff2"); font-weight:900; font-style:normal; font-display:swap; }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 

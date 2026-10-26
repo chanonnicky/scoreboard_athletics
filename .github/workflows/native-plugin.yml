@@ -1,0 +1,46 @@
+name: CG Live Native
+on:
+  workflow_dispatch:
+  push:
+    paths: ['obs-plugin/**', '.github/workflows/native-plugin.yml']
+  pull_request:
+    paths: ['obs-plugin/**', '.github/workflows/native-plugin.yml']
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: windows-2022, arch: x64}
+          - {os: macos-15, arch: arm64}
+          - {os: macos-15-intel, arch: x86_64}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: obs-plugin/.deps
+          key: native-deps-${{ matrix.os }}-${{ hashFiles('obs-plugin/buildspec.json') }}
+      - name: Build, test and package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./obs-plugin/build.ps1
+      - name: Build, test and package (macOS)
+        if: runner.os == 'macOS'
+        run: bash obs-plugin/build-macos.sh '${{ matrix.arch }}'
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: cg-live-native-${{ matrix.os }}-${{ matrix.arch }}
+          path: obs-plugin/dist/*.zip
+          if-no-files-found: error
+      - name: Upload test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-tests-${{ matrix.os }}
+          path: |
+            obs-plugin/test-output/
+            obs-plugin/.build/**/Testing/Temporary/LastTest.log

@@ -82,8 +82,33 @@ in the MediaMTX log; `/healthz` on the CG server stays green throughout.
 
 ### OBS integration (`/obs` dock + `public/obs/cglive.lua`)
 
-Deliberately **not** a native `.dll` plugin (C++ toolchain + a rebuild per OBS release, for nothing
-the two pieces below don't already give). Both drive only the L3 channel.
+The web integration below drives the server's L3 channel. For standalone operation without
+`start.bat`, `native/lower-third/` now provides a separate Windows x64 OBS 33 native source plugin.
+`plugin.c` registers `cg_live_lower_third`, creates a private OBS browser child with a local
+`file:///.../render.html#<percent-encoded settings>` URL, and exposes native source properties and
+show/hide hotkeys. OBS scene settings are authoritative; it never reads/writes server state.
+`render.js` uses the shared `T.l3` renderer with local fonts and a CSP disallowing HTTP/connects.
+Fragment changes trigger a reload so property updates/replay restart the local render. Settings
+must serialize with `obs_data_get_json_with_defaults`, because ordinary `obs_data_apply`/JSON
+serialization drops defaults. Add/remove the private browser as an active child and enumerate it.
+The installer targets ProgramData, which OBS 33 actually discovers (not an assumed AppData path).
+`build.ps1` downloads pinned, checksum-verified Zig 0.14.1 and OBS 33.0.0 headers; `build.js`
+generates field/enum tables from `T.L3_TYPES`, builds the DLL and packages corresponding source.
+`.build/` and `dist/` are ignored. `build.js --probe` loads the compiled DLL in the installed
+libobs with a mock browser (ABI/settings/lifecycle, not GPU coverage); `check-render.js` uses
+Playwright/Chrome on packaged assets with networking offline to verify all 17 graphic types.
+Version 0.2 adds `control.h`: a native Win32 floating window owned by OBS, opened from Tools ->
+CG Live - Lower Third Control (not a Qt dock). It enumerates only `cg_live_lower_third` sources,
+keeps weak source references, and generates type/field controls from the same registry.
+Edits remain drafts until Show/Save; Hide changes visibility only. Refresh releases weak refs,
+handles removed sources, and retains the selected source where possible. Other settings remain
+unchanged. Updates call `obs_frontend_save` to persist with the Scene Collection. Frontend entry
+points resolve from obs-frontend-api.dll and are optional in the headless module probe.
+`build.js --control-probe` uses `probe-frontend.c` (test-only fake frontend, NEVER package it as
+a runtime DLL) plus real libobs to exercise the window, Thai text, source isolation and lifecycle.
+Installer preflights payload/OBS state before UAC, accepts repository `dist/` as well as an
+extracted ZIP, and propagates child errors through a log instead of reporting every error as
+an instruction to close OBS.
 
 - **`/obs`** — `obs.html` + `obs.js`, a ~320–420px single-column panel for OBS → *Docks → Custom
   Browser Docks*. Same-origin, so `X-Token` works (neither server has `do_OPTIONS` /
@@ -440,10 +465,15 @@ typography / decoration only — not the main layout, animations, HTML, or `temp
 (`board.js` ~160, `overlay.js` ~310). `glass` is the only skin that uses `backdrop-filter`; none
 use `color-mix()` (old OBS/vMix CEF). **Font is locked to LINE Seed Sans TH** across all CG —
 `overlay.css` has a `body.overlay *, body.board * { font-family: … !important }` guard (specificity
-`0,0,1,1`), so skins normally must not set `font-family`. The **one exception** is `editorial.css`,
-which self-declares `@font-face` for **Charmonman** (bundled at `public/fonts/Charmonman-*.ttf`,
-SIL OFL) and applies it to headings/names only, overriding the guard with a more specific
-selector + `!important`; numbers, clocks and dense list text stay LINE Seed.
+`0,0,1,1`), so skins normally must not set `font-family`. Both exceptions are **bundled .woff2/.ttf
+files, loaded with no network dependency at all** (no CDN, no `@import` — this was a CDN `@import`
+from jsDelivr until it was replaced with local `@font-face` rules pointing at `public/fonts/*`, so
+the whole CG works at a venue with zero internet access): `editorial.css` self-declares `@font-face`
+for **Charmonman** (`public/fonts/Charmonman-*.ttf`, SIL OFL) and applies it to headings/names only,
+overriding the guard with a more specific selector + `!important`; `l3.css`'s `.l3-font-charm` (the
+L3 channel's own font knob, documented further down with the rest of the L3 CSS rules) reuses the
+same Charmonman files the same way. Numbers, clocks and dense list text always stay LINE Seed
+(`public/fonts/LINESeedSansTH-*.woff2`, 5 weights, SIL OFL — see `public/fonts/README.txt`).
 Default (no setting) = the original opaque look,
 byte-identical. The theme is chosen from a `<select>` in `/control` → settings
 (`data-act="theme-set"` → `setSettings {theme}`) — present in **both** the sports and general
