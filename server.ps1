@@ -43,6 +43,7 @@ $StatePath   = Join-Path $DataDir "state.json"
 $DefaultPath = Join-Path $DataDir "state.default.json"
 $DefaultSchoolPath = Join-Path $DataDir "state.default.school.json"
 $DefaultGeneralPath = Join-Path $DataDir "state.default.general.json"
+$DefaultL3Path = Join-Path $DataDir "state.default.l3.json"
 $UploadsDir  = Join-Path $DataDir "uploads"
 
 # --------------------------------------------------------------------------- #
@@ -63,6 +64,7 @@ $G.StatePath   = $StatePath
 $G.DefaultPath = $DefaultPath
 $G.DefaultSchoolPath = $DefaultSchoolPath
 $G.DefaultGeneralPath = $DefaultGeneralPath
+$G.DefaultL3Path = $DefaultL3Path
 $G.UploadsDir  = $UploadsDir
 $G.Token       = $Token
 $G.ProfileKeys = @("settings", "events", "results", "onair", "sports", "tally")
@@ -73,6 +75,15 @@ $G.Apps = @("sports", "general")
 $G.AllProfileKeys = @("settings", "events", "results", "onair", "sports", "tally", "parked", "lowers")
 $G.SportsProfileKeys  = @("settings", "events", "results", "onair", "sports", "tally", "parked")
 $G.GeneralProfileKeys = @("settings", "onair", "lowers")
+# Second CG channel (State.l3) -- custom Lower Third / Bar generator.
+# Deliberately NOT in ProfileKeys nor AllProfileKeys, so setApp / setMode /
+# resetState never touch it (it survives switches just like parkedApp). That is
+# what lets the sports CG and the L3 CG go to air at the same time, from two
+# different control pages, driven by two different operators.
+$G.L3Slots = @("full", "top", "lower", "ticker", "bug")
+# L3 main graphics -- only one of these shows at a time (top/ticker/bug are
+# independent slots and stay up alongside a main graphic).
+$G.L3MainSlots = @("full", "lower")
 $G.CTypes      = @{
   ".html"  = "text/html; charset=utf-8"
   ".css"   = "text/css; charset=utf-8"
@@ -82,6 +93,8 @@ $G.CTypes      = @{
   ".png"   = "image/png"; ".jpg" = "image/jpeg"; ".jpeg" = "image/jpeg"
   ".svg"   = "image/svg+xml"; ".webp" = "image/webp"; ".gif" = "image/gif"
   ".ico"   = "image/x-icon"; ".txt" = "text/plain; charset=utf-8"
+  # OBS script (Tools -> Scripts) -- served as text so the browser can show/save it
+  ".lua"   = "text/plain; charset=utf-8"
 }
 
 # --------------------------------------------------------------------------- #
@@ -133,6 +146,57 @@ $Lib = {
   function Get-AppDefaultPath([string]$app) {
     if ($app -eq "general") { return $script:G.DefaultGeneralPath }
     return $script:G.DefaultPath
+  }
+
+  # ---- second CG channel (State.l3) -------------------------------------- #
+  # Seed profile for the L3 channel, read from data/state.default.l3.json.
+  # All Thai strings live in that data file -- this script stays ASCII-only.
+  function New-L3Seed {
+    $seed = Read-JsonFile $script:G.DefaultL3Path
+    if (-not $seed["settings"]) { $seed["settings"] = New-Dict }
+    if (-not $seed["items"])    { $seed["items"] = @() }
+    if (-not $seed["onair"])    { $seed["onair"] = New-Dict }
+    foreach ($slot in $script:G.L3Slots) {
+      if (-not $seed["onair"][$slot]) {
+        $d = New-Dict; $d["visible"] = $false
+        $seed["onair"][$slot] = $d
+      }
+    }
+    return $seed
+  }
+
+  # The L3 state blob, created on demand. Call under the $G.Lock.
+  function Get-L3 {
+    $l3 = $script:G.State["l3"]
+    if (-not $l3) {
+      $l3 = New-L3Seed
+      $script:G.State["l3"] = $l3
+    }
+    if (-not $l3["settings"]) { $l3["settings"] = New-Dict }
+    if (-not $l3["items"])    { $l3["items"] = @() }
+    if (-not $l3["onair"])    { $l3["onair"] = New-Dict }
+    return $l3
+  }
+
+  # Put a graphic into an L3 slot + enforce the full<->lower rule.
+  # Shared by l3Show and l3Air.
+  function Set-L3Slot($l3, $slot, $type, $itemId, $fields, $style, $until) {
+    $d = New-Dict
+    $d["type"] = $type
+    $d["itemId"] = $itemId
+    $d["fields"] = if ($fields) { $fields } else { New-Dict }
+    $d["style"]  = if ($style)  { $style }  else { New-Dict }
+    $d["until"]  = if ($until)  { $until }  else { 0 }
+    $d["visible"] = $true
+    $l3["onair"][$slot] = $d
+    # main graphics (full/lower) show one at a time -- top/ticker/bug untouched
+    if ($script:G.L3MainSlots -contains $slot) {
+      foreach ($k in @($l3["onair"].Keys)) {
+        if (($script:G.L3MainSlots -contains $k) -and $k -ne $slot -and $l3["onair"][$k]) {
+          $l3["onair"][$k]["visible"] = $false
+        }
+      }
+    }
   }
 
   # unique id: timestamp(ms) + counter, so a burst of calls in the same ms
@@ -213,6 +277,14 @@ $Lib = {
         $conf = $script:G.State["onair"][$k]
         if ($conf -and [string]$conf["sport"] -eq "football") { $conf["sport"] = "futsal"; $changed++ }
       }
+    }
+    # Second CG channel (Lower Third / Bar) -- purely additive. Nothing of the
+    # existing products is moved or removed; importing the old "general" presets
+    # is a button the user presses on /cg, never automatic.
+    if (-not $script:G.State["l3"]) {
+      $script:G.State["l3"] = New-L3Seed
+      Write-Host "  [migrate] added second CG channel (l3)"
+      $changed++
     }
     if ($changed -gt 0) { Save-State }
   }
@@ -427,6 +499,78 @@ $Lib = {
             if ($oa) { foreach ($sk in @($oa.Keys)) { if ($oa[$sk]) { $oa[$sk]["visible"] = $false } } }
           }
         }
+        # ---- second CG channel (l3) -- custom Lower Third / Bar ------------
+        # Fully independent of the sports/general products: its own onair, its
+        # own settings, its own control page.
+        "l3Show" {
+          $slot = [string]$cmd["slot"]
+          if ($script:G.L3Slots -notcontains $slot) { throw "bad l3 slot: $slot" }
+          Set-L3Slot (Get-L3) $slot $cmd["type"] $cmd["itemId"] $cmd["fields"] $cmd["style"] $cmd["until"]
+        }
+        "l3Air" {
+          # Air a library item by id or by 1-based position. For callers that
+          # cannot parse JSON (the OBS hotkey script): the server assembles the
+          # on-air conf from the item itself, so the caller needs to know nothing
+          # about the item's shape.
+          $l3 = Get-L3
+          $items = @()
+          foreach ($x in @($l3["items"])) { if ($x) { $items += $x } }
+          $found = $null
+          if ($cmd["itemId"]) {
+            $wantId = [string]$cmd["itemId"]
+            foreach ($x in $items) { if ([string]$x["id"] -eq $wantId) { $found = $x; break } }
+          } elseif ($null -ne $cmd["index"]) {
+            $i = [int]$cmd["index"]
+            if ($i -ge 1 -and $i -le $items.Count) { $found = $items[$i - 1] }
+          }
+          if (-not $found) { throw "l3 item not found" }
+          $slot = [string]$found["slot"]
+          if ($script:G.L3Slots -notcontains $slot) { throw "l3 item has no valid slot" }
+          $until = 0
+          $sec = 0.0
+          try { $sec = [double]$found["auto"] } catch { $sec = 0.0 }
+          if ($sec -gt 0) {
+            $until = [long]([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() + [long]($sec * 1000))
+          }
+          Set-L3Slot $l3 $slot $found["type"] $found["id"] $found["fields"] $found["style"] $until
+        }
+        "l3Hide" {
+          $slot = [string]$cmd["slot"]
+          if ($script:G.L3Slots -notcontains $slot) { throw "bad l3 slot: $slot" }
+          $l3 = Get-L3
+          if ($l3["onair"][$slot]) { $l3["onair"][$slot]["visible"] = $false }
+        }
+        "l3HideAll" {
+          # keep = slots that stay up (e.g. @("ticker","bug")); absent = hide all
+          $keep = @()
+          if ($cmd["keep"]) { $keep = @($cmd["keep"] | ForEach-Object { [string]$_ }) }
+          $l3 = Get-L3
+          foreach ($k in @($l3["onair"].Keys)) {
+            if (($keep -notcontains $k) -and $l3["onair"][$k]) { $l3["onair"][$k]["visible"] = $false }
+          }
+        }
+        "l3SetItems" {
+          # L3 item library (whole-list replace, like setLowers)
+          $l3 = Get-L3
+          $cand = Get-L3UploadNames $script:G.State
+          $items = $cmd["items"]
+          $l3["items"] = if ($items) { $items } else { @() }
+          Invoke-GcUploads $cand
+        }
+        "l3SetSettings" {
+          $new = $cmd["settings"]
+          $l3 = Get-L3
+          $cand = New-Object 'System.Collections.Generic.HashSet[string]'
+          if ($new -and $new.ContainsKey("logo")) { $cand = Get-L3UploadNames $script:G.State }
+          if ($new) { foreach ($k in @($new.Keys)) { $l3["settings"][$k] = $new[$k] } }
+          Invoke-GcUploads $cand
+        }
+        "l3Reset" {
+          # resets the L3 channel only -- sports / general / parked / parkedApp untouched
+          $cand = Get-L3UploadNames $script:G.State
+          $script:G.State["l3"] = New-L3Seed
+          Invoke-GcUploads $cand
+        }
         "replaceState" { $script:G.State = $cmd["state"] }
         default { throw "unknown action: $action" }
       }
@@ -535,11 +679,42 @@ $Lib = {
       }
     }
   }
+  # /uploads/ names referenced by one L3 item's fields (image / logo / logos[])
+  function Add-FieldsUploadNames($set, $fields) {
+    if ($fields -isnot [System.Collections.IDictionary]) { return }
+    $vals = New-Object System.Collections.ArrayList
+    [void]$vals.Add($fields["image"])
+    [void]$vals.Add($fields["logo"])
+    if ($fields["logos"]) { foreach ($v in @($fields["logos"])) { [void]$vals.Add($v) } }
+    foreach ($v in $vals) { $n = Get-UploadName $v; if ($n) { [void]$set.Add($n) } }
+  }
+  # /uploads/ names the L3 channel references: settings.logo + items[].fields + onair[*].fields
+  function Get-L3UploadNames($state) {
+    $set = New-Object 'System.Collections.Generic.HashSet[string]'
+    $l3 = $state["l3"]
+    if ($l3 -isnot [System.Collections.IDictionary]) { return ,$set }
+    if ($l3["settings"] -is [System.Collections.IDictionary]) {
+      $n = Get-UploadName $l3["settings"]["logo"]
+      if ($n) { [void]$set.Add($n) }
+    }
+    if ($l3["items"]) {
+      foreach ($it in @($l3["items"])) {
+        if ($it -is [System.Collections.IDictionary]) { Add-FieldsUploadNames $set $it["fields"] }
+      }
+    }
+    if ($l3["onair"] -is [System.Collections.IDictionary]) {
+      foreach ($conf in $l3["onair"].Values) {
+        if ($conf -is [System.Collections.IDictionary]) { Add-FieldsUploadNames $set $conf["fields"] }
+      }
+    }
+    return ,$set
+  }
   function Get-ReferencedUploadNames {
     # active + parked modes (house/school) + parked products (parkedApp), incl. each
-    # parked product's own nested parked modes
+    # parked product's own nested parked modes, + the second CG channel (l3)
     $set = Get-SettingsUploadNames $script:G.State["settings"]
     Add-ParkedUploadNames $set $script:G.State["parked"]
+    foreach ($n in (Get-L3UploadNames $script:G.State)) { [void]$set.Add($n) }
     $parkedApp = $script:G.State["parkedApp"]
     if ($parkedApp -is [System.Collections.IDictionary]) {
       foreach ($appProf in $parkedApp.Values) {
@@ -694,7 +869,16 @@ $Lib = {
     # control + score (incl. per-sport score /score/<sport>)
     if ($path -eq "/control" -or $path -eq "/score" -or $path.StartsWith("/score/")) { Serve-File $ctx (Join-Path $script:G.Public "control.html"); return }
     # Live overlay (/live is the new name for /overlay)
-    if ($path -eq "/overlay" -or $path -eq "/live") { Serve-File $ctx (Join-Path $script:G.Public "overlay.html"); return }
+    # /live/cg = the second CG channel (Lower Third / Bar), a separate OBS
+    # Browser Source from /live (equivalent to /live?ch=cg -- overlay.js reads
+    # the channel from either the path or the query)
+    if ($path -eq "/overlay" -or $path -eq "/live" -or $path -eq "/live/cg" -or $path -eq "/overlay/cg") {
+      Serve-File $ctx (Join-Path $script:G.Public "overlay.html"); return
+    }
+    # control page of the second CG channel -- fully separate from /control
+    if ($path -eq "/cg") { Serve-File $ctx (Join-Path $script:G.Public "cg.html"); return }
+    # OBS Custom Browser Dock (Docks -> Custom Browser Docks)
+    if ($path -eq "/obs") { Serve-File $ctx (Join-Path $script:G.Public "obs.html"); return }
     # Scoreboard (/scoreboard rotate, /scoreboard/<sport> live)
     if ($path -eq "/board" -or $path -eq "/scoreboard" -or $path.StartsWith("/scoreboard/")) { Serve-File $ctx (Join-Path $script:G.Public "board.html"); return }
 
@@ -867,6 +1051,9 @@ Write-Host "  Score/bask: http://${ip}:$Port/score/basketball     (score: basket
 Write-Host "  Live      : http://${ip}:$Port/live                 <<  put this in OBS / vMix"
 Write-Host "  Scoreboard: http://${ip}:$Port/scoreboard           (rotating display)"
 Write-Host "  SB/live   : http://${ip}:$Port/scoreboard/futsal    (live match score)"
+Write-Host "  CG ctrl   : http://${ip}:$Port/cg                   (Lower Third / Bar control)"
+Write-Host "  CG out    : http://${ip}:$Port/live/cg              <<  2nd Browser Source"
+Write-Host "  OBS dock  : http://${ip}:$Port/obs                  (Custom Browser Dock)"
 Write-Host "  Local     : http://127.0.0.1:$Port/control"
 if ($Token) { Write-Host "  Token   :  $Token" }
 Write-Host $bar

@@ -6,6 +6,8 @@
   <link rel="icon" type="image/png" href="/pictures/favicon.png">
   <title>CG Overlay</title>
   <link rel="stylesheet" href="/overlay.css">
+  <!-- ช่อง CG ที่สอง (Lower Third / Bar) — ต้องมาหลัง overlay.css และก่อนสกินธีม -->
+  <link rel="stylesheet" href="/l3.css">
   <link rel="stylesheet" href="/glass.css">
   <link rel="stylesheet" href="/clay.css">
   <link rel="stylesheet" href="/claydark.css">
@@ -24,7 +26,10 @@
 <body class="overlay">
   <div id="stage">
     <div id="slot-full" class="slot slot-full"></div>
+    <!-- slot-top / slot-ticker ใช้เฉพาะช่อง CG ที่สอง (/live/cg) — ช่องหลักไม่แตะ -->
+    <div id="slot-top" class="slot slot-top"></div>
     <div id="slot-lower" class="slot slot-lower"></div>
+    <div id="slot-ticker" class="slot slot-ticker"></div>
     <div id="slot-bug" class="slot slot-bug"></div>
   </div>
   <div id="offline">ไม่ได้เชื่อมต่อเซิร์ฟเวอร์…</div>

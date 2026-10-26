@@ -8,6 +8,9 @@ CG Live — ระบบ Character Generator สำหรับถ่ายท�
 
   Control : http://<ip>:<port>/control     (หน้ากรอกข้อมูล / สั่งขึ้น-ลง CG)
   Overlay : http://<ip>:<port>/overlay     (ใส่ใน OBS Browser Source / vMix Web Browser)
+  CG      : http://<ip>:<port>/cg          (คุมช่อง Lower Third / Bar — อิสระจากงานกีฬา)
+  CG out  : http://<ip>:<port>/live/cg     (Browser Source ที่ 2 ของช่องนั้น)
+  OBS dock: http://<ip>:<port>/obs         (Custom Browser Dock ใน OBS)
 """
 import argparse
 import base64
@@ -31,6 +34,7 @@ STATE_PATH = os.path.join(DATA, "state.json")
 DEFAULT_STATE_PATH = os.path.join(DATA, "state.default.json")
 DEFAULT_SCHOOL_STATE_PATH = os.path.join(DATA, "state.default.school.json")
 DEFAULT_GENERAL_STATE_PATH = os.path.join(DATA, "state.default.general.json")
+DEFAULT_L3_STATE_PATH = os.path.join(DATA, "state.default.l3.json")
 UPLOADS = os.path.join(DATA, "uploads")
 MEDIAMTX_YML = os.path.join(ROOT, "mediamtx.yml")
 MEDIAMTX_API = "http://127.0.0.1:9997/v3/paths/get/live"
@@ -48,6 +52,14 @@ APPS = ("sports", "general")
 # ทุก key ที่อาจเป็นของ profile ผลิตภัณฑ์ใดผลิตภัณฑ์หนึ่ง (setApp เคลียร์ทั้งหมดก่อนโหลดชุดใหม่)
 # "parked" (house/school) เป็นส่วนหนึ่งของ profile งานกีฬา จึงเดินทางไปพร้อมกันตอน park งานกีฬา
 ALL_PROFILE_KEYS = ("settings", "events", "results", "onair", "sports", "tally", "parked", "lowers")
+
+# ช่อง CG ที่สอง (state["l3"]) — Lower Third / Bar แบบ custom
+# อยู่ "ขนาน" กับทุกอย่างข้างบน: ไม่อยู่ใน PROFILE_KEYS และไม่อยู่ใน ALL_PROFILE_KEYS จึง
+# ไม่ถูก setApp / setMode / resetState แตะเลย (รอดการสลับเหมือน parkedApp) ทำให้งานกีฬากับ
+# ช่อง L3 ออกจอพร้อมกันได้ คนละ operator คนละ URL
+L3_SLOTS = ("full", "top", "lower", "ticker", "bug")
+# กราฟิกหลักของช่อง L3 — ขึ้นได้ทีละช่องเดียว (top/ticker/bug เป็นช่องอิสระ ค้างจอพร้อมกันได้)
+L3_MAIN_SLOTS = ("full", "lower")
 
 
 def _app_profile_keys(app):
@@ -96,6 +108,8 @@ CTYPES = {
     ".svg": "image/svg+xml",
     ".ico": "image/x-icon",
     ".txt": "text/plain; charset=utf-8",
+    # สคริปต์ OBS (Tools -> Scripts) — ให้เบราว์เซอร์เปิด/เซฟได้ ไม่ใช่ octet-stream
+    ".lua": "text/plain; charset=utf-8",
 }
 
 
@@ -152,8 +166,55 @@ def load_state():
         if isinstance(conf, dict) and conf.get("sport") == "football":
             conf["sport"] = "futsal"
             changed = True
+    # ช่อง CG ที่สอง (Lower Third / Bar) — เพิ่มล้วน ๆ ไม่ย้าย/ไม่ลบอะไรของเดิม
+    # (การนำพรีเซ็ตงานทั่วไปเข้ามาเป็นปุ่มให้ผู้ใช้กดเองในหน้า /cg ไม่ทำอัตโนมัติ)
+    if not isinstance(STATE.get("l3"), dict):
+        STATE["l3"] = _l3_seed()
+        print("  [migrate] เพิ่มช่อง CG ที่สอง (l3)")
+        changed = True
     if changed:
         _save_now()
+
+
+def _l3_seed():
+    """โปรไฟล์ตั้งต้นของช่อง L3 — อ่านจาก data/state.default.l3.json"""
+    with open(DEFAULT_L3_STATE_PATH, encoding="utf-8") as f:
+        seed = json.load(f)
+    seed.setdefault("settings", {})
+    seed.setdefault("items", [])
+    onair = seed.setdefault("onair", {})
+    for slot in L3_SLOTS:
+        if not isinstance(onair.get(slot), dict):
+            onair[slot] = {"visible": False}
+    return seed
+
+
+def _l3():
+    """ก้อน state ของช่อง L3 (สร้างให้ถ้ายังไม่มี) — ต้องเรียกใต้ _state_lock"""
+    l3 = STATE.get("l3")
+    if not isinstance(l3, dict):
+        l3 = STATE["l3"] = _l3_seed()
+    l3.setdefault("settings", {})
+    l3.setdefault("items", [])
+    l3.setdefault("onair", {})
+    return l3
+
+
+def _l3_put(l3, slot, type_, item_id, fields, style, until):
+    """เขียนกราฟิกลงช่องของ L3 + บังคับกฎ full⇄lower (ใช้ร่วมกันโดย l3Show/l3Air)"""
+    l3["onair"][slot] = {
+        "type": type_,
+        "itemId": item_id,
+        "fields": fields or {},
+        "style": style or {},
+        "until": until or 0,
+        "visible": True,
+    }
+    # กราฟิกหลัก (full/lower) ขึ้นได้ทีละช่องเดียว — top/ticker/bug ไม่ถูกแตะ
+    if slot in L3_MAIN_SLOTS:
+        for s_key, s_val in l3["onair"].items():
+            if s_key in L3_MAIN_SLOTS and s_key != slot and isinstance(s_val, dict):
+                s_val["visible"] = False
 
 
 def _save_now():
@@ -516,6 +577,85 @@ def apply_command(cmd):
                         s["visible"] = False
                 _save_now()
 
+        # ---- ช่อง CG ที่สอง (l3) — Lower Third / Bar แบบ custom -------------
+        # อิสระจากงานกีฬา/งานทั่วไปทั้งหมด: คนละ onair คนละ settings คนละหน้าคุม
+        elif action == "l3Show":
+            slot = cmd["slot"]
+            if slot not in L3_SLOTS:
+                raise ValueError("bad l3 slot: %r" % slot)
+            _l3_put(_l3(), slot, cmd.get("type"), cmd.get("itemId"),
+                    cmd.get("fields"), cmd.get("style"), cmd.get("until"))
+
+        elif action == "l3Air":
+            # ขึ้นจอ "ชิ้นงานในคลัง" โดยอ้าง id หรือลำดับที่ (1 = ชิ้นแรก)
+            # มีไว้ให้ผู้เรียกที่อ่าน JSON ไม่ได้ (สคริปต์ hotkey ของ OBS) ไม่ต้องรู้
+            # โครงของชิ้นงานเลย — เซิร์ฟเวอร์ประกอบ conf ให้จากตัวชิ้นงานเอง
+            l3 = _l3()
+            items = [x for x in l3["items"] if isinstance(x, dict)]
+            found = None
+            if cmd.get("itemId"):
+                for x in items:
+                    if x.get("id") == cmd["itemId"]:
+                        found = x
+                        break
+            elif cmd.get("index") is not None:
+                i = int(cmd["index"])
+                if 1 <= i <= len(items):
+                    found = items[i - 1]
+            if found is None:
+                raise ValueError("l3 item not found")
+            slot = found.get("slot")
+            if slot not in L3_SLOTS:
+                raise ValueError("l3 item %r has no valid slot" % found.get("id"))
+            until = 0
+            try:
+                sec = float(found.get("auto") or 0)
+            except (TypeError, ValueError):
+                sec = 0
+            if sec > 0:
+                until = int(time.time() * 1000) + int(sec * 1000)
+            _l3_put(l3, slot, found.get("type"), found.get("id"),
+                    found.get("fields"), found.get("style"), until)
+
+        elif action == "l3Hide":
+            slot = cmd["slot"]
+            if slot not in L3_SLOTS:
+                raise ValueError("bad l3 slot: %r" % slot)
+            conf = _l3()["onair"].get(slot)
+            if isinstance(conf, dict):
+                conf["visible"] = False
+
+        elif action == "l3HideAll":
+            # keep = ช่องที่ให้ค้างจอต่อ (เช่น ["ticker","bug"]) — ไม่ส่ง = ลงทุกช่อง
+            keep = cmd.get("keep") or []
+            for s_key, s_val in _l3()["onair"].items():
+                if s_key not in keep and isinstance(s_val, dict):
+                    s_val["visible"] = False
+
+        elif action == "l3SetItems":
+            # คลังชิ้นงานของช่อง L3 (whole-list replace เหมือน setLowers)
+            items = cmd["items"]
+            if not isinstance(items, list):
+                raise ValueError("items must be a list")
+            l3 = _l3()
+            gc_candidates = _l3_upload_names(STATE)
+            l3["items"] = items
+            _gc_uploads(gc_candidates)
+
+        elif action == "l3SetSettings":
+            new_settings = cmd["settings"]
+            l3 = _l3()
+            gc_candidates = _l3_upload_names(STATE) if "logo" in new_settings else set()
+            l3["settings"].update(new_settings)
+            _gc_uploads(gc_candidates)
+
+        elif action == "l3Reset":
+            # รีเซ็ตเฉพาะช่อง L3 — ไม่แตะงานกีฬา/งานทั่วไป/parked/parkedApp เลย
+            gc_candidates = _l3_upload_names(STATE)
+            STATE["l3"] = _l3_seed()
+            _gc_uploads(gc_candidates)
+            _save_now()
+
         else:
             raise ValueError("unknown action: %r" % action)
 
@@ -572,8 +712,43 @@ def _settings_upload_names(settings):
     return names
 
 
+def _fields_upload_names(fields):
+    """ชื่อไฟล์ /uploads/ ที่ fields ของชิ้นงาน L3 อ้างถึง (image / logo / logos[])"""
+    names = set()
+    if not isinstance(fields, dict):
+        return names
+    vals = [fields.get("image"), fields.get("logo")]
+    logos = fields.get("logos")
+    if isinstance(logos, list):
+        vals += logos
+    for v in vals:
+        n = _upload_name(v)
+        if n:
+            names.add(n)
+    return names
+
+
+def _l3_upload_names(state):
+    """ไฟล์ /uploads/ ที่ช่อง L3 อ้างถึง — settings.logo + items[].fields + onair[*].fields"""
+    l3 = state.get("l3")
+    if not isinstance(l3, dict):
+        return set()
+    names = set()
+    n = _upload_name((l3.get("settings") or {}).get("logo"))
+    if n:
+        names.add(n)
+    for it in (l3.get("items") or []):
+        if isinstance(it, dict):
+            names |= _fields_upload_names(it.get("fields"))
+    for conf in (l3.get("onair") or {}).values():
+        if isinstance(conf, dict):
+            names |= _fields_upload_names(conf.get("fields"))
+    return names
+
+
 def _referenced_upload_names(state):
-    """ไฟล์ /uploads/ ที่ยังถูกอ้างถึง — active, โหมดที่ park (house/school), และผลิตภัณฑ์ที่ park (parkedApp)"""
+    """ไฟล์ /uploads/ ที่ยังถูกอ้างถึง — active, โหมดที่ park (house/school), ผลิตภัณฑ์ที่ park
+    (parkedApp) และช่อง CG ที่สอง (l3) ซึ่งอยู่ขนานกับทุกอย่าง"""
     profs = [state]
     profs += [p for p in (state.get("parked") or {}).values() if isinstance(p, dict)]
     for app_prof in (state.get("parkedApp") or {}).values():
@@ -583,6 +758,7 @@ def _referenced_upload_names(state):
     names = set()
     for prof in profs:
         names |= _settings_upload_names(prof.get("settings"))
+    names |= _l3_upload_names(state)
     return names
 
 
@@ -678,8 +854,16 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/control" or path == "/score" or path.startswith("/score/"):
             return self._serve_path(os.path.join(PUBLIC, "control.html"))
         # จอ Live (OBS) — /live เป็นชื่อใหม่ของ /overlay
-        if path in ("/overlay", "/live"):
+        # /live/cg = ช่อง CG ที่สอง (Lower Third / Bar) คนละ Browser Source กับ /live
+        # (เทียบเท่า /live?ch=cg — overlay.js อ่านช่องจาก path หรือ query ก็ได้)
+        if path in ("/overlay", "/live", "/live/cg", "/overlay/cg"):
             return self._serve_path(os.path.join(PUBLIC, "overlay.html"))
+        # หน้าคุมช่อง CG ที่สอง — แยกจาก /control โดยสิ้นเชิง
+        if path == "/cg":
+            return self._serve_path(os.path.join(PUBLIC, "cg.html"))
+        # Custom Browser Dock ของ OBS (Docks -> Custom Browser Docks)
+        if path == "/obs":
+            return self._serve_path(os.path.join(PUBLIC, "obs.html"))
         # จอ Scoreboard — /scoreboard (วน) และ /scoreboard/<sport> (สด)
         if path == "/board" or path == "/scoreboard" or path.startswith("/scoreboard/"):
             return self._serve_path(os.path.join(PUBLIC, "board.html"))
@@ -817,6 +1001,9 @@ def main():
     print("  Scoreboard: http://%s:%d/scoreboard         (จอวนผลทั้งหมด)" % (ip, args.port))
     print("  สด ฟุตซอล: http://%s:%d/scoreboard/futsal   (สกอร์สด ฟุตซอล)" % (ip, args.port))
     print("     สด บาส: http://%s:%d/scoreboard/basketball (สกอร์สด บาส)" % (ip, args.port))
+    print("  CG ทั่วไป :  http://%s:%d/cg                 (คุม Lower Third / Bar)" % (ip, args.port))
+    print("  CG Live  :  http://%s:%d/live/cg            << Browser Source ที่ 2" % (ip, args.port))
+    print("  OBS dock :  http://%s:%d/obs                (Custom Browser Dock)" % (ip, args.port))
     print("  Local    :  http://127.0.0.1:%d/control" % args.port)
     if TOKEN:
         print("  Token   :  %s" % TOKEN)

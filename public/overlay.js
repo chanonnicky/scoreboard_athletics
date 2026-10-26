@@ -3,12 +3,21 @@
      ?slot=both|lower|full      ช่องที่จะแสดง (ดีฟอลต์ both)
      ?scale=1.0                 ย่อ/ขยายทั้งจอ
      ?transport=sse|poll        วิธีรับข้อมูล (ดีฟอลต์ sse; ใช้ poll ถ้าเน็ตบล็อก SSE)
+     ?ch=main|cg                ช่องสัญญาณ (ดีฟอลต์ main = งานกีฬา/งานทั่วไป)
+                                cg = ช่อง Lower Third / Bar (state.l3) — path /live/cg ก็ได้
+
+   สองช่องนี้ "อิสระต่อกัน": เปิดเป็น Browser Source 2 ตัวใน OBS พร้อมกันได้
+   สาย main ไม่ถูกแตะเลยจากการเพิ่มช่อง cg (เงื่อนไขทุกอันแยกด้วย CH)
 */
 (function () {
   "use strict";
 
   var params = new URLSearchParams(location.search);
   var view = params.get("slot") || "both";
+  // ช่องสัญญาณ: จาก path (/live/cg, /overlay/cg) หรือ ?ch=cg
+  var _p = location.pathname.replace(/\/+$/, "");
+  var CH = (_p === "/live/cg" || _p === "/overlay/cg" || params.get("ch") === "cg") ? "cg" : "main";
+  var IS_CG = CH === "cg";
   var scale = parseFloat(params.get("scale") || "1") || 1;
   var transport = params.get("transport") || "sse";
   // ธีมแสดงผล (สกินพื้นผิว): URL ?theme=<slug> บังคับเฉพาะจอ; ไม่ใส่ = ตาม settings.theme
@@ -20,7 +29,12 @@
     var t = themeParam;
     if (t === "classic") t = "default";
     if (!t && params.get("glass") === "1") t = "glass";
-    if (!t) t = (state && state.settings && state.settings.theme) || "default";
+    // ช่อง cg จำธีมของตัวเองที่ l3.settings.theme
+    if (!t) {
+      var s = IS_CG ? ((state && state.l3 && state.l3.settings) || null)
+                    : ((state && state.settings) || null);
+      t = (s && s.theme) || "default";
+    }
     var el = document.documentElement;
     THEMES.forEach(function (name) { el.classList.toggle(name, t === name); });
   }
@@ -38,7 +52,8 @@
   window.addEventListener("resize", fit);
   fit();
 
-  var SLOTS = ["full", "lower", "bug"];
+  // ช่อง main = 3 ช่องเดิม · ช่อง cg = 5 ช่อง (เพิ่มแถบประกาศบนจอ + แถบวิ่งล่างสุด)
+  var SLOTS = IS_CG ? ["full", "top", "lower", "ticker", "bug"] : ["full", "lower", "bug"];
   var last = {}; // slot -> { template, eventId, visible, sig }
 
   // ---- เทมเพลตแบบแบ่งหน้า (results): สลับ .apage อัตโนมัติทุก 10 วิ ---- //
@@ -123,6 +138,19 @@
   // เทมเพลตสกอร์สด (เดินนาฬิกา + เด้งสกอร์เอง): สกอร์บอร์ดเต็มจอ + แถบล่าง + score bug มุมจอ
   function isLiveSport(t) { return t === "sportLive" || t === "sportLower" || t === "scoreBug"; }
 
+  // ช่อง cg (Lower Third / Bar) — ลายเซ็นต้องครอบ *ทุก* ฟิลด์ที่เทมเพลตอ่าน
+  // ไม่งั้นการ push ที่เปลี่ยนแค่ฟิลด์ที่ตกไปจะชน early-return แล้วไม่ขึ้นจอเลย
+  function l3Sig(l3, conf) {
+    var s = (l3 && l3.settings) || {};
+    return (conf.type || "") + "||" + (conf.itemId || "") +
+      "||" + JSON.stringify(conf.fields || {}) +
+      "||" + JSON.stringify(conf.style || {}) +
+      "||" + (conf.until || 0) +
+      // ค่าตั้งต้นของช่องมีผลกับทุกชิ้น (style ของชิ้นงานทับค่าพวกนี้)
+      "||" + JSON.stringify([s.logo, s.accent, s.ink, s.bg, s.align, s.size, s.anim, s.font,
+                             s.tickerSec, s.sponsorSec]);
+  }
+
   // ---- นาฬิกาแมตช์ (นับถอยหลัง) + สกอร์เด้ง สำหรับ sportLive บนจอ Live ---- //
   var clockTimers = {};  // slot -> interval id
   var liveScores = {};   // slot -> {id,hs,as,done} ของคู่สดล่าสุด (เทียบหาว่าฝั่งไหนสกอร์เปลี่ยน)
@@ -147,6 +175,51 @@
     var host = document.getElementById("slot-" + slot);
     var el = host && host.querySelector('.cg:not(.out) .live-clock[data-run="1"]');
     if (el) { tickClock(slot); clockTimers[slot] = setInterval(function () { tickClock(slot); }, 500); }
+  }
+
+  // ---- ช่อง cg: นาฬิกา / นับถอยหลัง / หมดเวลา auto-hide ------------------ //
+  // ตัวเดียวเดินให้ทุกช่อง (ของเบา ๆ แค่แก้ textContent) — state ไม่เปลี่ยนระหว่างนี้
+  var l3Timer = null;
+  function l3TickAll() {
+    var host = document.getElementById("stage");
+    if (!host) return;
+    // นาฬิกาเวลาปัจจุบัน
+    var clocks = host.querySelectorAll(".cg:not(.out) .l3-clock[data-l3clock]");
+    for (var i = 0; i < clocks.length; i++) {
+      var txt = T.l3Now(clocks[i].getAttribute("data-l3clock") === "1");
+      if (clocks[i].textContent !== txt) clocks[i].textContent = txt;
+    }
+    // นับถอยหลัง
+    var cds = host.querySelectorAll(".cg:not(.out) .l3-cd[data-l3cd]");
+    for (var j = 0; j < cds.length; j++) {
+      var target = parseFloat(cds[j].getAttribute("data-l3cd")) || 0;
+      var left = Math.max(0, (target - Date.now()) / 1000);
+      var done = cds[j].getAttribute("data-l3done") || "";
+      var v = (left <= 0 && done) ? done : T.l3Dur(left);
+      if (cds[j].textContent !== v) cds[j].textContent = v;
+      if (left <= 0) cds[j].classList.add("l3-ended");
+    }
+  }
+  function startL3Tick() {
+    if (l3Timer) return;
+    l3Timer = setInterval(function () {
+      l3TickAll();
+      // auto-hide: ถ้ามีช่องที่ until เลยมาแล้ว ให้ re-render เพื่อถอดออกจากจอ
+      if (l3ExpiredNow()) apply(window.__state);
+    }, 500);
+  }
+  // มีช่องที่ยังโชว์อยู่แต่ until เลยเวลาไปแล้วหรือไม่
+  function l3ExpiredNow() {
+    var st = window.__state;
+    var onair = (st && st.l3 && st.l3.onair) || {};
+    var now = Date.now();
+    for (var k = 0; k < SLOTS.length; k++) {
+      var conf = onair[SLOTS[k]];
+      if (!conf || !conf.visible) continue;
+      var until = parseFloat(conf.until) || 0;
+      if (until > 0 && now >= until && last[SLOTS[k]] && last[SLOTS[k]].visible) return true;
+    }
+    return false;
   }
 
   function sportCurrentMatch(state, key) {
@@ -270,9 +343,13 @@
     var cur = host.querySelector(".cg:not(.out)");
     var ms = animMs(state);
 
-    var html = conf.visible ? buildTemplate(conf, state) : null;
-    var isPaged = html != null && PAGED_TEMPLATES[conf.template];
+    // ช่อง cg: เรนเดอร์ด้วย T.l3 ไม่ผ่าน logic ของงานกีฬาเลย (ไม่มี pager / patch / score bump)
+    var html = !conf.visible ? null
+      : IS_CG ? T.l3(state, conf)
+      : buildTemplate(conf, state);
+    var isPaged = !IS_CG && html != null && PAGED_TEMPLATES[conf.template];
     var sig = html == null ? null
+      : IS_CG ? l3Sig(state, conf)
       : isSport(conf.template) ? sportSig(state, conf.sport)
       : isPaged ? pagedSig(state)
       : conf.template === "chart" ? chartSig(state)
@@ -290,23 +367,26 @@
         var d = cur;
         setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, ms + 60);
       }
-      last[slot] = { template: conf.template, eventId: conf.eventId, sport: conf.sport, visible: false };
+      last[slot] = { template: conf.template, type: conf.type, eventId: conf.eventId,
+                     sport: conf.sport, visible: false };
       return;
     }
 
     // เนื้อหาเดิม -> ไม่ต้องทำอะไร (results: pager เล่นต่อ / schedule: หน้าต่างเท่าเดิม)
-    var cont = cur && prev.visible && prev.template === conf.template;
+    // ช่อง cg ใช้ conf.type เป็นตัวแยกชนิด (ไม่มี conf.template)
+    var cont = cur && prev.visible &&
+      (IS_CG ? prev.type === conf.type : prev.template === conf.template);
     if (cont && sig != null && prev.sig === sig) return;
 
     // เทมเพลตผูกกับกีฬา (sportMatches/sportLive/sportLower) ต้องเช็ก "กีฬาเดียวกัน" ด้วย ไม่งั้นสลับบอล<->บาส
     // จะเข้าใจผิดว่าเป็นการ์ดเดิม (eventId ว่างเท่ากันทั้งคู่)
-    // CG งานทั่วไป: ทุกครั้งที่ push = exit/enter ใหม่ (re-animate) ไม่ patch เงียบ
-    var sameShell = !isGen(conf.template) && ((cont && isPaged) || (cur && prev.visible && prev.template === conf.template &&
+    // CG งานทั่วไป + ช่อง cg: ทุกครั้งที่ push = exit/enter ใหม่ (re-animate) ไม่ patch เงียบ
+    var sameShell = !IS_CG && !isGen(conf.template) && ((cont && isPaged) || (cur && prev.visible && prev.template === conf.template &&
       (isSport(conf.template) ? prev.sport === conf.sport : (prev.eventId === conf.eventId || conf.template === "schedule"))));
 
     // แถบล่างสกอร์สด (sportLower) / score bug มุมจอ (scoreBug): ถ้าคู่/ชื่อคณะ/โลโก้/ชื่อกีฬา
     // ไม่เปลี่ยน -> แก้เฉพาะจุด (สกอร์/นาฬิกา/สถานะ) จุด LIVE ไม่รีสตาร์ต โลโก้ไม่โหลดใหม่ ไม่มีวูบ
-    var isBar = conf.template === "sportLower" || conf.template === "scoreBug";
+    var isBar = !IS_CG && (conf.template === "sportLower" || conf.template === "scoreBug");
     var barSel = conf.template === "scoreBug" ? ".scorebug" : ".sportbar";
     var shell = isBar ? sportbarShell(state, conf.sport) : null;
     if (sameShell && isBar &&
@@ -325,7 +405,7 @@
         setTimeout(function () { if (old.parentNode) old.parentNode.removeChild(old); }, ms + 60);
       }
       var wrap = document.createElement("div");
-      wrap.className = "cg tpl-" + conf.template;
+      wrap.className = IS_CG ? "cg l3cg l3t-" + conf.type : "cg tpl-" + conf.template;
       wrap.innerHTML = html;
       host.appendChild(wrap);
       void wrap.offsetWidth; // reflow
@@ -352,29 +432,39 @@
     }
 
     // สกอร์บอร์ดคู่สด / แถบล่าง: เดินนาฬิกาเอง (state ไม่เปลี่ยนระหว่างที่นาฬิกาวิ่งอยู่)
-    if (isLiveSport(conf.template)) startClockTick(slot);
-    else stopClockTick(slot);
+    if (!IS_CG && isLiveSport(conf.template)) startClockTick(slot);
+    else if (!IS_CG) stopClockTick(slot);
 
-    last[slot] = { template: conf.template, eventId: conf.eventId, sport: conf.sport, visible: true, sig: sig, shell: shell };
+    last[slot] = { template: conf.template, type: conf.type, eventId: conf.eventId,
+                   sport: conf.sport, visible: true, sig: sig, shell: shell };
   }
 
   function apply(state) {
-    if (!state || !state.settings) return;
+    if (!state) return;
     window.__state = state;
     applyTheme(state);
 
+    // ช่อง cg อ่าน settings/onair ของตัวเองที่ state.l3 (สาย main ไม่เปลี่ยนเลย)
+    var src = IS_CG ? (state.l3 || null) : state;
+    if (!src || !src.settings) return;
+
     var root = document.documentElement;
-    root.style.setProperty("--anim", animMs(state) + "ms");
-    var houses = state.settings.houses || {};
-    Object.keys(houses).forEach(function (k) {
-      root.style.setProperty("--" + k, houses[k]);
-    });
+    root.style.setProperty("--anim", animMs(src) + "ms");
+    if (!IS_CG) {
+      var houses = state.settings.houses || {};
+      Object.keys(houses).forEach(function (k) {
+        root.style.setProperty("--" + k, houses[k]);
+      });
+    }
 
     SLOTS.forEach(function (slot) {
       if (!slotInView(slot)) return;
-      var conf = (state.onair && state.onair[slot]) || { visible: false };
-      renderSlot(slot, conf, state);
+      var conf = (src.onair && src.onair[slot]) || { visible: false };
+      renderSlot(slot, conf, src);
     });
+
+    // ช่อง cg: เดินนาฬิกา/นับถอยหลัง/หมดเวลา auto-hide ตัวเดียวสำหรับทุกช่อง
+    if (IS_CG) startL3Tick();
   }
 
   // ---- connection --------------------------------------------------- //

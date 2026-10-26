@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/png" href="/pictures/favicon.png">
+  <title>CG Live — Lower Third / Bar</title>
+  <link rel="stylesheet" href="/control.css">
+  <link rel="stylesheet" href="/cg.css">
+</head>
+<body class="cgctl">
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="sb-brand">🎬 CG Live <span>Lower Third</span></div>
+      <nav class="sb-nav" id="sbNav">
+        <div class="sb-group">
+          <div class="sb-group-t">ช่อง Lower Third</div>
+          <a class="sb-item" data-nav href="/cg">🎛️ คุมออกอากาศ</a>
+          <a class="sb-item" data-nav href="/cg#library">🗂️ คลังชิ้นงาน</a>
+          <a class="sb-item" data-nav href="/cg#settings">⚙️ ตั้งค่าช่อง</a>
+        </div>
+        <div class="sb-group">
+          <div class="sb-group-t">เปิดจอ</div>
+          <a class="sb-item" href="/live/cg" target="_blank">📺 จอ CG (ใส่ใน OBS)</a>
+          <a class="sb-item" href="/obs" target="_blank">🧩 OBS dock</a>
+        </div>
+        <div class="sb-group">
+          <div class="sb-group-t">ช่องอื่น</div>
+          <a class="sb-item" href="/control">🏃 คุมงานกีฬา</a>
+          <a class="sb-item" href="/">🏠 หน้าแรก / วิธีใช้</a>
+        </div>
+      </nav>
+    </aside>
+    <div class="sb-backdrop" id="sbBackdrop"></div>
+
+    <div class="app-main">
+      <header class="topbar">
+        <button class="sb-toggle" id="sbToggle" type="button" aria-label="เมนู">☰</button>
+        <div class="brand">🎬 CG Live <span>Lower Third</span></div>
+        <div class="onair-status" id="onairStatus"></div>
+        <div class="conn" id="conn">…</div>
+        <label class="tok">
+          token
+          <input type="password" id="token" placeholder="(ถ้าตั้งไว้)" autocomplete="off">
+        </label>
+      </header>
+
+      <main id="panel"></main>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="/templates.js"></script>
+  <script src="/cg.js"></script>
+</body>
+</html>

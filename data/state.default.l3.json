@@ -1,0 +1,76 @@
+{
+  "settings": {
+    "theme": "default",
+    "logo": "/pictures/logo.png",
+    "animMs": 450,
+    "accent": "#e53935",
+    "ink": "auto",
+    "bg": "solid",
+    "align": "left",
+    "size": "md",
+    "anim": "slide",
+    "font": "seed",
+    "tickerSec": 28,
+    "sponsorSec": 4
+  },
+  "onair": {
+    "full": {
+      "visible": false
+    },
+    "top": {
+      "visible": false
+    },
+    "lower": {
+      "visible": false
+    },
+    "ticker": {
+      "visible": false
+    },
+    "bug": {
+      "visible": false
+    }
+  },
+  "items": [
+    {
+      "id": "b_seed_name",
+      "type": "name",
+      "name": "ตัวอย่าง · ชื่อ-ตำแหน่ง",
+      "group": "พื้นฐาน",
+      "fields": {
+        "line1": "นายสมชาย ใจดี",
+        "line2": "ผู้อำนวยการโรงเรียน"
+      },
+      "style": {},
+      "auto": 0,
+      "slot": "lower"
+    },
+    {
+      "id": "b_seed_topic",
+      "type": "topic",
+      "name": "ตัวอย่าง · หัวข้อ",
+      "group": "พื้นฐาน",
+      "fields": {
+        "line1": "พิธีเปิดการแข่งขัน"
+      },
+      "style": {},
+      "auto": 0,
+      "slot": "lower"
+    },
+    {
+      "id": "b_seed_ticker",
+      "type": "ticker",
+      "name": "ตัวอย่าง · แถบวิ่ง",
+      "group": "พื้นฐาน",
+      "fields": {
+        "label": "ประกาศ",
+        "messages": [
+          "ยินดีต้อนรับเข้าสู่การแข่งขัน",
+          "โปรดนั่งประจำที่นั่งของท่าน"
+        ]
+      },
+      "style": {},
+      "auto": 0,
+      "slot": "ticker"
+    }
+  ]
+}

@@ -708,6 +708,462 @@ window.T = (function () {
       "</div></div>";
   }
 
+  /* ================= ช่อง CG ที่สอง (l3) — Lower Third / Bar แบบ custom =======
+     ผลิตภัณฑ์งานกีฬา/งานทั่วไปไม่เกี่ยวกับส่วนนี้เลย — ช่องนี้มี settings/onair/items
+     ของตัวเองที่ state.l3 คุมจากหน้า /cg ออกจอที่ /live/cg
+
+     ทุก renderer รับ (l3, conf) โดย
+       l3   = ก้อน state.l3 ({settings, onair, items}) — มี .settings.logo เหมือน state
+       conf = ก้อน l3.onair[slot] ({type, itemId, fields, style, until, visible})
+     คืน null เมื่อไม่มีเนื้อหา (ช่องจะไม่ขึ้น เหมือน gen* เดิม)
+
+     T.L3_TYPES = ทะเบียนชนิด CG (label / ช่อง / ฟิลด์ / ปุ่มปรับแต่งที่ใช้ได้) — หน้า
+     /cg, /obs และ overlay อ่านทะเบียนเดียวกันนี้ ไม่มีใครฮาร์ดโค้ดรายชื่อฟิลด์เอง     */
+
+  var L3_GROUPS = ["พื้นฐาน", "รายการ", "เวลา", "สปอนเซอร์"];
+
+  // ค่าที่อนุญาตของปุ่มปรับแต่ง (กันค่าแปลกปลอมหลุดไปอยู่ใน class / inline style)
+  var L3_ENUM = {
+    ink: ["auto", "light", "dark"],
+    bg: ["solid", "grad", "glass", "none"],
+    align: ["left", "center", "right"],
+    size: ["sm", "md", "lg"],
+    anim: ["slide", "fade", "wipe", "type"],
+    font: ["seed", "charm"],
+  };
+  var L3_STYLE_ALL = ["accent", "ink", "bg", "align", "size", "anim", "font", "logo"];
+
+  var L3_TYPES = {
+    /* ---- ชุดพื้นฐาน + แถบวิ่ง ---- */
+    name: {
+      label: "ชื่อ + ตำแหน่ง", tag: "ชื่อ", group: "พื้นฐาน", slot: "lower",
+      fields: [{ k: "line1", label: "ชื่อ", ph: "เช่น นายสมชาย ใจดี" },
+               { k: "line2", label: "ตำแหน่ง / คำบรรยาย", ph: "เช่น ผู้อำนวยการโรงเรียน" }],
+      style: L3_STYLE_ALL,
+    },
+    topic: {
+      label: "หัวข้อ", tag: "หัวข้อ", group: "พื้นฐาน", slot: "lower",
+      fields: [{ k: "line1", label: "หัวข้อ", ph: "เช่น พิธีเปิดการแข่งขัน" }],
+      style: L3_STYLE_ALL,
+    },
+    title: {
+      label: "การ์ดเต็มจอ", tag: "เต็มจอ", group: "พื้นฐาน", slot: "full",
+      fields: [{ k: "line1", label: "หัวเรื่อง", ph: "เช่น การแข่งขันกีฬาสี 2568" },
+               { k: "line2", label: "คำบรรยายรอง (ไม่บังคับ)", ph: "เช่น สนามกีฬากลางจังหวัด" }],
+      style: ["accent", "ink", "align", "size", "anim", "font", "logo"],
+    },
+    nameCard: {
+      label: "ชื่อ + รูป", tag: "ชื่อ+รูป", group: "พื้นฐาน", slot: "lower",
+      fields: [{ k: "line1", label: "ชื่อ", ph: "เช่น นายสมชาย ใจดี" },
+               { k: "line2", label: "ตำแหน่ง / คำบรรยาย", ph: "เช่น ผู้อำนวยการโรงเรียน" },
+               { k: "image", label: "รูป / อวตาร", kind: "image" }],
+      style: L3_STYLE_ALL,
+    },
+    strap: {
+      label: "แถบเต็มความกว้าง", tag: "แถบ", group: "พื้นฐาน", slot: "lower",
+      fields: [{ k: "label", label: "ป้ายหมวด", ph: "เช่น รายงานสด" },
+               { k: "line1", label: "พาดหัว", ph: "เช่น เปิดสนามแล้ววันนี้" },
+               { k: "line2", label: "บรรยายรอง (ไม่บังคับ)" }],
+      style: L3_STYLE_ALL,
+    },
+    breaking: {
+      label: "ประกาศด่วน", tag: "ด่วน", group: "พื้นฐาน", slot: "top",
+      fields: [{ k: "label", label: "ป้าย", ph: "เช่น ประกาศ" },
+               { k: "line1", label: "ข้อความ", ph: "เช่น เลื่อนการแข่งขันเป็น 14:00" }],
+      style: ["accent", "ink", "bg", "align", "size", "anim", "font"],
+    },
+    ticker: {
+      label: "แถบวิ่ง", tag: "แถบวิ่ง", group: "พื้นฐาน", slot: "ticker",
+      fields: [{ k: "label", label: "ป้ายหัวแถบ", ph: "เช่น ประกาศ" },
+               { k: "messages", label: "ข้อความ (บรรทัดละ 1 ข้อความ)", kind: "list" },
+               { k: "sec", label: "ความเร็ว (วินาที/รอบ — ว่าง = ตามค่าช่อง)", kind: "num" }],
+      style: ["accent", "ink", "bg", "font"],
+    },
+
+    /* ---- ชุดรายการ / คิว ---- */
+    nowNext: {
+      label: "กำลัง / ถัดไป", tag: "ถัดไป", group: "รายการ", slot: "lower",
+      fields: [{ k: "line1", label: "กำลังแข่ง / กำลังทำ", ph: "เช่น วิ่ง 100 เมตร ชาย" },
+               { k: "line2", label: "ถัดไป", ph: "เช่น วิ่ง 200 เมตร หญิง" },
+               { k: "label", label: "ป้ายซ้าย (ว่าง = กำลัง)", ph: "กำลัง" },
+               { k: "label2", label: "ป้ายขวา (ว่าง = ถัดไป)", ph: "ถัดไป" }],
+      style: L3_STYLE_ALL,
+    },
+    rundown: {
+      label: "ลำดับรายการ", tag: "ลำดับ", group: "รายการ", slot: "full",
+      fields: [{ k: "line1", label: "หัวเรื่อง", ph: "เช่น กำหนดการวันนี้" },
+               { k: "items", label: "รายการ (บรรทัดละ 1 — ใช้ | คั่นเวลา เช่น 09:00|พิธีเปิด)", kind: "list" },
+               { k: "cur", label: "รายการที่กำลังทำ (ลำดับที่)", kind: "num" }],
+      style: ["accent", "ink", "align", "size", "anim", "font", "logo"],
+    },
+    bullets: {
+      label: "หัวข้อย่อย", tag: "ย่อย", group: "รายการ", slot: "full",
+      fields: [{ k: "line1", label: "หัวเรื่อง", ph: "เช่น กติกาการแข่งขัน" },
+               { k: "items", label: "หัวข้อย่อย (บรรทัดละ 1 ข้อ)", kind: "list" }],
+      style: ["accent", "ink", "align", "size", "anim", "font", "logo"],
+    },
+    credits: {
+      label: "เครดิตท้ายรายการ", tag: "เครดิต", group: "รายการ", slot: "full",
+      fields: [{ k: "line1", label: "หัวเรื่อง", ph: "เช่น ขอขอบคุณ" },
+               { k: "items", label: "รายชื่อ (บรรทัดละ 1 — ใช้ | คั่นหน้าที่ เช่น กำกับ|สมชาย)", kind: "list" },
+               { k: "sec", label: "ความเร็ว (วินาที/รอบ — ว่าง = 30)", kind: "num" }],
+      style: ["accent", "ink", "align", "font"],
+    },
+
+    /* ---- ชุดเวลา / นับถอยหลัง ---- */
+    clock: {
+      label: "นาฬิกามุมจอ", tag: "นาฬิกา", group: "เวลา", slot: "bug",
+      fields: [{ k: "label", label: "ป้าย / สถานที่ (ไม่บังคับ)", ph: "เช่น สนามกีฬากลาง" },
+               { k: "sec2", label: "แสดงวินาที (1 = แสดง)", kind: "num" }],
+      style: ["accent", "ink", "bg", "size", "font"],
+    },
+    countdown: {
+      label: "นับถอยหลัง", tag: "นับถอย", group: "เวลา", slot: "full",
+      fields: [{ k: "line1", label: "หัวเรื่อง", ph: "เช่น เริ่มการแข่งขันใน" },
+               { k: "target", label: "เวลาเป้าหมาย", kind: "datetime" },
+               { k: "secs", label: "หรือ นับจากนี้ (วินาที)", kind: "num" },
+               { k: "line2", label: "ข้อความเมื่อครบเวลา (ไม่บังคับ)", ph: "เช่น เริ่มแล้ว!" }],
+      style: ["accent", "ink", "bg", "align", "size", "anim", "font", "logo"],
+    },
+    timeplace: {
+      label: "แถบเวลา + สถานที่", tag: "เวลา", group: "เวลา", slot: "lower",
+      fields: [{ k: "line1", label: "สถานที่ / ข้อความ", ph: "เช่น สนามกีฬากลางจังหวัด" },
+               { k: "sec2", label: "แสดงวินาที (1 = แสดง)", kind: "num" }],
+      style: L3_STYLE_ALL,
+    },
+
+    /* ---- ชุดสปอนเซอร์ / โลโก้ ---- */
+    sponsors: {
+      label: "แถบสปอนเซอร์", tag: "สปอนเซอร์", group: "สปอนเซอร์", slot: "ticker",
+      fields: [{ k: "label", label: "ป้ายหัวแถบ", ph: "เช่น ผู้สนับสนุน" },
+               { k: "logos", label: "โลโก้สปอนเซอร์", kind: "images" },
+               { k: "sec", label: "ความเร็ว (วินาที/รอบ — ว่าง = ตามค่าช่อง)", kind: "num" }],
+      style: ["accent", "ink", "bg"],
+    },
+    supportedBy: {
+      label: "สนับสนุนโดย", tag: "สนับสนุน", group: "สปอนเซอร์", slot: "lower",
+      fields: [{ k: "label", label: "ป้าย (ว่าง = สนับสนุนโดย)", ph: "สนับสนุนโดย" },
+               { k: "line1", label: "ชื่อผู้สนับสนุน", ph: "เช่น บริษัท ตัวอย่าง จำกัด" },
+               { k: "image", label: "โลโก้", kind: "image" }],
+      style: L3_STYLE_ALL,
+    },
+    logobug: {
+      label: "โลโก้มุมจอ", tag: "โลโก้", group: "สปอนเซอร์", slot: "bug",
+      fields: [{ k: "image", label: "โลโก้ (ว่าง = โลโก้ของช่อง)", kind: "image" },
+               { k: "label", label: "ข้อความใต้โลโก้ (ไม่บังคับ)" }],
+      style: ["accent", "ink", "bg", "size"],
+    },
+  };
+
+  // ---- helper ของช่อง L3 -------------------------------------------------- //
+  // สีต้องเป็น hex เท่านั้น เพราะถูกเขียนลง inline style
+  function l3Color(v, dflt) {
+    var s = String(v == null ? "" : v).trim();
+    return /^#([0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(s) ? s : dflt;
+  }
+  function l3Enum(key, v, dflt) {
+    var list = L3_ENUM[key] || [];
+    var s = String(v == null ? "" : v).trim();
+    for (var i = 0; i < list.length; i++) if (list[i] === s) return s;
+    return dflt;
+  }
+  // ข้อความหลายบรรทัด -> อาเรย์ (รับทั้ง array และ string ที่ขึ้นบรรทัดใหม่)
+  function l3List(v) {
+    var arr = [], out = [];
+    if (v == null) return out;
+    if (typeof v === "string") arr = v.split(/\r?\n/);
+    else if (v.length != null) { for (var i = 0; i < v.length; i++) arr.push(v[i]); }
+    for (var j = 0; j < arr.length; j++) {
+      var s = String(arr[j] == null ? "" : arr[j]).trim();
+      if (s) out.push(s);
+    }
+    return out;
+  }
+  function l3Num(v, dflt) {
+    var n = parseFloat(v);
+    return isFinite(n) ? n : dflt;
+  }
+  // style ของชิ้นงาน ทับค่าตั้งต้นของช่อง (l3.settings) ทับค่าตั้งต้นของระบบ
+  function l3Style(l3state, style) {
+    var s = (l3state && l3state.settings) || {}, st = style || {};
+    function pick(k) { return (st[k] != null && st[k] !== "") ? st[k] : s[k]; }
+    var accent = l3Color(pick("accent"), "#e53935");
+    var inkMode = l3Enum("ink", pick("ink"), "auto");
+    return {
+      accent: accent,
+      ink: inkMode === "auto" ? contrastInk(accent) : (inkMode === "dark" ? "#1a1a1a" : "#fff"),
+      bg: l3Enum("bg", pick("bg"), "solid"),
+      align: l3Enum("align", pick("align"), "left"),
+      size: l3Enum("size", pick("size"), "md"),
+      anim: l3Enum("anim", pick("anim"), "slide"),
+      font: l3Enum("font", pick("font"), "seed"),
+    };
+  }
+  // class + inline var ของรากกราฟิก — ทุก renderer ใช้ตัวนี้ตัวเดียว
+  function l3Attrs(l3state, conf, extra) {
+    var s = l3Style(l3state, conf && conf.style);
+    return ' class="l3 ' + extra + " l3-bg-" + s.bg + " l3-al-" + s.align +
+      " l3-sz-" + s.size + " l3-anim-" + s.anim + " l3-font-" + s.font +
+      '" style="--l3-accent:' + s.accent + ";--l3-ink:" + s.ink + '"';
+  }
+  // โลโก้: style.logo = "off" ปิด · เป็น URL = ใช้รูปนั้น · ว่าง/"on" = โลโก้ของช่อง
+  function l3LogoImg(l3state, conf, cls) {
+    var v = ((conf && conf.style) || {}).logo;
+    if (v === "off") return "";
+    var url = (v && v !== "on") ? v : ((l3state.settings || {}).logo);
+    return l3Img(url, cls || "cg-logo");
+  }
+  function l3Img(url, cls) {
+    if (url == null || url === "") return "";
+    return '<img class="' + cls + '" src="' + esc(url) +
+      '" alt="" onerror="this.style.display=\'none\'">';
+  }
+  // ระยะเวลา -> H:MM:SS / M:SS
+  function l3Dur(sec) {
+    var t = Math.max(0, Math.floor(sec));
+    var h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+    function p(n) { return (n < 10 ? "0" : "") + n; }
+    return h > 0 ? h + ":" + p(m) + ":" + p(s) : m + ":" + p(s);
+  }
+  // เวลาปัจจุบันแบบ 24 ชม.
+  function l3Now(withSec) {
+    var d = new Date();
+    function p(n) { return (n < 10 ? "0" : "") + n; }
+    return p(d.getHours()) + ":" + p(d.getMinutes()) + (withSec ? ":" + p(d.getSeconds()) : "");
+  }
+  // เป้าหมายของชิ้นนับถอยหลัง -> epoch ms (0 = ไม่มี)
+  function l3Target(f) {
+    if (f.target) {
+      var t = Date.parse(f.target);
+      if (isFinite(t)) return t;
+    }
+    var secs = l3Num(f.secs, 0);
+    return secs > 0 ? Date.now() + secs * 1000 : 0;
+  }
+  // ความเร็วแถบวิ่ง: เนื้อหายาวขึ้น = ใช้เวลามากขึ้น ความเร็วอ่านจึงคงที่
+  function l3ScrollSec(l3state, f, chars, dfltKey) {
+    var base = l3Num(f.sec, 0) || l3Num((l3state.settings || {})[dfltKey], 0) || 28;
+    var sec = base * (Math.max(chars, 20) / 60);
+    return Math.max(8, Math.min(600, Math.round(sec * 10) / 10));
+  }
+
+  // ---- renderer แต่ละชนิด ------------------------------------------------- //
+  function l3Name(l3state, conf, f) {
+    var a = esc(f.line1 || ""), b = esc(f.line2 || "");
+    if (!a && !b) return null;
+    return "<div" + l3Attrs(l3state, conf, "l3-name") + ">" + l3LogoImg(l3state, conf) +
+      '<div class="l3-bar">' +
+        (a ? '<div class="l3-h">' + a + "</div>" : "") +
+        (b ? '<div class="l3-sub">' + b + "</div>" : "") +
+      "</div></div>";
+  }
+  function l3Topic(l3state, conf, f) {
+    var a = esc(f.line1 || "");
+    if (!a) return null;
+    return "<div" + l3Attrs(l3state, conf, "l3-topic") + ">" + l3LogoImg(l3state, conf) +
+      '<div class="l3-bar"><div class="l3-h">' + a + "</div></div></div>";
+  }
+  function l3Title(l3state, conf, f) {
+    var a = esc(f.line1 || ""), b = esc(f.line2 || "");
+    if (!a && !b) return null;
+    return "<div" + l3Attrs(l3state, conf, "card l3-card l3-titlecard") + ">" +
+      '<div class="card-head">' + l3LogoImg(l3state, conf) + "</div>" +
+      '<div class="card-body l3-titlebody">' +
+        (a ? '<div class="card-title big l3-h">' + a + "</div>" : "") +
+        (b ? '<div class="card-sub l3-sub">' + b + "</div>" : "") +
+      "</div></div>";
+  }
+  function l3NameCard(l3state, conf, f) {
+    var a = esc(f.line1 || ""), b = esc(f.line2 || "");
+    if (!a && !b) return null;
+    return "<div" + l3Attrs(l3state, conf, "l3-namecard") + ">" +
+      (f.image ? '<div class="l3-avatar">' + l3Img(f.image, "l3-avatar-img") + "</div>" : "") +
+      '<div class="l3-bar">' +
+        (a ? '<div class="l3-h">' + a + "</div>" : "") +
+        (b ? '<div class="l3-sub">' + b + "</div>" : "") +
+      "</div>" + l3LogoImg(l3state, conf) + "</div>";
+  }
+  function l3Strap(l3state, conf, f) {
+    var a = esc(f.line1 || ""), b = esc(f.line2 || ""), lb = esc(f.label || "");
+    if (!a && !b) return null;
+    return "<div" + l3Attrs(l3state, conf, "l3-strap") + ">" +
+      (lb ? '<div class="l3-chip">' + lb + "</div>" : "") +
+      '<div class="l3-bar">' +
+        (a ? '<div class="l3-h">' + a + "</div>" : "") +
+        (b ? '<div class="l3-sub">' + b + "</div>" : "") +
+      "</div>" + l3LogoImg(l3state, conf) + "</div>";
+  }
+  function l3Breaking(l3state, conf, f) {
+    var a = esc(f.line1 || "");
+    if (!a) return null;
+    return "<div" + l3Attrs(l3state, conf, "l3-breaking") + ">" +
+      '<div class="l3-chip l3-chip-pulse">' + esc(f.label || "ประกาศ") + "</div>" +
+      '<div class="l3-bar"><div class="l3-h">' + a + "</div></div></div>";
+  }
+  function l3Ticker(l3state, conf, f) {
+    var msgs = l3List(f.messages);
+    if (!msgs.length) return null;
+    var chars = 0, run = "";
+    for (var i = 0; i < msgs.length; i++) {
+      chars += msgs[i].length + 3;
+      run += (i ? '<span class="l3-tk-dot">&bull;</span>' : "") +
+        '<span class="l3-tk-item">' + esc(msgs[i]) + "</span>";
+    }
+    run += '<span class="l3-tk-dot">&bull;</span>';
+    var sec = l3ScrollSec(l3state, f, chars, "tickerSec");
+    var lb = esc(f.label || "");
+    // เนื้อหาซ้ำ 2 ชุด + เลื่อน -50% = วนต่อเนื่องไม่มีรอยต่อ
+    return "<div" + l3Attrs(l3state, conf, "l3-ticker") + ">" +
+      (lb ? '<div class="l3-tk-label">' + lb + "</div>" : "") +
+      '<div class="l3-tk-win"><div class="l3-tk-track" style="animation-duration:' + sec + 's">' +
+        '<span class="l3-tk-run">' + run + "</span>" +
+        '<span class="l3-tk-run">' + run + "</span>" +
+      "</div></div></div>";
+  }
+  function l3NowNext(l3state, conf, f) {
+    var a = esc(f.line1 || ""), b = esc(f.line2 || "");
+    if (!a && !b) return null;
+    return "<div" + l3Attrs(l3state, conf, "l3-nownext") + ">" + l3LogoImg(l3state, conf) +
+      '<div class="l3-bar">' +
+        (a ? '<div class="l3-nn-row"><span class="l3-chip">' + esc(f.label || "กำลัง") +
+             '</span><span class="l3-h">' + a + "</span></div>" : "") +
+        (b ? '<div class="l3-nn-row l3-nn-next"><span class="l3-chip l3-chip-ghost">' +
+             esc(f.label2 || "ถัดไป") + '</span><span class="l3-sub">' + b + "</span></div>" : "") +
+      "</div></div>";
+  }
+  function l3Rundown(l3state, conf, f) {
+    var rows = l3List(f.items);
+    if (!rows.length) return null;
+    var cur = l3Num(f.cur, 0), body = "";
+    for (var i = 0; i < rows.length; i++) {
+      var parts = rows[i].split("|");
+      var t = parts.length > 1 ? parts[0].trim() : "";
+      var nm = (parts.length > 1 ? parts.slice(1).join("|") : rows[i]).trim();
+      body += '<div class="l3-rd-row' + (i + 1 === cur ? " l3-cur" : "") + '">' +
+        '<span class="l3-rd-t">' + esc(t) + "</span>" +
+        '<span class="l3-rd-n">' + esc(nm) + "</span>" +
+        (i + 1 === cur ? '<span class="l3-rd-now">กำลังทำ</span>' : "") +
+      "</div>";
+    }
+    return "<div" + l3Attrs(l3state, conf, "card l3-card l3-rundowncard") + ">" +
+      '<div class="card-head"><div class="card-title">' + esc(f.line1 || "") + "</div>" +
+        l3LogoImg(l3state, conf) + "</div>" +
+      '<div class="card-body"><div class="l3-rd">' + body + "</div></div></div>";
+  }
+  function l3Bullets(l3state, conf, f) {
+    var rows = l3List(f.items);
+    if (!rows.length) return null;
+    var body = "";
+    for (var i = 0; i < rows.length; i++) {
+      body += '<div class="l3-bl-row" style="animation-delay:' + (0.08 * i).toFixed(2) + 's">' +
+        '<span class="l3-bl-dot"></span><span class="l3-bl-t">' + esc(rows[i]) + "</span></div>";
+    }
+    return "<div" + l3Attrs(l3state, conf, "card l3-card l3-bulletscard") + ">" +
+      '<div class="card-head"><div class="card-title">' + esc(f.line1 || "") + "</div>" +
+        l3LogoImg(l3state, conf) + "</div>" +
+      '<div class="card-body"><div class="l3-bl">' + body + "</div></div></div>";
+  }
+  function l3Credits(l3state, conf, f) {
+    var rows = l3List(f.items);
+    if (!rows.length) return null;
+    var body = "";
+    for (var i = 0; i < rows.length; i++) {
+      var parts = rows[i].split("|");
+      body += parts.length > 1
+        ? '<div class="l3-cr-row"><span class="l3-cr-role">' + esc(parts[0].trim()) +
+          '</span><span class="l3-cr-name">' + esc(parts.slice(1).join("|").trim()) + "</span></div>"
+        : '<div class="l3-cr-row l3-cr-solo">' + esc(rows[i]) + "</div>";
+    }
+    var sec = l3Num(f.sec, 0) || 30;
+    return "<div" + l3Attrs(l3state, conf, "l3-credits") + ">" +
+      '<div class="l3-cr-win"><div class="l3-cr-roll" style="animation-duration:' + sec + 's">' +
+        (f.line1 ? '<div class="l3-cr-head">' + esc(f.line1) + "</div>" : "") + body +
+      "</div></div></div>";
+  }
+  function l3Clock(l3state, conf, f) {
+    var withSec = l3Num(f.sec2, 0) === 1;
+    return "<div" + l3Attrs(l3state, conf, "l3-clockbug") + ">" +
+      '<div class="l3-clock" data-l3clock="' + (withSec ? "1" : "0") + '">' +
+        l3Now(withSec) + "</div>" +
+      (f.label ? '<div class="l3-sub">' + esc(f.label) + "</div>" : "") +
+    "</div>";
+  }
+  function l3Countdown(l3state, conf, f) {
+    var target = l3Target(f);
+    if (!target) return null;
+    var left = Math.max(0, (target - Date.now()) / 1000);
+    var done = esc(f.line2 || "");
+    return "<div" + l3Attrs(l3state, conf, "card l3-card l3-cdcard") + ">" +
+      '<div class="card-head"><div class="card-title">' + esc(f.line1 || "") + "</div>" +
+        l3LogoImg(l3state, conf) + "</div>" +
+      '<div class="card-body l3-cdbody">' +
+        '<div class="l3-cd' + (left <= 0 ? " l3-ended" : "") + '" data-l3cd="' + target +
+          '" data-l3done="' + done + '">' +
+          (left <= 0 && done ? done : l3Dur(left)) + "</div>" +
+      "</div></div>";
+  }
+  function l3TimePlace(l3state, conf, f) {
+    var withSec = l3Num(f.sec2, 0) === 1, a = esc(f.line1 || "");
+    return "<div" + l3Attrs(l3state, conf, "l3-timeplace") + ">" + l3LogoImg(l3state, conf) +
+      '<div class="l3-bar">' +
+        '<span class="l3-clock" data-l3clock="' + (withSec ? "1" : "0") + '">' +
+          l3Now(withSec) + "</span>" +
+        (a ? '<span class="l3-tp-sep"></span><span class="l3-h">' + a + "</span>" : "") +
+      "</div></div>";
+  }
+  function l3Sponsors(l3state, conf, f) {
+    var logos = l3List(f.logos);
+    if (!logos.length) return null;
+    var run = "";
+    for (var i = 0; i < logos.length; i++) run += l3Img(logos[i], "l3-sp-logo");
+    var sec = l3ScrollSec(l3state, f, logos.length * 24, "sponsorSec");
+    var lb = esc(f.label || "");
+    return "<div" + l3Attrs(l3state, conf, "l3-sponsors") + ">" +
+      (lb ? '<div class="l3-tk-label">' + lb + "</div>" : "") +
+      '<div class="l3-tk-win"><div class="l3-tk-track" style="animation-duration:' + sec + 's">' +
+        '<span class="l3-tk-run">' + run + "</span>" +
+        '<span class="l3-tk-run">' + run + "</span>" +
+      "</div></div></div>";
+  }
+  function l3SupportedBy(l3state, conf, f) {
+    var a = esc(f.line1 || "");
+    if (!a && !f.image) return null;
+    return "<div" + l3Attrs(l3state, conf, "l3-supby") + ">" +
+      '<div class="l3-bar">' +
+        '<span class="l3-kicker">' + esc(f.label || "สนับสนุนโดย") + "</span>" +
+        l3Img(f.image, "l3-supby-logo") +
+        (a ? '<span class="l3-h">' + a + "</span>" : "") +
+      "</div></div>";
+  }
+  function l3LogoBug(l3state, conf, f) {
+    var url = f.image || ((l3state.settings || {}).logo);
+    if (url == null || url === "") return null;
+    return "<div" + l3Attrs(l3state, conf, "l3-logobug") + ">" +
+      l3Img(url, "l3-bug-img") +
+      (f.label ? '<div class="l3-sub">' + esc(f.label) + "</div>" : "") +
+    "</div>";
+  }
+
+  var L3_RENDER = {
+    name: l3Name, topic: l3Topic, title: l3Title, nameCard: l3NameCard,
+    strap: l3Strap, breaking: l3Breaking, ticker: l3Ticker,
+    nowNext: l3NowNext, rundown: l3Rundown, bullets: l3Bullets, credits: l3Credits,
+    clock: l3Clock, countdown: l3Countdown, timeplace: l3TimePlace,
+    sponsors: l3Sponsors, supportedBy: l3SupportedBy, logobug: l3LogoBug,
+  };
+
+  /* ทางเข้าเดียวของช่อง L3 — คืน null เมื่อชนิดไม่รู้จัก / ไม่มีเนื้อหา / หมดเวลาแล้ว */
+  function l3(l3state, conf) {
+    l3state = l3state || {};
+    conf = conf || {};
+    var fn = L3_RENDER[conf.type];
+    if (!fn) return null;
+    // auto-hide: until = epoch ms (0 = ไม่หมดเวลา) — ทุกจอหมดเวลาพร้อมกันเอง
+    var until = l3Num(conf.until, 0);
+    if (until > 0 && Date.now() >= until) return null;
+    return fn(l3state, conf, conf.fields || {});
+  }
+
   return {
     top3: top3, results: results, schedule: schedule,
     sportMatches: sportMatches, sportLive: sportLive, sportLower: sportLower,
@@ -716,5 +1172,8 @@ window.T = (function () {
     esc: esc, clockValue: clockValue, clockDur: clockDur, clockRemain: clockRemain,
     remainSec: remainSec, fmtClock: fmtClock,
     comp: comp, compMode: compMode, compKeys: compKeys,
+    // ช่อง CG ที่สอง (Lower Third / Bar)
+    l3: l3, L3_TYPES: L3_TYPES, L3_GROUPS: L3_GROUPS, L3_ENUM: L3_ENUM,
+    l3Dur: l3Dur, l3Now: l3Now, l3List: l3List, l3Style: l3Style,
   };
 })();

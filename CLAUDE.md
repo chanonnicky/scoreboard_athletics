@@ -42,7 +42,10 @@ startup and on a busy port (wording is platform-idiomatic — `./start.sh` vs `s
 `server.ps1` has no SSE, so Windows clients poll (see below). Any other divergence is a bug to
 fix in both, not to document.
 
-There is **no test suite and no build step**. The frontend is plain ES5 served statically.
+There is **no build step**. The frontend is plain ES5 served statically. There is no *automated*
+suite either, but `tools/check-*.js` are four dependency-free node harnesses that cover the parts
+that are cheap to get wrong — run them after touching `templates.js`, `overlay.js` or `cg.js`
+(see `tools/README.txt`, and "Verifying changes without a browser" below).
 
 ### RTMP relay sidecar (optional, Windows) — video never touches the CG server
 
@@ -77,6 +80,28 @@ Loopback test (Windows, verified): run `mediamtx.exe mediamtx.yml`; publish with
 confirm a reader with the `read` creds works and wrong publish creds get `authentication failed`
 in the MediaMTX log; `/healthz` on the CG server stays green throughout.
 
+### OBS integration (`/obs` dock + `public/obs/cglive.lua`)
+
+Deliberately **not** a native `.dll` plugin (C++ toolchain + a rebuild per OBS release, for nothing
+the two pieces below don't already give). Both drive only the L3 channel.
+
+- **`/obs`** — `obs.html` + `obs.js`, a ~320–420px single-column panel for OBS → *Docks → Custom
+  Browser Docks*. Same-origin, so `X-Token` works (neither server has `do_OPTIONS` /
+  `Access-Control-Allow-Headers`, so a cross-origin dock would have to use `?token=`). Reads the
+  shared `localStorage["cg_token"]`. Polls like every other client.
+- **`public/obs/cglive.lua`** — an OBS *Tools → Scripts* script. Buttons: test connection, "Create
+  CG Live scene + sources" (two browser sources at 1920×1080 with `shutdown=false`, matching the
+  README's manual instructions), hide-all. Hotkeys via `obs_hotkey_register_frontend`: hide all,
+  hide main, and `air item 1..20` → `l3Air {index}`.
+  - **It contains no JSON parser and no copy of the type registry** — that is the whole point of
+    `l3Air`. An earlier draft scraped `/api/state` with Lua patterns and was wrong: `{(.-)}` stops
+    at the first brace of the nested `fields` object, so items aired with empty text. Don't go back.
+  - HTTP is `curl` via `os.execute` (built into Windows 10/11 and macOS). The request body is
+    staged in `%TEMP%/cglive_cmd.json` and passed as `-d @file`, which sidesteps cmd.exe/curl quote
+    escaping entirely; POSTs go through `start "" /B` so no console window appears and the UI never
+    blocks. The file ends with a note pointing at an OBS *Python* script as the no-curl fallback.
+  - Keep it **ASCII-only** and syntax-check it against OBS's own LuaJIT (recipe below).
+
 ### Verifying changes without a browser
 
 The Chrome automation extension in this environment often cannot reach the local server, and
@@ -90,8 +115,14 @@ there are no automated tests. Two reliable checks:
     console.log(global.window.T.results(st).match(/apage/g).length,"pages");'
   ```
 - **Routes/state** — start the server and `curl` (`/healthz`, `/board`, `/api/state`,
-  `/pictures/house-red.png`). `python3 -c "import py_compile;py_compile.compile('server.py',doraise=True)"`
-  catches syntax errors. For `setMode`/upload: `POST /api/command {"action":"setMode","mode":"school"}`
+  `/pictures/house-red.png`, and `/cg`, `/live/cg`, `/obs`, `/obs/cglive.lua` for the L3 channel).
+  `python3 -c "import py_compile;py_compile.compile('server.py',doraise=True)"`
+  catches syntax errors (but see the Python note below — not available on this box).
+  For the L3 channel: `POST /api/command {"action":"l3Show","slot":"lower","type":"name",
+  "fields":{"line1":"ก"}}` then check `/api/state` has `l3.onair.lower.visible` and that
+  `l3.onair.full` went hidden; `{"action":"l3Air","index":1}` airs library item 1;
+  `{"action":"l3HideAll","keep":["ticker"]}` must leave the ticker up; `{"action":"l3Reset"}`
+  must not touch `events`/`results`/`sports`/`lowers`/`parkedApp`. For `setMode`/upload: `POST /api/command {"action":"setMode","mode":"school"}`
   then check `/api/state` has `settings.mode:"school"` + `parked.house`; `POST /api/upload` a tiny
   base64 PNG and GET the returned `/uploads/…` URL. For `setApp`: `POST {"action":"setApp","app":"general"}`
   then `/api/state` has only `settings`/`onair`/`lowers` + `parkedApp.sports` (holding the old
@@ -105,6 +136,29 @@ there are no automated tests. Two reliable checks:
   keyed by school keys) and assert the output has inline `--house:` and **no** `h-sc` class or
   `/pictures/house-` URL. On this Windows box `node` = VS Code's Electron:
   `ELECTRON_RUN_AS_NODE=1 "…/Microsoft VS Code/Code.exe" script.js`.
+  `tools/check-regress.js` now does exactly this (both modes, 36 cases) — run it, don't re-derive it.
+- **The four harnesses** — `tools/check-l3.js` (17 types, escaping, style sanitising, `until`),
+  `tools/check-regress.js` (byte-equality vs `HEAD`), `tools/check-overlay.js` (runs `overlay.js`
+  on a DOM stub: channel isolation both ways, slot independence, `l3Sig` reactivity),
+  `tools/check-cg.js` (runs `cg.js` on a DOM stub: all 3 views, every type's generated form).
+  They inject a test export by regex-replacing the closing IIFE line, so if you restructure the end
+  of `overlay.js` / `cg.js` the harness fails loudly rather than silently passing. `check-cg.js`
+  caught a real load-time `TypeError` (a `var` read before initialisation) that would have shipped
+  a blank page — DOM-stub harnesses are worth it here precisely because there's no browser.
+- **This Windows box has no Python at all** (only the Microsoft Store stubs, and no WSL), so
+  `server.py` cannot be run or `py_compile`-checked here — verify it on the Mac. `server.ps1`
+  *can* be fully exercised: parse-check with
+  `[scriptblock]::Create((Get-Content -Raw server.ps1))`, ASCII-check with
+  `Select-String -Pattern '[^\x00-\x7F]'`, then run it on a spare port and drive it with curl /
+  `Invoke-WebRequest`. Keep the two in structural lock-step by eye when you can only test one.
+- **Lua** — syntax-check `public/obs/cglive.lua` with OBS's own LuaJIT, no extra install:
+  P/Invoke `luaL_newstate` + `luaL_loadfile` (returns 0 on success) from
+  `C:\Program Files\obs-studio\bin\64bit\lua51.dll`. `luaL_loadfile` compiles without executing,
+  so it's a safe pure syntax check.
+- **Channel independence** is the invariant most worth re-testing after any state change: air
+  something on `l3`, then run `setApp general` → `setApp sports` → `setMode school` →
+  `setMode house` → `resetState`, and assert `l3.onair` is still intact and still visible each
+  time; then air a sports graphic and assert it didn't disturb `l3`, and vice versa.
 
 ## Architecture
 
@@ -175,6 +229,47 @@ lost). `resetState` is app-aware: reseeds the active product's keys, always re-i
 `settings.app`, re-injects `settings.mode` + `state.parked` only when `app == "sports"`, always
 preserves `state.parkedApp`.
 
+**Second CG channel / `state.l3`.** `state.l3` = `{settings, onair, items}` is an independent CG
+**channel** that runs *alongside* everything above — not a third product. It is deliberately **not
+in `PROFILE_KEYS` and not in `ALL_PROFILE_KEYS`**, so `setApp` / `setMode` / `resetState` (which
+only pop `ALL_PROFILE_KEYS`, and whose snapshots only cover `_app_profile_keys(old)`) never touch
+it — it survives every switch exactly the way `parkedApp` does. That is what lets the sports CG
+(`/live`, driven from `/control`) and the Lower Third CG (`/live/cg`, driven from `/cg`) be on air
+**at the same time, from two different operators**. There is a verified test for this (see below);
+keep it true. (`replaceState` does replace the whole blob including `l3` — it's an unused debug
+command with no UI.)
+
+- **Routes:** `/cg` → `public/cg.html` (control) · `/live/cg` *and* `/overlay/cg` → `overlay.html`
+  (equivalently `/live?ch=cg`) · `/obs` → `public/obs.html` (OBS dock). `.lua` is in both MIME
+  tables so `public/obs/cglive.lua` downloads as text.
+- **Commands** (7, in both servers): `l3Show` `{slot,type,itemId,fields,style,until}` ·
+  `l3Air` `{itemId}` or `{index}` (1-based into `l3.items`; the **server** assembles the conf from
+  the item, so a caller that cannot parse JSON — the OBS Lua script — needs to know nothing about
+  the item shape) · `l3Hide` `{slot}` · `l3HideAll` `{keep?}` · `l3SetItems` (whole-list replace) ·
+  `l3SetSettings` (shallow merge) · `l3Reset` (reseeds from `data/state.default.l3.json` only).
+  `l3Show`/`l3Air` share one writer — `_l3_put()` / `Set-L3Slot` — which also enforces the slot rule.
+- **5 slots:** `L3_SLOTS = full, top, lower, ticker, bug`. Only `L3_MAIN_SLOTS = full, lower` are
+  mutually exclusive; `top` / `ticker` / `bug` are independent and stay up alongside a main graphic.
+- **`itemId` on the slot conf** is what marks "which library item is on air" — an id link, *not*
+  the value-equality compare that `genIsLive()` uses for the old `lowers` presets (that one lights
+  up every preset with identical text).
+- **Auto-hide is `until`** (epoch ms, 0 = never): `T.l3()` returns `null` once `Date.now() >= until`,
+  so every screen expires in sync with no state mutation. `overlay.js`'s L3 ticker re-renders when
+  one elapses; `/cg` shows a countdown.
+- **Items carry their own `slot`** (written by `cg.js` from `T.L3_TYPES` at save time, and present
+  in the seed file). `l3Air` reads `item.slot` — this is why the server and the OBS script need no
+  copy of the type→slot registry. A new CG type therefore needs **no** server or Lua change.
+- **Uploads GC** had to grow: `_l3_upload_names()` / `Get-L3UploadNames` scan `l3.settings.logo`,
+  `l3.items[].fields.image|logo|logos[]` and `l3.onair[*].fields.*`, and are folded into
+  `_referenced_upload_names` / `Get-ReferencedUploadNames`; `l3SetItems` / `l3SetSettings` /
+  `l3Reset` snapshot candidates first, like `setSettings` does.
+- **`settings.app` / the "general" product is untouched by all of this** — kept for backwards
+  compatibility. It still has its own `genLowerName`/`genLowerTopic`/`genTitle` and `state.lowers`.
+  There is deliberately **no automatic migration**: `/cg` → คลังชิ้นงาน has a user-pressed
+  "นำเข้าพรีเซ็ตจากงานทั่วไป" button that *appends* `lowers`/`parkedApp.general.lowers` into
+  `l3.items` (deduped by `type`+`line1`+`line2`, so pressing twice adds nothing). README documents
+  `/cg` as the recommended path.
+
 **Modes / `state.parked`.** The *active* mode's data always lives at the normal top-level keys
 (`PROFILE_KEYS` = `settings`, `events`, `results`, `onair`, `sports`, `tally`) — so every consumer
 is mode-agnostic. `state.parked` = `{house?, school?}` holds *only the inactive* mode's profile
@@ -233,6 +328,9 @@ state and one operator control:
 | `/live` (alias `/overlay`) | overlay.html | **Live** — transparent OBS/vMix overlay, driven by `state.onair` |
 | `/scoreboard` (alias `/board`) | board.html | **Scoreboard type 1** — opaque venue screen, auto-rotates all results (`?view=all\|results\|chart\|<sport>`) |
 | `/scoreboard/<sport>` | board.html | **Scoreboard type 2** — live single-match scoreboard of that sport's `currentId` |
+| `/cg` | cg.html | **Lower Third / Bar control** — the second CG channel (`state.l3`), independent |
+| `/live/cg` | overlay.html | that channel's transparent overlay — a *second* OBS Browser Source |
+| `/obs` | obs.html | narrow control panel for OBS → Docks → Custom Browser Docks |
 | `/` (alias `/home`) | home.html | landing / help page + the **product picker** (`setApp`) |
 
 Every route is served in **both** products; when `settings.app == "general"` only `/control`
@@ -350,6 +448,60 @@ Default (no setting) = the original opaque look,
 byte-identical. The theme is chosen from a `<select>` in `/control` → settings
 (`data-act="theme-set"` → `setSettings {theme}`) — present in **both** the sports and general
 settings views (each product parks its own `settings.theme`).
+
+**Second CG channel templates (`T.l3`).** The Lower Third / Bar channel is **one registry + one
+renderer**, both in `templates.js`: `T.L3_TYPES` (17 types, each `{label, tag, group, slot, fields:
+[{k,label,ph,kind}], style:[knobs]}`), `T.L3_GROUPS`, `T.L3_ENUM`, and `T.l3(l3state, conf)` which
+dispatches on `conf.type`. `l3state` is the `state.l3` blob (it has `.settings.logo`, so
+`logoImg()`-style helpers work on it directly); `conf` is `l3.onair[slot]`. Returns `null` when
+empty / unknown type / expired `until`. Field `kind` ∈ `(text default)|list|image|images|num|
+datetime`; `list`/`images` accept an array *or* a newline string (`T.l3List` normalises).
+`/cg` and `/obs` build their whole forms from this registry — **nothing hardcodes a field list**,
+so adding a type is a `templates.js` + `l3.css` change only.
+
+Every renderer emits its root through `l3Attrs()`, which merges per-item `style` over
+`l3.settings` over system defaults and writes `class="l3 … l3-bg-* l3-al-* l3-sz-* l3-anim-*
+l3-font-*"` + `style="--l3-accent:…;--l3-ink:…"`. Both are **sanitised**: `l3Color()` accepts only
+hex (it goes into an inline style) and `l3Enum()` whitelists every class suffix, so a junk `style`
+value falls back instead of escaping its attribute. `--l3-accent` is what the old general product
+never had (`overlay.css:233,247` reference an `--accent` that is undefined on the overlay, so those
+bars are permanently `#3b82f6`).
+
+Styles live in `public/l3.css` (`.l3-*`), loaded in `overlay.html` after `overlay.css` and before
+the skins. **No `color-mix()`** (old CEF); `backdrop-filter` only under `.l3-bg-glass`, which is
+opt-in per item. `l3.css` also owns the `.slot-top` / `.slot-ticker` anchors + transitions, since
+`overlay.css` only covers full/lower/bug. It is also the **second** sanctioned exception to the
+`body.overlay *` font guard: `.l3-font-charm` re-declares Charmonman (already bundled in
+`public/fonts/`) and beats the guard with a more specific selector + `!important`, the same trick
+`editorial.css` uses. The 14 skins need no change — `title`/`rundown`/`bullets`/`countdown` reuse
+the `.card` / `.card-head` / `.card-title` shell and inherit each skin's surface for free.
+**`board.js` needs no change at all**: `sigOf()` doesn't track `onair` and the channel is Live-only.
+
+`overlay.js` is channel-aware rather than duplicated: `CH` comes from the path (`/live/cg`,
+`/overlay/cg`) or `?ch=cg`, `IS_CG` gates everything, and `SLOTS` becomes the 5-slot list. `apply()`
+reads `state.l3.settings` + `state.l3.onair` and passes the **l3 blob** down as `renderSlot`'s
+`state`; `applyTheme()` reads `l3.settings.theme`. The `cg` path skips every sports mechanism
+(`sportSig` / `patchSportbar` / `bumpLiveScore` / the pager) and forces `sameShell = false`, so each
+push re-animates, like `isGen()` does. `cont` compares `prev.type` (not `prev.template`) on that
+path. **`l3Sig()` must cover every field a template reads** — `type|itemId|JSON(fields)|JSON(style)|
+until` plus the ten `l3.settings` defaults; anything omitted makes a push that changes only that
+field hit the early-return at the top of `renderSlot` and **never reach the screen**. One
+`startL3Tick()` interval (0.5s) drives all clocks/countdowns (`[data-l3clock]`, `[data-l3cd]`) and
+re-applies when an `until` elapses.
+
+`public/cg.js` is a **separate file from `control.js`** on purpose (`control.js` is 113 KB / one
+IIFE / a flat ~55-key `handlers` map / no tests): the sports control page cannot break from work on
+this channel. The cost is ~120 duplicated plumbing lines (token, `cmd()`, `toast()`, SSE→poll
+fallback) copied from `control.js:91-178` — that is the accepted trade, matching how `overlay.js`
+and `board.js` already mirror each other. It reuses `control.css` and adds `public/cg.css` for the
+widgets `control.css` lacks (colour picker, detail panel, card grid, library rows). Notes:
+`control.css` scopes button variants to the **element** selector `button.btn`, so `<a class="btn">`
+gets nothing; `.preview` is a hardcoded `scale(0.3333)` tied to the `1fr 640px` grid; `cg.js` needs
+its own `safeRender()` guard (it has one, keyed on `itemsTimer`/`setTimer`) or a server push
+overwrites half-typed text and reloads the preview iframe. Unlike `control.js`, `cg.js` routes
+`change` events through the **same** `handlers`-style dispatch as `click` rather than a separate
+if-chain, because this UI is dropdown-heavy. **`THEME_OPTS`/`THEMES` is now duplicated in four
+places** — `control.js:68`, `cg.js`, `overlay.js:16`, `board.js:21` — add a new skin to all four.
 
 The general-product CG classes (`.gen-l3` / `.gen-l3-name-txt` / `.gen-l3-role-txt` /
 `.gen-topic` / `.gen-topic-txt` in `overlay.css`) render with the base `overlay.css` look under

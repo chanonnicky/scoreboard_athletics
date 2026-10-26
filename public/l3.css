@@ -1,0 +1,325 @@
+/* l3.css — ช่อง CG ที่สอง (Lower Third / Bar แบบ custom)
+   โหลดใน overlay.html หลัง overlay.css และก่อนสกินธีม
+   ใช้เฉพาะช่อง /live/cg — ไม่แตะคลาสของงานกีฬา/งานทั่วไปเลย
+
+   กฎที่ต้องเคารพ (ดู CLAUDE.md):
+     - ห้าม color-mix()  — CEF เก่าใน OBS / vMix ไม่รองรับ
+     - backdrop-filter ใช้ได้เฉพาะ .l3-bg-glass (ผู้ใช้เลือกเองต่อชิ้น)
+     - ห้ามตั้ง font-family  ยกเว้น .l3-font-charm ที่ตั้งใจทับ guard ของ overlay.css
+       (body.overlay * { font-family: ... !important }) ด้วย selector ที่เจาะกว่า
+   ตัวแปรจาก templates.js (l3Attrs): --l3-accent (สีเน้น) · --l3-ink (สีตัวอักษรบนสีเน้น) */
+
+/* ===================== ช่อง (slot) ที่เพิ่มของช่อง L3 ==================== */
+/* overlay.css มี anchor ของ full / lower / bug อยู่แล้ว — เพิ่ม top กับ ticker */
+.slot-top    { left: 0; right: 0; top: 64px; bottom: auto; }
+.slot-ticker { left: 0; right: 0; bottom: 0; top: auto; }
+
+/* แถบประกาศบนจอ: เลื่อนลงมา + เฟด (ทุก .cg ซ้อนที่เดิม เหมือน .slot-lower) */
+.slot-top .cg {
+  position: absolute; left: 50%; top: 0;
+  opacity: 0; transform: translate(-50%, -34px);
+  transition: opacity var(--anim) ease, transform var(--anim) cubic-bezier(.2,.7,.2,1);
+}
+.slot-top .cg.in  { opacity: 1; transform: translate(-50%, 0); }
+.slot-top .cg.out { opacity: 0; transform: translate(-50%, -34px); }
+
+/* แถบวิ่งล่างสุด: เต็มความกว้าง เลื่อนขึ้นจากขอบจอ */
+.slot-ticker .cg {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  opacity: 0; transform: translateY(100%);
+  transition: opacity var(--anim) ease, transform var(--anim) cubic-bezier(.2,.7,.2,1);
+}
+.slot-ticker .cg.in  { opacity: 1; transform: translateY(0); }
+.slot-ticker .cg.out { opacity: 0; transform: translateY(100%); }
+
+/* ===================== เปลือกร่วมของทุกชนิด ============================= */
+.l3 {
+  --l3-pad-y: 22px;
+  --l3-pad-x: 40px;
+  --l3-h-size: 44px;
+  --l3-sub-size: 24px;
+  --l3-radius: 14px;
+  display: flex; align-items: stretch;
+  color: var(--ink);
+  border-radius: var(--l3-radius);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .42);
+  max-width: 1640px;
+}
+.l3-bar {
+  display: flex; flex-direction: column; justify-content: center; gap: 6px;
+  padding: var(--l3-pad-y) var(--l3-pad-x);
+  border-left: 5px solid var(--l3-accent);
+  min-width: 0;
+}
+.l3-h   { font-size: var(--l3-h-size); font-weight: 800; line-height: 1.08; }
+.l3-sub { font-size: var(--l3-sub-size); font-weight: 500; opacity: .84; line-height: 1.15; }
+.l3 .cg-logo {
+  flex: none; align-self: center;
+  height: 64px; width: auto; margin: 0 8px 0 26px;
+}
+.l3 .cg-logo + .l3-bar { margin-left: 18px; }
+
+/* ป้ายหมวด / ชิป */
+.l3-chip {
+  flex: none; align-self: center;
+  margin-left: 26px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: var(--l3-accent); color: var(--l3-ink);
+  font-size: 20px; font-weight: 800; letter-spacing: .5px;
+  white-space: nowrap;
+}
+.l3-chip-ghost {
+  background: transparent; color: var(--ink);
+  border: 2px solid var(--l3-accent);
+  opacity: .9;
+}
+.l3-kicker {
+  font-size: 19px; font-weight: 600; letter-spacing: 1.5px;
+  text-transform: uppercase; opacity: .7;
+  white-space: nowrap;
+}
+
+/* ---- พื้นหลัง (bg) — เลือกต่อชิ้น ---- */
+.l3-bg-solid { background: var(--panel); }
+.l3-bg-grad  { background: linear-gradient(100deg, var(--panel) 0%, var(--panel-2) 100%); }
+.l3-bg-none  { background: transparent; box-shadow: none; }
+.l3-bg-none .l3-bar { border-left-color: var(--l3-accent); }
+/* glass เป็นตัวเดียวที่ใช้ backdrop-filter — ผู้ใช้เลือกเอง (OBS/vMix ใหม่เท่านั้น) */
+.l3-bg-glass {
+  background: rgba(255, 255, 255, .10);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  backdrop-filter: blur(22px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, .22);
+}
+
+/* ---- ขนาด (size) ---- */
+.l3-sz-sm { --l3-h-size: 34px; --l3-sub-size: 19px; --l3-pad-y: 16px; --l3-pad-x: 30px; }
+.l3-sz-lg { --l3-h-size: 58px; --l3-sub-size: 30px; --l3-pad-y: 28px; --l3-pad-x: 52px; }
+.l3-sz-sm .cg-logo { height: 48px; }
+.l3-sz-lg .cg-logo { height: 80px; }
+
+/* ---- การจัดวาง (align) — ขยับทั้งกราฟิกในช่อง ---- */
+.slot-lower .cg .l3-al-center,
+.slot-top   .cg .l3-al-center { margin: 0 auto; }
+.l3-al-right  { margin-left: auto; }
+.l3-al-center .l3-bar { text-align: center; }
+.l3-al-right  .l3-bar { text-align: right; }
+/* จัดขวา: เอาแถบสีไปอยู่ขวาให้สมดุล */
+.l3-al-right .l3-bar { border-left: 0; border-right: 5px solid var(--l3-accent); }
+.l3-al-center .l3-bar { border-left: 0; border-top: 5px solid var(--l3-accent); }
+
+/* ---- ฟอนต์ (font) — ข้อยกเว้นเดียวของ guard ใน overlay.css ----
+   ต้องเจาะกว่า `body.overlay *` (0,0,1,1) + !important */
+@font-face {
+  font-family: "Charmonman";
+  src: url("/fonts/Charmonman-Regular.ttf") format("truetype");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Charmonman";
+  src: url("/fonts/Charmonman-Bold.ttf") format("truetype");
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+body.overlay .l3-font-charm .l3-h,
+body.overlay .l3-font-charm .card-title,
+body.overlay .l3-font-charm .l3-cr-head {
+  font-family: "Charmonman", "LINE Seed Sans TH", cursive !important;
+  line-height: 1.3;
+}
+
+/* ---- แอนิเมชันเสริมต่อชิ้น (นอกเหนือจาก transition ของ slot) ---- */
+/* slide / fade ใช้ transition ของ slot อย่างเดียว — ไม่ต้องมี keyframe */
+@keyframes l3-wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+.l3-anim-wipe .l3-bar,
+.l3-anim-wipe .card-body { animation: l3-wipe .55s cubic-bezier(.2,.7,.2,1) both; }
+@keyframes l3-type { from { max-width: 0; } to { max-width: 100%; } }
+.l3-anim-type .l3-h {
+  display: inline-block; overflow: hidden; white-space: nowrap;
+  animation: l3-type .9s steps(32, end) both;
+}
+
+/* ===================== ชนิด: ชุดพื้นฐาน ================================= */
+.l3-topic .l3-bar { padding-top: 24px; padding-bottom: 26px; }
+.l3-topic { min-width: 900px; align-items: center; }
+
+/* ชื่อ + รูป/อวตาร */
+.l3-namecard { align-items: center; }
+.l3-avatar {
+  flex: none; align-self: stretch;
+  width: 132px; min-height: 132px;
+  overflow: hidden;
+  border-radius: var(--l3-radius) 0 0 var(--l3-radius);
+  background: var(--panel-2);
+}
+.l3-avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.l3-sz-sm .l3-avatar { width: 100px; min-height: 100px; }
+.l3-sz-lg .l3-avatar { width: 168px; min-height: 168px; }
+
+/* แถบเต็มความกว้าง */
+.l3-strap { width: 1640px; align-items: center; }
+.l3-strap .l3-bar { flex: 1; }
+
+/* ประกาศด่วน (ช่อง top) */
+.l3-breaking { align-items: center; min-width: 1000px; }
+.l3-breaking .l3-bar { flex: 1; padding-top: 18px; padding-bottom: 20px; }
+@keyframes l3-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+.l3-chip-pulse { animation: l3-pulse 1.1s ease-in-out infinite; }
+
+/* ===================== ชนิด: แถบวิ่ง / สปอนเซอร์ ======================== */
+.l3-ticker, .l3-sponsors {
+  width: 1920px; max-width: 1920px;
+  border-radius: 0;
+  align-items: stretch;
+  box-shadow: 0 -10px 34px rgba(0, 0, 0, .34);
+}
+.l3-tk-label {
+  flex: none; display: flex; align-items: center;
+  padding: 0 30px;
+  background: var(--l3-accent); color: var(--l3-ink);
+  font-size: 26px; font-weight: 800; letter-spacing: .5px;
+  white-space: nowrap;
+}
+.l3-tk-win {
+  flex: 1; min-width: 0; overflow: hidden;
+  display: flex; align-items: center;
+  height: 78px;
+}
+.l3-tk-track {
+  display: flex; align-items: center;
+  white-space: nowrap;
+  will-change: transform;
+  animation-name: l3-marquee;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+@keyframes l3-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.l3-tk-run { display: inline-flex; align-items: center; }
+.l3-tk-item { font-size: 30px; font-weight: 600; padding: 0 6px; }
+.l3-tk-dot { color: var(--l3-accent); font-size: 26px; padding: 0 20px; }
+.l3-sz-sm .l3-tk-win { height: 62px; }
+.l3-sz-sm .l3-tk-item { font-size: 24px; }
+.l3-sz-lg .l3-tk-win { height: 94px; }
+.l3-sz-lg .l3-tk-item { font-size: 36px; }
+
+.l3-sp-logo {
+  height: 54px; width: auto; margin: 0 38px;
+  vertical-align: middle;
+}
+
+/* ===================== ชนิด: รายการ / คิว =============================== */
+.l3-nownext { align-items: center; }
+.l3-nownext .l3-bar { gap: 12px; border-left-width: 5px; }
+.l3-nn-row { display: flex; align-items: center; gap: 16px; }
+.l3-nn-row .l3-chip { margin-left: 0; }
+.l3-nn-next { opacity: .82; }
+.l3-nn-next .l3-sub { font-size: calc(var(--l3-sub-size) + 4px); }
+
+/* การ์ดเต็มจอที่ยืมเปลือก .card (ได้พื้นผิวของสกินธีมไปด้วย) */
+.l3-card { display: block; box-shadow: 0 30px 80px rgba(0, 0, 0, .5); }
+.l3-titlecard { min-width: 1100px; max-width: 1600px; text-align: center; }
+.l3-titlecard .card-head { padding: 20px 40px; min-height: 92px; }
+.l3-titlebody { padding: 70px 80px 84px; }
+.l3-titlebody .card-sub { margin-top: 20px; }
+.l3-titlecard .card-title.big { border-bottom: 5px solid var(--l3-accent); padding-bottom: 18px; display: inline-block; }
+
+.l3-rundowncard, .l3-bulletscard, .l3-cdcard { min-width: 1080px; max-width: 1500px; }
+.l3-rd { display: flex; flex-direction: column; gap: 4px; }
+.l3-rd-row {
+  display: flex; align-items: center; gap: 22px;
+  padding: 15px 20px; border-radius: 10px;
+  font-size: 30px;
+  border-left: 5px solid transparent;
+}
+.l3-rd-row:nth-child(odd) { background: rgba(255, 255, 255, .045); }
+.l3-rd-t { flex: none; width: 150px; font-weight: 700; opacity: .72; font-variant-numeric: tabular-nums; }
+.l3-rd-n { flex: 1; font-weight: 600; }
+.l3-rd-row.l3-cur {
+  background: var(--l3-accent); color: var(--l3-ink);
+  border-left-color: var(--l3-ink);
+}
+.l3-rd-row.l3-cur .l3-rd-t { opacity: .9; }
+.l3-rd-now { flex: none; font-size: 21px; font-weight: 800; letter-spacing: .5px; }
+
+.l3-bl { display: flex; flex-direction: column; gap: 14px; }
+@keyframes l3-bl-in { from { opacity: 0; transform: translateX(-26px); } to { opacity: 1; transform: none; } }
+.l3-bl-row {
+  display: flex; align-items: baseline; gap: 20px;
+  font-size: 32px; font-weight: 600;
+  animation: l3-bl-in .5s cubic-bezier(.2,.7,.2,1) both;
+}
+.l3-bl-dot {
+  flex: none; width: 15px; height: 15px; border-radius: 50%;
+  background: var(--l3-accent);
+  transform: translateY(-4px);
+}
+.l3-bl-t { flex: 1; line-height: 1.25; }
+
+/* เครดิตเลื่อนขึ้น */
+.l3-credits {
+  width: 1200px; background: transparent; box-shadow: none;
+  display: block;
+}
+.l3-cr-win { height: 1080px; overflow: hidden; position: relative; }
+@keyframes l3-roll { from { transform: translateY(1080px); } to { transform: translateY(-100%); } }
+.l3-cr-roll {
+  position: absolute; left: 0; right: 0;
+  display: flex; flex-direction: column; gap: 16px;
+  text-align: center;
+  animation-name: l3-roll;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+.l3-cr-head {
+  font-size: 54px; font-weight: 800; margin-bottom: 26px;
+  color: var(--l3-accent);
+}
+.l3-cr-row { display: flex; align-items: baseline; justify-content: center; gap: 24px; font-size: 30px; }
+.l3-cr-role { flex: 1; text-align: right; font-weight: 500; opacity: .72; }
+.l3-cr-name { flex: 1; text-align: left; font-weight: 700; }
+.l3-cr-solo { font-size: 30px; font-weight: 700; }
+
+/* ===================== ชนิด: เวลา / นับถอยหลัง ========================== */
+.l3-clock { font-variant-numeric: tabular-nums; font-weight: 800; }
+.l3-clockbug {
+  flex-direction: column; align-items: flex-start;
+  padding: 16px 26px;
+  border-left: 5px solid var(--l3-accent);
+  background: var(--panel);
+}
+.l3-clockbug .l3-clock { font-size: 46px; line-height: 1.05; }
+.l3-clockbug .l3-sub { font-size: 20px; margin-top: 2px; }
+.l3-sz-sm.l3-clockbug .l3-clock { font-size: 36px; }
+.l3-sz-lg.l3-clockbug .l3-clock { font-size: 60px; }
+
+.l3-timeplace { align-items: center; }
+.l3-timeplace .l3-bar { flex-direction: row; align-items: center; gap: 24px; }
+.l3-timeplace .l3-clock { font-size: calc(var(--l3-h-size) + 2px); color: var(--l3-accent); }
+.l3-tp-sep { width: 2px; align-self: stretch; background: currentColor; opacity: .25; }
+
+.l3-cdbody { padding: 50px 80px 64px; text-align: center; }
+.l3-cd {
+  font-size: 150px; font-weight: 800; line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--l3-accent);
+}
+.l3-cd.l3-ended { color: #ff5252; }
+.l3-sz-sm .l3-cd { font-size: 104px; }
+.l3-sz-lg .l3-cd { font-size: 200px; }
+
+/* ===================== ชนิด: โลโก้ ====================================== */
+.l3-logobug {
+  flex-direction: column; align-items: center;
+  padding: 16px 20px;
+  background: var(--panel);
+  border-radius: var(--l3-radius);
+}
+.l3-bug-img { height: 92px; width: auto; display: block; }
+.l3-sz-sm .l3-bug-img { height: 64px; }
+.l3-sz-lg .l3-bug-img { height: 124px; }
+.l3-logobug .l3-sub { font-size: 19px; margin-top: 6px; text-align: center; }
+
+.l3-supby { align-items: center; }
+.l3-supby .l3-bar { flex-direction: row; align-items: center; gap: 22px; }
+.l3-supby-logo { height: 56px; width: auto; }
