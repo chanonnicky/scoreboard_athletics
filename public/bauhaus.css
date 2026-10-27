@@ -37,7 +37,7 @@
 /* รูปทรงแบนใหญ่ ๆ คีย์ต่ำ ๆ ที่ขอบจอ: วงกลมน้ำเงิน + เสี้ยววงกลมแดง + แถบเหลือง
    รวมไว้ใน ::before ตัวเดียว (fixed เต็ม viewport, อยู่หลัง #stage เสมอตามลำดับ tree) */
 .bauhaus body.board::before {
-  content: ""; position: fixed; inset: 0; pointer-events: none; opacity: .16;
+  content: ""; position: fixed; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; opacity: .16;
   background:
     radial-gradient(circle at -70px -90px, var(--bh-blue) 0 340px, transparent 341px),
     radial-gradient(circle at 100% 100%, var(--bh-red) 0 260px, transparent 261px),

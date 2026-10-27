@@ -53,7 +53,7 @@
 }
 /* แสงสะท้อนมุมบนซ้าย (ไม่ใช้ blend-mode เพื่อความเข้ากันได้) */
 .glass .card::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
+  content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none;
   border-radius: inherit;
   background: radial-gradient(130% 70% at 12% -12%,
       rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 60%);
@@ -112,7 +112,7 @@
   border-top: 2px solid rgba(255, 255, 255, 0.55);
 }
 .glass .t3-step::after {
-  content: ""; position: absolute; inset: 0;
+  content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0;
   background: linear-gradient(180deg,
       rgba(255, 255, 255, 0.30), rgba(255, 255, 255, 0.04) 55%, rgba(255, 255, 255, 0.14));
   -webkit-backdrop-filter: blur(16px) saturate(1.4) brightness(1.05);

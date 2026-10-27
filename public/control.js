@@ -1058,6 +1058,7 @@
   function stopRelayPoll() { if (relayTimer) { clearInterval(relayTimer); relayTimer = null; } }
   function relayCardHtml() {
     return '<div class="card"><h2>RTMP relay — OBS หน้างาน → เข้า OBS อีกตัว</h2>' +
+      '<p class="muted">ส่งต่อภาพและเสียงต้นทางเท่านั้น ไม่มี CG ซ้อนเพิ่ม · หากต้องการภาพสะอาด ให้ต้นทางส่งภาพที่ไม่มี CG ติดมา</p>' +
       '<div id="relayBody"><p class="muted">กำลังโหลด…</p></div></div>';
   }
   function fmtBytes(n) {

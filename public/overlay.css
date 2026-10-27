@@ -24,8 +24,8 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
-  width: 1920px;
-  height: 1080px;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   background: transparent;
 }
@@ -54,7 +54,8 @@ body.board, body.board * {
 }
 
 .slot { position: absolute; }
-.slot-full { inset: 0; }
+/* Explicit edges also work in older OBS/vMix CEF without CSS inset support. */
+.slot-full { top: 0; right: 0; bottom: 0; left: 0; }
 .slot-lower { left: 0; right: 0; bottom: 96px; }
 /* score bug — ช่องอิสระ ค้างจอได้พร้อมกับ full/lower · กราฟิกเล็กมุมบนซ้าย */
 .slot-bug { left: 56px; top: 48px; right: auto; bottom: auto; }
@@ -285,7 +286,7 @@ body.is-offline #offline { opacity: 1; }
 }
 /* แต่ละหน้าซ้อนกัน (absolute) */
 .tpl-results-card .apage {
-  position: absolute; inset: 0; display: flex;
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0; display: flex;
   padding: 16px 40px 20px;
   pointer-events: none;
 }
@@ -484,7 +485,7 @@ body.is-offline #offline { opacity: 1; }
 /* -- แบ่งหน้า sportMatches (หลายหน้า วนเหมือนผลกรีฑา) -- */
 .tpl-fb-paged .card-body { position: relative; overflow: hidden; min-height: 880px; padding: 0; }
 .tpl-fb-paged .apage {
-  position: absolute; inset: 0; padding: 22px 40px 34px;
+  position: absolute; top: 0; right: 0; bottom: 0; left: 0; padding: 22px 40px 34px;
   opacity: 0; transition: opacity .5s ease; pointer-events: none;
 }
 .tpl-fb-paged .apage.show { opacity: 1; pointer-events: auto; z-index: 2; }

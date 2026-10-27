@@ -35,7 +35,7 @@
 }
 /* ขอบมืดนุ่ม ๆ (vignette) หลังเนื้อหา — เต็มจอ ไม่ทับการ์ด (pseudo เท่านั้น) */
 .illustrative body.board::before {
-  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 0; pointer-events: none;
   -webkit-box-shadow: inset 0 0 260px rgba(51,48,42,.14);
           box-shadow: inset 0 0 260px rgba(51,48,42,.14);
 }

@@ -33,7 +33,7 @@
 }
 /* กริดเปอร์สเปกทีฟ 80s — เส้นนีออนจาง ๆ ครึ่งล่าง ไล่จางขึ้นหากลางจอ (เส้นขอบฟ้า) */
 .retro body.board::before {
-  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  content: ""; position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 0; pointer-events: none;
   background:
     linear-gradient(180deg, #1a1035 0%, #1a1035 46%, rgba(26,16,53,0) 62%),
     repeating-linear-gradient(0deg,  rgba(34,211,238,0.16) 0 1px, rgba(34,211,238,0) 1px 46px),
@@ -54,7 +54,7 @@
 }
 /* สแกนไลน์บาง ๆ ในกรอบการ์ด (อยู่ใน overflow:hidden — ไม่ล้น) */
 .retro .card::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  content: ""; position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; border-radius: inherit;
   background: repeating-linear-gradient(0deg, rgba(255,255,255,0.035) 0 1px, rgba(255,255,255,0) 1px 4px);
 }
 .retro .card-head {

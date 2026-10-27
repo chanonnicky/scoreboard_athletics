@@ -6,8 +6,9 @@
 # your `git pull` never collide.
 #
 # Flow:  OBS (at venue) --RTMP publish--> THIS box (MediaMTX) --RTMP pull--> OBS #2
-#        OBS #2 adds a Media Source with the pull URL, composites the /live CG
-#        overlay, and airs it.
+#        OBS #2 adds a Media Source with the pull URL: original video + audio only.
+#        No CG, browser source, or graphics are added anywhere in this relay.
+#        Send a clean feed from the venue; upstream graphics pass through as-is.
 #
 # The relay is a separate process (mediamtx.exe); the CG server never sees video.
 #
@@ -66,7 +67,7 @@ authInternalUsers:
 # --- The single relay path ---------------------------------------------------
 paths:
   live:
-    # OBS #2 pulls this path directly - no re-encode, MediaMTX just relays.
+    # OBS #2 pulls this path directly - no re-encode or CG, MediaMTX just relays.
     #
     # Want to ALSO push somewhere (a CDN / YouTube / a second room)? Uncomment
     # the two lines below and set the URL at the end. -c copy = passthrough.
