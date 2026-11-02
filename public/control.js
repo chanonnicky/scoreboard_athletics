@@ -923,18 +923,35 @@
   // ========================================================= //
   //  EVENTS
   // ========================================================= //
+  // รายการที่ติ๊กเลือกไว้ (ลบหลายรายการ) — id -> true; ตัด id ที่ไม่มีแล้วทิ้งทุกครั้งที่ render
+  var evSel = {};
+  function evSelIds() {
+    var ids = [];
+    (state.events || []).forEach(function (e) { if (evSel[e.id]) ids.push(e.id); });
+    return ids;
+  }
+
   function renderEvents() {
     if (editing) return renderEventEditor();
     var evs = state.events || [];
+    var live = {};
+    evs.forEach(function (e) { if (evSel[e.id]) live[e.id] = true; });
+    evSel = live;
+    var nSel = evSelIds().length;
+    var allOn = evs.length > 0 && nSel === evs.length;
     panel.innerHTML =
       '<div class="card"><div class="row"><h2 style="margin:0">รายการแข่งขัน</h2><span class="spacer"></span>' +
+        '<button class="btn sm danger" data-act="ev-del-sel"' + (nSel ? "" : " disabled") + '>ลบที่เลือก' + (nSel ? " (" + nSel + ")" : "") + '</button>' +
         '<button class="btn primary" data-act="ev-new">+ เพิ่มรายการ</button>' +
         '<button class="btn sm" data-act="reload">โหลดใหม่</button>' +
         '<span id="dirtyBadge" class="dirty-badge"></span></div>' +
       (evs.length
-        ? '<table class="tbl" style="margin-top:10px"><thead><tr><th>รายการ</th><th>ระดับชั้น</th><th style="width:150px"></th></tr></thead><tbody>' +
+        ? '<table class="tbl" style="margin-top:10px"><thead><tr>' +
+          '<th style="width:36px"><input type="checkbox" data-role="ev-all" title="เลือกทั้งหมด"' + (allOn ? " checked" : "") + '></th>' +
+          '<th>รายการ</th><th>ระดับชั้น</th><th style="width:150px"></th></tr></thead><tbody>' +
           evs.map(function (e) {
             return "<tr>" +
+              '<td><input type="checkbox" data-role="ev-sel" data-id="' + esc(e.id) + '"' + (evSel[e.id] ? " checked" : "") + "></td>" +
               "<td>" + esc(e.title) + "</td><td>" + esc(e.level || e.ageGroup || "") + "</td>" +
               '<td><button class="btn sm" data-act="ev-edit" data-id="' + e.id + '">แก้ไข</button> ' +
               '<button class="btn sm danger" data-act="ev-del" data-id="' + e.id + '">ลบ</button></td>' +
@@ -966,7 +983,7 @@
   function renderImport() {
     panel.innerHTML =
       '<div class="card"><h2>นำเข้าตารางรายการแข่ง</h2>' +
-        '<p class="muted">คอลัมน์: <code>title,level</code> &nbsp;(<code>title</code> ซ้ำ = รายการเดิม จะอัปเดตทับ)</p>' +
+        '<p class="muted">คอลัมน์: <code>title,level</code> &nbsp;(ชื่อซ้ำได้ถ้า <code>level</code> ต่างกัน · ซ้ำทั้งชื่อและระดับชั้น = รายการเดิม จะข้าม)</p>' +
         '<div class="row" style="margin:8px 0"><input type="file" id="eventsFile" accept=".csv,text/csv"></div>' +
         '<textarea id="eventsCsv" placeholder="title,level&#10;วิ่ง 100 เมตร ชาย,มัธยมต้น">title,level\n</textarea>' +
         '<div class="row" style="margin-top:10px"><button class="btn ok" data-act="imp-events">นำเข้ารายการ</button>' +
@@ -1688,6 +1705,22 @@
       var e = (state.events || []).find(function (x) { return x.id === b.dataset.id; });
       if (e && confirm("ลบรายการ \"" + e.title + "\" ?")) cmd({ action: "deleteEvent", eventId: b.dataset.id });
     },
+    "ev-del-sel": function () {
+      var ids = evSelIds();
+      if (!ids.length) return;
+      if (!confirm("ลบ " + ids.length + " รายการที่เลือก ?\n(ผลการแข่งขันของรายการเหล่านี้จะถูกลบด้วย)")) return;
+      var fail = 0;
+      // ส่งทีละคำสั่งตามลำดับ (ใช้ deleteEvent เดิม — ไม่ต้องแก้เซิร์ฟเวอร์ทั้งสองตัว)
+      ids.reduce(function (p, id) {
+        return p.then(function () {
+          return cmd({ action: "deleteEvent", eventId: id }).then(function (ok) { if (!ok) fail++; });
+        });
+      }, Promise.resolve()).then(function () {
+        evSel = {};
+        toast(fail ? "ลบไม่สำเร็จ " + fail + " รายการ" : "ลบแล้ว " + ids.length + " รายการ", !!fail);
+        render();
+      });
+    },
     "ev-cancel": function () { editing = null; render(); },
     "ev-save": function () {
       var ev = {
@@ -1856,6 +1889,15 @@
     var t = e.target;
     if (t.dataset && t.dataset.role === "selEvent") {
       setSelectedEvent(t.value);
+      return;
+    }
+    if (t.dataset && (t.dataset.role === "ev-sel" || t.dataset.role === "ev-all")) {
+      if (t.dataset.role === "ev-all") {
+        evSel = {};
+        if (t.checked) (state.events || []).forEach(function (e) { evSel[e.id] = true; });
+      } else if (t.checked) evSel[t.dataset.id] = true;
+      else delete evSel[t.dataset.id];
+      render();
       return;
     }
     if (t.dataset && t.dataset.act === "res-set") {

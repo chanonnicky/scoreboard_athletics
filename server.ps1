@@ -600,11 +600,15 @@ $Lib = {
         $lvl = ("" + $row.level).Trim()
         if (-not $lvl) { $lvl = ("" + $row.ageGroup).Trim() }
         if (-not $lvl) { $lvl = ("" + $row.age).Trim() }
+        # same title is allowed when the level differs - key = title + level
+        # (a row matching both is the existing event -> skip)
         $found = $null
-        foreach ($e in $events) { if ([string]$e["title"] -eq $title) { $found = $e; break } }
-        if ($found) {
-          $found["level"] = $lvl
-        } else {
+        foreach ($e in $events) {
+          $eLvl = ("" + $e["level"]).Trim()
+          if (-not $eLvl) { $eLvl = ("" + $e["ageGroup"]).Trim() }
+          if ((("" + $e["title"]).Trim() -ceq $title) -and ($eLvl -ceq $lvl)) { $found = $e; break }
+        }
+        if (-not $found) {
           $d = New-Dict
           $d["id"] = New-Id "e"
           $d["title"] = $title; $d["level"] = $lvl

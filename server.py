@@ -671,7 +671,10 @@ def import_csv(kind, text):
     with _state_lock:
         if kind == "events":
             events = STATE.setdefault("events", [])
-            by_title = {e["title"]: e for e in events}
+            # ชื่อซ้ำได้ถ้าระดับชั้นต่างกัน — คีย์ = ชื่อ + ระดับชั้น (แถวที่ตรงทั้งคู่ = รายการเดิม ข้าม)
+            def _key(t, l):
+                return (t or "").strip() + "\x1f" + (l or "").strip()
+            by_key = {_key(e.get("title"), e.get("level") or e.get("ageGroup")): e for e in events}
             seen = 0
             for row in reader:
                 title = (row.get("title") or row.get("event") or "").strip()
@@ -679,12 +682,11 @@ def import_csv(kind, text):
                     continue
                 seen += 1
                 lvl = (row.get("level") or row.get("agegroup") or row.get("age") or "").strip()
-                if title in by_title:
-                    by_title[title]["level"] = lvl
-                else:
+                k = _key(title, lvl)
+                if k not in by_key:
                     ev = {"id": _new_id("e"), "title": title, "level": lvl}
                     events.append(ev)
-                    by_title[title] = ev
+                    by_key[k] = ev
             return {"events": seen}
 
         raise ValueError("unknown import kind: %r" % kind)
