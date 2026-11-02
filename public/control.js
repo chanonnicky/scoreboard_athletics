@@ -1212,6 +1212,9 @@
     return out;
   }
 
+  // แมตช์ที่ติ๊กเลือกไว้ (ลบหลายแมตช์) — match id -> true; ตัด id ที่ไม่มีแล้วทิ้งทุกครั้งที่ render
+  var spSel = {};
+
   function renderSportScore() {
     var key = curSportKey();
     if (!sportByKey(key)) {
@@ -1280,9 +1283,15 @@
     }
 
     // ---- ตารางแมตช์ทั้งหมด ----
+    var liveSel = {};
+    sportDraft.matches.forEach(function (m) { if (m.id && spSel[m.id]) liveSel[m.id] = true; });
+    spSel = liveSel;
+    var nSpSel = Object.keys(spSel).length;
+    var spAllOn = sportDraft.matches.length > 0 && nSpSel === sportDraft.matches.length;
     var rows = sportDraft.matches.map(function (m, i) {
       var isCur = m.id === sportDraft.currentId;
       return '<tr data-i="' + i + '"' + (isCur ? ' class="cur"' : "") + ">" +
+        '<td><input type="checkbox" data-role="sp-sel" data-id="' + esc(m.id || "") + '"' + (spSel[m.id] ? " checked" : "") + "></td>" +
         '<td><button class="btn sm ' + (isCur ? "ok" : "") + '" data-act="sp-set-current" data-id="' + esc(m.id) + '">' +
           (isCur ? "● สด" : "ตั้งสด") + "</button></td>" +
         '<td><input class="fb-lvl" data-level list="lvlList" value="' + esc(m.level || "") + '" placeholder="ป.1"></td>' +
@@ -1300,12 +1309,14 @@
     panel.innerHTML = dl + cfgCard + liveCard +
       '<div class="card"><h2>แมตช์ทั้งหมด</h2>' +
         '<div class="fb-tbl-wrap"><table class="tbl fb-tbl"><thead><tr>' +
+          '<th style="width:30px"><input type="checkbox" data-role="sp-all" title="เลือกทั้งหมด"' + (spAllOn ? " checked" : "") + "></th>" +
           "<th>สด</th><th>ชั้น</th><th>ชื่อ</th><th>เจ้าบ้าน</th><th>สกอร์</th><th></th><th></th><th>ทีมเยือน</th><th>สถานะ</th><th></th>" +
         "</tr></thead><tbody>" +
-          (rows || '<tr><td colspan="10" class="muted">ยังไม่มีแมตช์ — กด “เพิ่มแมตช์”</td></tr>') +
+          (rows || '<tr><td colspan="11" class="muted">ยังไม่มีแมตช์ — กด “เพิ่มแมตช์”</td></tr>') +
         "</tbody></table></div>" +
         '<div class="row" style="margin-top:12px">' +
           '<button class="btn" data-act="sp-add">+ เพิ่มแมตช์</button>' +
+          '<button class="btn danger" data-act="sp-del-sel"' + (nSpSel ? "" : " disabled") + ">ลบที่เลือก" + (nSpSel ? " (" + nSpSel + ")" : "") + "</button>" +
           '<span class="muted">เลือกระดับชั้น ป.1–ม.6 · กด “ตั้งสด” ให้สกอร์บอร์ดสดโชว์คู่นั้น</span>' +
         "</div>" +
       "</div>";
@@ -1819,6 +1830,20 @@
       renderSportScore();
       scheduleSportSave();
     },
+    "sp-del-sel": function () {
+      sportCollectFromDom();
+      var n = sportDraft.matches.filter(function (m) { return spSel[m.id]; }).length;
+      if (!n) return;
+      if (!confirm("ลบ " + n + " แมตช์ที่เลือก ?")) return;
+      sportDraft.matches = sportDraft.matches.filter(function (m) {
+        if (!spSel[m.id]) return true;
+        if (m.id === sportDraft.currentId) sportDraft.currentId = null;
+        return false;
+      });
+      spSel = {};
+      renderSportScore();
+      saveSportNow().then(function (ok) { if (ok) toast("ลบแล้ว " + n + " แมตช์"); });
+    },
     "sp-set-current": function (b) {
       sportCollectFromDom();
       sportDraft.currentId = (sportDraft.currentId === b.dataset.id) ? null : b.dataset.id;
@@ -1900,6 +1925,16 @@
       render();
       return;
     }
+    if (t.dataset && (t.dataset.role === "sp-sel" || t.dataset.role === "sp-all")) {
+      sportCollectFromDom();     // เก็บค่าที่พิมพ์ค้างไว้ก่อน render ใหม่
+      if (t.dataset.role === "sp-all") {
+        spSel = {};
+        if (t.checked) sportDraft.matches.forEach(function (m) { spSel[m.id] = true; });
+      } else if (t.checked) spSel[t.dataset.id] = true;
+      else delete spSel[t.dataset.id];
+      renderSportScore();
+      return;
+    }
     if (t.dataset && t.dataset.act === "res-set") {
       resDraft.rows[Number(t.dataset.i)] = t.value;
       scheduleResSave();
@@ -1975,6 +2010,7 @@
   // ฟิลด์ในตารางแมตช์ + ตั้งค่าเวลาเริ่มต้น -> บันทึกอัตโนมัติ (debounce)
   function isSportField(t) {
     if (!t || !t.closest) return false;
+    if (t.dataset && (t.dataset.role === "sp-sel" || t.dataset.role === "sp-all")) return false;
     if (t.closest(".fb-tbl")) return true;
     return !!(t.matches && t.matches("[data-spclockmin],[data-spname],[data-spicon]"));
   }
