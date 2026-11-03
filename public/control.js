@@ -224,7 +224,7 @@
       if (selOverride && srvSel === selOverride) selOverride = null;
       if (firstLoaded && srvSel && !mine && srvSel !== onState._lastSel) {
         var ev = (state.events || []).find(function (e) { return e.id === srvSel; });
-        if (ev) toast("รายการถูกเปลี่ยนเป็น: " + ev.title);
+        if (ev) toast("รายการถูกเปลี่ยนเป็น: " + evLabel(ev));
       }
       onState._lastSel = srvSel;
     }
@@ -370,9 +370,13 @@
   function houseName(h) { return T.comp(state, h).name || h; }
   function houseColor(h) { return T.comp(state, h).color; }
   function houseLogo(h) { return T.comp(state, h).logo; }
+  // ระดับชั้นของรายการ (field เก่าชื่อ ageGroup)
+  function evLevel(e) { return (e && (e.level || e.ageGroup)) || ""; }
+  // ชื่อรายการ + ระดับชั้น — ชื่อซ้ำกันได้ถ้าระดับชั้นต่างกัน จึงต้องโชว์คู่กันเสมอ
+  function evLabel(e) { var l = evLevel(e); return e ? (e.title || "") + (l ? " · " + l : "") : ""; }
   function eventSelect(id, selected, extra) {
     var opts = (state.events || []).map(function (e) {
-      return '<option value="' + e.id + '"' + (e.id === selected ? " selected" : "") + ">" + esc(e.title) + "</option>";
+      return '<option value="' + e.id + '"' + (e.id === selected ? " selected" : "") + ">" + esc(evLabel(e)) + "</option>";
     }).join("");
     return '<select id="' + id + '"' + (extra || "") + ">" +
       (opts || '<option value="">— ยังไม่มีรายการ —</option>') + "</select>";
@@ -474,7 +478,8 @@
       "</div>" +
 
       '<div class="card">' +
-        '<h2 style="margin:0 0 10px">ผลการแข่งขัน — ' + esc(ev ? ev.title : "(เลือกรายการ)") + "</h2>" +
+        '<h2 style="margin:0 0 10px">ผลการแข่งขัน — ' + esc(ev ? ev.title : "(เลือกรายการ)") +
+          (evLevel(ev) ? ' <span class="muted" style="font-size:.8em;font-weight:500">ระดับชั้น ' + esc(evLevel(ev)) + "</span>" : "") + "</h2>" +
         '<div id="resEditor"></div>' +
       "</div>";
 
@@ -498,7 +503,7 @@
         if (sp) label += " · " + (sp.name || s.sport);
       }
       var ev2 = (state.events || []).find(function (x) { return x.id === s.eventId; });
-      if (ev2) label += " · " + ev2.title;
+      if (ev2) label += " · " + evLabel(ev2);
       inner = '<div class="oa-live"><span class="oa-badge">● LIVE</span>' + esc(label) + "</div>";
     }
     return '<div class="onair-slot' + (live ? " on" : "") + '">' +
@@ -613,7 +618,7 @@
         "</div>" +
 
         '<div class="card">' +
-          '<div class="row"><h2 style="margin:0">กรอกผล — ' + esc(ev ? ev.title : "(เลือกรายการก่อน)") + "</h2></div>" +
+          '<div class="row"><h2 style="margin:0">กรอกผล — ' + esc(ev ? evLabel(ev) : "(เลือกรายการก่อน)") + "</h2></div>" +
           '<div id="resEditor"></div>' +
         "</div>" +
 
