@@ -1,0 +1,231 @@
+/* summary.css — หน้าสรุปการแข่งขัน /summary (ทีมงาน ดูอย่างเดียว) โทนเดียวกับ /control */
+@font-face { font-family:"LINE Seed Sans TH"; src:url("/fonts/LINESeedSansTH-Regular.woff2") format("woff2"); font-weight:400; font-style:normal; font-display:swap; }
+@font-face { font-family:"LINE Seed Sans TH"; src:url("/fonts/LINESeedSansTH-Bold.woff2") format("woff2"); font-weight:700; font-style:normal; font-display:swap; }
+@font-face { font-family:"LINE Seed Sans TH"; src:url("/fonts/LINESeedSansTH-ExtraBold.woff2") format("woff2"); font-weight:800; font-style:normal; font-display:swap; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+
+:root {
+  --bg: #0e1116;
+  --bg-2: #161b22;
+  --bg-3: #1f2630;
+  --stroke: #2b333d;
+  --ink: #e7edf3;
+  --ink-dim: #97a3b0;
+  --accent: #3b82f6;
+  --ok: #22c55e;
+  --warn: #f59e0b;
+  --danger: #ef4444;
+  --gold: #f4c020;
+  --silver: #c3ccd6;
+  --bronze: #cd8b52;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  font-family: "LINE Seed Sans TH", "Kanit", "Leelawadee UI", "Tahoma", sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.45;
+  padding-bottom: 40px;
+}
+
+/* ---- แถบบน ---- */
+.top {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--stroke);
+}
+body.is-offline .top { background: #3a1d1d; border-bottom-color: var(--danger); }
+.top-row {
+  display: flex; align-items: center; gap: 12px;
+  max-width: 1600px; margin: 0 auto; padding: 10px 16px 6px;
+}
+.top-logo { width: 40px; height: 40px; object-fit: contain; flex: none; }
+.top-title { min-width: 0; flex: 1; }
+.top-title small { color: var(--ink-dim); font-size: 12px; display: block; }
+.top-title h1 {
+  font-size: 19px; font-weight: 800; line-height: 1.25;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.top-status { flex: none; text-align: right; }
+.conn { font-size: 13px; font-weight: 700; color: var(--ink-dim); }
+.conn.on { color: var(--ok); }
+.conn.off { color: #fca5a5; }
+.updated { font-size: 12px; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+
+.nav {
+  display: flex; gap: 4px; overflow-x: auto;
+  max-width: 1600px; margin: 0 auto; padding: 0 12px 8px;
+  scrollbar-width: none;
+}
+.nav::-webkit-scrollbar { display: none; }
+.nav a {
+  flex: none; color: var(--ink-dim); text-decoration: none;
+  font-size: 13px; padding: 4px 10px; border-radius: 999px;
+}
+.nav a:hover, .nav a:focus-visible { background: var(--bg-3); color: var(--ink); }
+
+/* ---- โครงหน้า ---- */
+.grid {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px;
+  max-width: 1600px; margin: 0 auto; padding: 14px 16px;
+}
+.grid > section { scroll-margin-top: 104px; min-width: 0; }
+.panel {
+  background: var(--bg-2); border: 1px solid var(--stroke);
+  border-radius: 12px; padding: 14px;
+}
+.panel h2 { font-size: 16px; font-weight: 800; margin-bottom: 10px; }
+.count { color: var(--ink-dim); font-size: 13px; font-weight: 400; margin-left: 4px; }
+.empty { color: var(--ink-dim); padding: 10px 2px; }
+.notice {
+  max-width: 640px; margin: 40px auto; padding: 22px 16px; text-align: center;
+  background: var(--bg-2); border: 1px solid var(--stroke); border-radius: 12px;
+}
+@media (min-width: 1100px) {
+  .grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .span-all { grid-column: 1 / -1; }
+}
+
+/* ---- ภาพรวม ---- */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.kpi { background: var(--bg-2); border: 1px solid var(--stroke); border-radius: 12px; padding: 10px 14px; }
+.kpi-l { color: var(--ink-dim); font-size: 13px; }
+.kpi-v { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.kpi-v small { font-size: 15px; font-weight: 400; color: var(--ink-dim); }
+.bar { height: 5px; border-radius: 3px; background: var(--bg-3); overflow: hidden; margin-top: 4px; }
+.bar i { display: block; height: 100%; background: var(--ok); transition: width .4s; }
+
+/* ---- ทีม / อันดับ ---- */
+.team { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.team .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c, #888); flex: none; }
+.team img { width: 22px; height: 22px; object-fit: contain; flex: none; }
+.team .nm { min-width: 0; overflow-wrap: anywhere; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--bg-3); border-radius: 8px; padding: 3px 8px 3px 4px; font-size: 14px;
+}
+.rk {
+  width: 22px; height: 22px; border-radius: 6px; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800; color: #1a1a1a; background: var(--ink-dim);
+}
+.rk1 { background: var(--gold); }
+.rk2 { background: var(--silver); }
+.rk3 { background: var(--bronze); }
+.wait { color: var(--ink-dim); font-size: 14px; }
+
+/* ---- สถานะ ---- */
+.pill {
+  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+  font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px;
+  background: var(--bg-3); color: var(--ink-dim);
+}
+.pill.live { background: rgba(239, 68, 68, .18); color: #fca5a5; }
+.pill.done { background: rgba(34, 197, 94, .15); color: #86efac; }
+.pill.live::before {
+  content: ""; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--danger); animation: pulse 1.4s infinite;
+}
+@keyframes pulse { 50% { opacity: .3; } }
+
+/* ---- กำลังแข่ง ---- */
+.now { background: var(--bg-3); border-radius: 10px; padding: 10px 12px; }
+.now + .now { margin-top: 8px; }
+.now-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.now-t { font-weight: 700; min-width: 0; }
+.now-t small { color: var(--ink-dim); font-weight: 400; margin-left: 4px; }
+.now .chip { background: var(--bg-2); }
+.vs { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; }
+.vs .team:last-child { justify-self: end; text-align: right; }
+.vs-mid { text-align: center; }
+.vs-score { font-size: 30px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.clk { font-size: 14px; font-weight: 700; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.clk[data-run="1"] { color: var(--ok); }
+.clk.ended { color: var(--danger); }
+
+/* ---- ตารางเหรียญ ---- */
+.mtable { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.mtable th {
+  color: var(--ink-dim); font-size: 13px; font-weight: 400;
+  padding: 4px 6px; text-align: center; border-bottom: 1px solid var(--stroke);
+}
+.mtable th button {
+  font: inherit; color: inherit; background: none; border: 0; border-radius: 6px;
+  padding: 4px 4px; min-height: 30px; cursor: pointer; white-space: nowrap;
+}
+.mtable th button:hover, .mtable th button:focus-visible { background: var(--bg-3); color: var(--ink); }
+.mtable th[aria-sort] { color: var(--ink); }
+.mtable td { padding: 7px 6px; text-align: center; border-bottom: 1px solid var(--stroke); }
+.mtable tr:last-child td { border-bottom: 0; }
+.mtable .c-team { text-align: left; width: 100%; }
+.mtable .c-total { font-weight: 800; }
+
+/* ---- ตัวกรอง ---- */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.seg { display: inline-flex; background: var(--bg-3); border-radius: 8px; padding: 2px; }
+.seg button {
+  font: inherit; font-size: 13px; color: var(--ink-dim); background: none;
+  border: 0; border-radius: 6px; padding: 5px 12px; cursor: pointer; min-height: 32px;
+}
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+select {
+  font: inherit; font-size: 13px; color: var(--ink); background: var(--bg-3);
+  border: 1px solid var(--stroke); border-radius: 8px; padding: 5px 8px;
+  min-height: 36px; min-width: 0; max-width: 100%;
+}
+
+/* ---- รายการ ---- */
+.group + .group { margin-top: 14px; }
+.group-h {
+  display: flex; justify-content: space-between; gap: 8px;
+  font-size: 13px; font-weight: 700; color: var(--ink-dim);
+  padding-bottom: 4px; border-bottom: 1px solid var(--stroke);
+}
+.group-h span:last-child { font-weight: 400; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ev {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 2px 6px;
+  padding: 7px 4px; border-bottom: 1px solid var(--bg-3);
+}
+.ev-no { color: var(--ink-dim); font-size: 13px; font-variant-numeric: tabular-nums; padding-top: 1px; }
+.ev-t { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-weight: 700; }
+.ev-r { grid-column: 2; }
+.lv { color: var(--ink-dim); font-size: 13px; font-weight: 400; }
+.ev.cur, .mt.cur { background: rgba(244, 192, 32, .1); border-radius: 6px; }
+
+.sport + .sport { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--stroke); }
+.sport { scroll-margin-top: 104px; }
+.sport-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-weight: 800; margin-bottom: 6px; }
+.mt { padding: 7px 4px; border-bottom: 1px solid var(--bg-3); }
+.mt .vs-score { font-size: 18px; }
+.mt .vs-score.idle { font-size: 13px; font-weight: 400; color: var(--ink-dim); }
+.mt .win .nm { font-weight: 800; }
+.mt-f { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 2px; font-size: 13px; color: var(--ink-dim); }
+
+/* ---- แถวที่เพิ่งเปลี่ยน ---- */
+.flash { animation: flash 2.4s ease-out; }
+@keyframes flash { 0%, 25% { background-color: rgba(245, 158, 11, .42); } 100% { background-color: transparent; } }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .pill.live::before { animation: none; }
+  .bar i { transition: none; }
+  .flash { animation: none; outline: 2px solid var(--warn); outline-offset: -2px; }
+}
+
+@media (min-width: 700px) {
+  .ev { grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; }
+  .ev-r { grid-column: 3; justify-self: end; }
+  .chips { justify-content: flex-end; }
+  .now .chips { justify-content: flex-start; }
+}
+@media (max-width: 480px) {
+  .top-title h1 { font-size: 16px; }
+  .top-logo { width: 32px; height: 32px; }
+  .team img { width: 18px; height: 18px; }
+  .vs-score { font-size: 26px; }
+}

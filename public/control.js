@@ -324,6 +324,7 @@
     hide("sbNavEvents", gen);
     hide("sbNavImport", gen);
     hide("sbNavBoard", gen);
+    hide("sbNavSummary", gen);
     var sports = gen ? [] : (state.sports || []);
     var sig = "gen:" + gen + "~" + sports.map(function (s) { return s.key + "|" + (s.name || "") + "|" + (s.icon || ""); }).join("~");
     if (sig !== renderSidebar._sig) {

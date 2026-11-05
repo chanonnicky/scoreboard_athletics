@@ -43,8 +43,8 @@ startup and on a busy port (wording is platform-idiomatic — `./start.sh` vs `s
 fix in both, not to document.
 
 There is **no build step**. The frontend is plain ES5 served statically. There is no *automated*
-suite either, but `tools/check-*.js` are four dependency-free node harnesses that cover the parts
-that are cheap to get wrong — run them after touching `templates.js`, `overlay.js` or `cg.js`
+suite either, but `tools/check-*.js` are five dependency-free node harnesses that cover the parts
+that are cheap to get wrong — run them after touching `templates.js`, `overlay.js`, `cg.js` or `summary.js`
 (see `tools/README.txt`, and "Verifying changes without a browser" below).
 
 ### RTMP relay sidecar (optional, Windows) — video never touches the CG server
@@ -162,7 +162,8 @@ there are no automated tests. Two reliable checks:
   `/pictures/house-` URL. On this Windows box `node` = VS Code's Electron:
   `ELECTRON_RUN_AS_NODE=1 "…/Microsoft VS Code/Code.exe" script.js`.
   `tools/check-regress.js` now does exactly this (both modes, 36 cases) — run it, don't re-derive it.
-- **The four harnesses** — `tools/check-l3.js` (17 types, escaping, style sanitising, `until`),
+- **The five harnesses** — `tools/check-summary.js` (runs `summary.js` on a DOM stub: both modes, empty
+  state, general product, escaping, filters, flash, read-only), `tools/check-l3.js` (17 types, escaping, style sanitising, `until`),
   `tools/check-regress.js` (byte-equality vs `HEAD`), `tools/check-overlay.js` (runs `overlay.js`
   on a DOM stub: channel isolation both ways, slot independence, `l3Sig` reactivity),
   `tools/check-cg.js` (runs `cg.js` on a DOM stub: all 3 views, every type's generated form).
@@ -170,9 +171,8 @@ there are no automated tests. Two reliable checks:
   of `overlay.js` / `cg.js` the harness fails loudly rather than silently passing. `check-cg.js`
   caught a real load-time `TypeError` (a `var` read before initialisation) that would have shipped
   a blank page — DOM-stub harnesses are worth it here precisely because there's no browser.
-- **This Windows box has no Python at all** (only the Microsoft Store stubs, and no WSL), so
-  `server.py` cannot be run or `py_compile`-checked here — verify it on the Mac. `server.ps1`
-  *can* be fully exercised: parse-check with
+- **Python on this Windows box** comes from miniconda, so `server.py` can be run and
+  `py_compile`-checked here, including the SSE path. `server.ps1` can be fully exercised too: parse-check with
   `[scriptblock]::Create((Get-Content -Raw server.ps1))`, ASCII-check with
   `Select-String -Pattern '[^\x00-\x7F]'`, then run it on a spare port and drive it with curl /
   `Invoke-WebRequest`. Keep the two in structural lock-step by eye when you can only test one.
@@ -353,6 +353,7 @@ state and one operator control:
 | `/live` (alias `/overlay`) | overlay.html | **Live** — transparent OBS/vMix overlay, driven by `state.onair` |
 | `/scoreboard` (alias `/board`) | board.html | **Scoreboard type 1** — opaque venue screen, auto-rotates all results (`?view=all\|results\|chart\|<sport>`) |
 | `/scoreboard/<sport>` | board.html | **Scoreboard type 2** — live single-match scoreboard of that sport's `currentId` |
+| `/summary` | summary.html | **Crew summary** — view-only, responsive, whole-meet overview (see below) |
 | `/cg` | cg.html | **Lower Third / Bar control** — the second CG channel (`state.l3`), independent |
 | `/live/cg` | overlay.html | that channel's transparent overlay — a *second* OBS Browser Source |
 | `/obs` | obs.html | narrow control panel for OBS → Docks → Custom Browser Docks |
@@ -361,6 +362,16 @@ state and one operator control:
 Every route is served in **both** products; when `settings.app == "general"` only `/control`
 (compose UI) and `/live` are meaningful — `/score*` shows a "no scoring" card and `/scoreboard*`
 renders an empty rotation (guarded by `|| []`).
+
+`/summary` (`summary.js`, `summary.css`) is read-only by construction: it uses only `GET /api/state`
+and `/api/events`, with no token and no `/api/command`; `tools/check-summary.js` asserts this. It does
+not use the 1920×1080 card templates — it builds its own rows from `T.comp`/`T.medalTally` and friends
+(so a live match shows its score, and medals ignore `settings.chartEnabled`). Each section is replaced
+only when its HTML changes, which is what keeps scroll position and the filters intact, so running
+clocks render a fixed placeholder and `tickClocks()` fills them in. Rows carry `data-k`; `rowSigs()`
+must cover every field that should trigger the `.flash` highlight. Theme skins do not apply here.
+Filters and sorting (`filter`, `sort`) are per-browser and never reach the server; a medal column sort
+reorders rows only, the displayed rank always comes from `T.medalTally`'s medal order.
 
 The rotate-all screen only re-renders the visible card when it must (card count changes, or a
 single-card view); on a plain data change with 2+ cards it updates `cards[]` silently and lets the

@@ -1172,6 +1172,8 @@ window.T = (function () {
     esc: esc, clockValue: clockValue, clockDur: clockDur, clockRemain: clockRemain,
     remainSec: remainSec, fmtClock: fmtClock,
     comp: comp, compMode: compMode, compKeys: compKeys,
+    sortResults: sortResults, eventLevel: eventLevel, sportLevels: sportLevels,
+    matchesIn: matchesIn, currentMatch: currentMatch, sportDurSec: sportDurSec,
     // ช่อง CG ที่สอง (Lower Third / Bar)
     l3: l3, L3_TYPES: L3_TYPES, L3_GROUPS: L3_GROUPS, L3_ENUM: L3_ENUM,
     l3Dur: l3Dur, l3Now: l3Now, l3List: l3List, l3Style: l3Style,

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/png" href="/pictures/favicon.png">
+  <title>สรุปการแข่งขัน</title>
+  <link rel="stylesheet" href="/summary.css">
+</head>
+<body>
+  <header class="top">
+    <div class="top-row">
+      <img id="logo" class="top-logo" alt="" hidden>
+      <div class="top-title">
+        <small>สรุปการแข่งขัน · ดูอย่างเดียว</small>
+        <h1 id="meet">กำลังโหลด…</h1>
+      </div>
+      <div class="top-status">
+        <div id="conn" class="conn">กำลังเชื่อมต่อ…</div>
+        <div id="updated" class="updated"></div>
+      </div>
+    </div>
+    <nav id="secNav" class="nav" aria-label="ไปยังส่วนต่าง ๆ"></nav>
+  </header>
+
+  <div id="notice" class="notice" hidden></div>
+
+  <main id="content" class="grid">
+    <section id="overview" class="span-all" aria-label="ภาพรวม">
+      <div id="secKpis" class="kpis"></div>
+    </section>
+
+    <section id="live" class="panel">
+      <h2>กำลังแข่งตอนนี้</h2>
+      <div id="secLive"></div>
+    </section>
+
+    <section id="medals" class="panel">
+      <h2>ตารางเหรียญ</h2>
+      <div id="secMedals"></div>
+    </section>
+
+    <section id="athletics" class="panel">
+      <h2>ผลกรีฑา <span id="athCount" class="count"></span></h2>
+      <div class="filters">
+        <div id="statusSeg" class="seg" role="group" aria-label="กรองตามสถานะ">
+          <button type="button" data-status="all" aria-pressed="true">ทั้งหมด</button>
+          <button type="button" data-status="done" aria-pressed="false">มีผล</button>
+          <button type="button" data-status="wait" aria-pressed="false">รอผล</button>
+        </div>
+        <select id="levelSel" aria-label="กรองตามระดับชั้น"></select>
+        <select id="athSort" aria-label="เรียงผลกรีฑา">
+          <option value="level">เรียง: แบ่งตามระดับชั้น</option>
+          <option value="seq">เรียง: ลำดับการแข่ง</option>
+          <option value="title">เรียง: ชื่อรายการ ก–ฮ</option>
+          <option value="done">เรียง: มีผลก่อน</option>
+          <option value="wait">เรียง: รอผลก่อน</option>
+        </select>
+      </div>
+      <div id="secAthletics"></div>
+    </section>
+
+    <section id="sports" class="panel">
+      <h2>กีฬา</h2>
+      <div class="filters">
+        <select id="sportSort" aria-label="เรียงแมตช์กีฬา">
+          <option value="level">เรียง: แบ่งตามระดับชั้น</option>
+          <option value="live">เรียง: กำลังแข่งก่อน</option>
+          <option value="done">เรียง: จบแล้วก่อน</option>
+        </select>
+      </div>
+      <div id="secSports"></div>
+    </section>
+  </main>
+
+  <script src="/templates.js"></script>
+  <script src="/summary.js"></script>
+</body>
+</html>

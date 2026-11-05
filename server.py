@@ -869,6 +869,9 @@ class Handler(BaseHTTPRequestHandler):
         # จอ Scoreboard — /scoreboard (วน) และ /scoreboard/<sport> (สด)
         if path == "/board" or path == "/scoreboard" or path.startswith("/scoreboard/"):
             return self._serve_path(os.path.join(PUBLIC, "board.html"))
+        # สรุปการแข่งขันทั้งงาน สำหรับทีมงาน (ดูอย่างเดียว)
+        if path == "/summary":
+            return self._serve_path(os.path.join(PUBLIC, "summary.html"))
         if path == "/api/state":
             with _state_lock:
                 body = json.dumps(STATE, ensure_ascii=False)
@@ -1003,6 +1006,7 @@ def main():
     print("  Scoreboard: http://%s:%d/scoreboard         (จอวนผลทั้งหมด)" % (ip, args.port))
     print("  สด ฟุตซอล: http://%s:%d/scoreboard/futsal   (สกอร์สด ฟุตซอล)" % (ip, args.port))
     print("     สด บาส: http://%s:%d/scoreboard/basketball (สกอร์สด บาส)" % (ip, args.port))
+    print("  Summary  :  http://%s:%d/summary            (สรุปการแข่งขัน ดูอย่างเดียว)" % (ip, args.port))
     print("  CG ทั่วไป :  http://%s:%d/cg                 (คุม Lower Third / Bar)" % (ip, args.port))
     print("  CG Live  :  http://%s:%d/live/cg            << Browser Source ที่ 2" % (ip, args.port))
     print("  OBS dock :  http://%s:%d/obs                (Custom Browser Dock)" % (ip, args.port))

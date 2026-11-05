@@ -1,7 +1,7 @@
 tools/ — ชุดตรวจงานแบบไม่ต้องเปิดเบราว์เซอร์
 =============================================
 
-ทั้ง 4 ไฟล์เป็น plain JS รันด้วย node ธรรมดา ไม่ต้องติดตั้งอะไร ไม่มี dependency
+ทั้ง 5 ไฟล์เป็น plain JS รันด้วย node ธรรมดา ไม่ต้องติดตั้งอะไร ไม่มี dependency
 (เขียนขึ้นตอนทำช่อง CG ที่สอง — ดูหัวข้อ "Verifying changes without a browser" ใน CLAUDE.md)
 
 วิธีรัน
@@ -10,6 +10,7 @@ tools/ — ชุดตรวจงานแบบไม่ต้องเปิ
   node tools/check-regress.js
   node tools/check-overlay.js
   node tools/check-cg.js
+  node tools/check-summary.js
 
 บนเครื่อง Windows ที่ไม่มี node ใช้ Electron ของ VS Code แทนได้:
 
@@ -23,6 +24,11 @@ tools/ — ชุดตรวจงานแบบไม่ต้องเปิ
 
 แต่ละไฟล์ตรวจอะไร
 -------------------
+check-summary.js   หน้าสรุปการแข่งขัน /summary (รัน summary.js จริงบน DOM stub)
+                   - โหมดสีคณะ/โรงเรียน, state ว่าง, งานทั่วไป, escaping, ตัวกรอง
+                   - วาดเฉพาะส่วนที่เปลี่ยน และ flash เฉพาะแถวที่เปลี่ยน
+                   - ยืนยันว่าหน้านี้อ่านอย่างเดียว ไม่มีการส่งคำสั่ง
+
 check-l3.js        ชั้นเทมเพลตของช่อง Lower Third (T.L3_TYPES / T.l3)
                    - ทั้ง 17 ชนิด render ได้, metadata ครบ, slot/group ถูกต้อง
                    - fields ว่าง -> คืน null (ยกเว้น clock / timeplace / logobug)

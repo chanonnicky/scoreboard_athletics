@@ -144,6 +144,7 @@
       <a class="tile primary" href="/control" target="_blank"><b>คอนโทรล</b><small>/control — ผู้กำกับสั่ง CG</small></a>
       <a class="tile" href="/cg" target="_blank"><b>คุม Lower Third / Bar</b><small>/cg — ช่องแยก</small></a>
       <a class="tile" id="tileScore" href="/score" target="_blank"><b>จดคะแนน กรีฑา</b><small>/score</small></a>
+      <a class="tile" id="tileSummary" href="/summary" target="_blank"><b>สรุปการแข่งขัน</b><small>/summary — ดูอย่างเดียว</small></a>
     </div>
   </div>
 
@@ -201,7 +202,7 @@
 
         if (gen) {
           // งานทั่วไป: ไม่มีจดคะแนน / ไม่มี Scoreboard
-          ["step2", "tileScore", "tileBoard"].forEach(function (id) {
+          ["step2", "tileScore", "tileBoard", "tileSummary"].forEach(function (id) {
             var el = document.getElementById(id); if (el) el.hidden = true;
           });
           var s3 = document.getElementById("step3n"); if (s3) s3.textContent = "2";

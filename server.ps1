@@ -886,6 +886,9 @@ $Lib = {
     # Scoreboard (/scoreboard rotate, /scoreboard/<sport> live)
     if ($path -eq "/board" -or $path -eq "/scoreboard" -or $path.StartsWith("/scoreboard/")) { Serve-File $ctx (Join-Path $script:G.Public "board.html"); return }
 
+    # Competition summary for the crew (view only)
+    if ($path -eq "/summary") { Serve-File $ctx (Join-Path $script:G.Public "summary.html"); return }
+
     if ($path -eq "/api/state" -and $method -eq "GET") {
       Send-Text $ctx 200 (State-Json) "application/json; charset=utf-8"; return
     }
@@ -1055,6 +1058,7 @@ Write-Host "  Score/bask: http://${ip}:$Port/score/basketball     (score: basket
 Write-Host "  Live      : http://${ip}:$Port/live                 <<  put this in OBS / vMix"
 Write-Host "  Scoreboard: http://${ip}:$Port/scoreboard           (rotating display)"
 Write-Host "  SB/live   : http://${ip}:$Port/scoreboard/futsal    (live match score)"
+Write-Host "  Summary   : http://${ip}:$Port/summary              (competition summary, view only)"
 Write-Host "  CG ctrl   : http://${ip}:$Port/cg                   (Lower Third / Bar control)"
 Write-Host "  CG out    : http://${ip}:$Port/live/cg              <<  2nd Browser Source"
 Write-Host "  OBS dock  : http://${ip}:$Port/obs                  (Custom Browser Dock)"
