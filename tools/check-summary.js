@@ -261,6 +261,47 @@ function clone(o) { return JSON.parse(JSON.stringify(o)); }
   ck(order(e.secSports.innerHTML, ["m:futsal:m1", "m:futsal:m2", "m:futsal:m3"]), "กีฬา: อัปเดตสดแล้วยังเรียงถูก");
 })();
 
+// ---------- 7c) แบ่งตามรายการ ----------
+(function () {
+  function heads(html) {
+    return (html.match(/group-h"><span>[^<]*/g) || []).map(function (h) { return h.slice(15); });
+  }
+  var b = boot(), e = b.els, st = house();
+  st.events = [
+    { id: "a1", title: "วิ่ง 30 เมตร", level: "ป.1" }, { id: "a2", title: "กระโดดไกล", level: "ป.1" },
+    { id: "a3", title: "วิ่ง 30 เมตร", level: "ป.2" }, { id: "a4", title: "", level: "ป.2" },
+  ];
+  st.results = { a3: [{ rank: 1, house: "red" }] };
+  st.settings.selEventId = "";
+  st.sports[0].matches = [
+    { id: "x1", level: "ม.1", title: "รอบชิง", home: "red", away: "blue", hs: 1, as: 0, done: true },
+    { id: "x2", level: "ป.1", title: "รอบแรก", home: "red", away: "green", hs: 0, as: 0, done: false },
+    { id: "x3", level: "ป.1", title: "รอบชิง", home: "green", away: "blue", hs: 0, as: 0, done: false },
+    { id: "x4", level: "ป.2", title: "", home: "green", away: "yellow", hs: 0, as: 0, done: false },
+  ];
+  st.sports[0].currentId = null;
+  b.api.apply(st);
+
+  e.athSort._ls.change({ target: { value: "event" } });
+  var h = e.secAthletics.innerHTML;
+  ck(heads(h).join("|") === "กระโดดไกล|วิ่ง 30 เมตร|ไม่มีชื่อรายการ", "กรีฑา: หัวกลุ่มตามรายการ (ได้: " + heads(h).join("|") + ")");
+  ck(h.indexOf("<span>1 / 2</span>") >= 0, "กรีฑา: นับผลของรายการข้ามระดับชั้น");
+  ck(h.indexOf('data-k="e:a1"') < h.indexOf('data-k="e:a3"'), "กรีฑา: ในกลุ่มเรียงตามลำดับการแข่ง");
+  ck(h.indexOf('class="ev-t">ป.2') >= 0, "กรีฑา: แถวในกลุ่มบอกระดับชั้น");
+  e.levelSel._ls.change({ target: { value: "ป.2" } });
+  ck(e.secAthletics.innerHTML.indexOf("กระโดดไกล") < 0, "กรีฑา: ตัวกรองระดับชั้นยังมีผล");
+  e.levelSel._ls.change({ target: { value: "*" } });
+  e.statusSeg._ls.click({ target: { getAttribute: function () { return "done"; } } });
+  ck(heads(e.secAthletics.innerHTML).join("|") === "วิ่ง 30 เมตร", "กรีฑา: ตัวกรองสถานะซ่อนกลุ่มที่ไม่เหลือแถว");
+
+  e.sportSort._ls.change({ target: { value: "event" } });
+  h = e.secSports.innerHTML;
+  ck(heads(h).join("|") === "รอบชิง|รอบแรก|ไม่มีชื่อรายการ", "กีฬา: หัวกลุ่มตามรายการ (ได้: " + heads(h).join("|") + ")");
+  ck(h.indexOf('m:futsal:x3') < h.indexOf('m:futsal:x1'), "กีฬา: ในกลุ่มเรียงตามระดับชั้น");
+  ck(h.indexOf("<span>ม.1</span>") >= 0, "กีฬา: แถวบอกระดับชั้น");
+  ck((h.match(/รอบชิง/g) || []).length === 1, "กีฬา: ไม่ซ้ำชื่อรายการในแถว");
+})();
+
 // ---------- 8) อ่านอย่างเดียว ----------
 (function () {
   var b = boot();

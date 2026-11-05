@@ -149,6 +149,20 @@
       (on ? " " + (sort.medalDir > 0 ? "▲" : "▼") : "") + "</button></th>";
   }
 
+  // กลุ่มตามชื่อรายการ เรียง ก–ฮ และเอาที่ไม่มีชื่อไว้ท้าย · สมาชิกในกลุ่มคงลำดับที่ส่งเข้ามา
+  function groupByTitle(items, titleOf) {
+    var list = [], byTitle = {};
+    items.forEach(function (x) {
+      var t = String(titleOf(x) || "").trim();
+      var id = "T" + t;   // กันชื่อชนกับ property ของ object
+      if (!byTitle[id]) { byTitle[id] = { title: t, items: [] }; list.push(byTitle[id]); }
+      byTitle[id].items.push(x);
+    });
+    return list.sort(function (a, b) {
+      return (!a.title - !b.title) || a.title.localeCompare(b.title, "th");
+    });
+  }
+
   /* ---- ผลกรีฑา แบ่งตามระดับชั้น เรียงตามลำดับในตารางแข่ง ---- */
   function eventGroups(state) {
     var groups = [], byLevel = {};
@@ -181,14 +195,33 @@
     function passStatus(x) {
       return filter.status === "all" || (filter.status === "done") === (x.top.length > 0);
     }
-    function rowHtml(x, showLevel) {
+    // inGroup: "event" = อยู่ใต้หัวชื่อรายการ แถวจึงบอกแค่ระดับชั้น · true = บอกทั้งชื่อและระดับชั้น
+    function rowHtml(x, inGroup) {
       var cur = !!sel && x.e.id === sel;
       var lv = T.eventLevel(x.e);
+      var label = inGroup === "event" ? (lv || "ไม่ระบุระดับชั้น") : (x.e.title || "");
+      var showLevel = inGroup === true;
       return '<div class="ev' + (cur ? " cur" : "") + '" data-k="e:' + esc(x.e.id) + '">' +
         '<div class="ev-no">' + (cur ? "▶" : x.no) + "</div>" +
-        '<div class="ev-t">' + esc(x.e.title || "") + (showLevel && lv ? ' <small class="lv">' + esc(lv) + "</small>" : "") +
+        '<div class="ev-t">' + esc(label) + (showLevel && lv ? ' <small class="lv">' + esc(lv) + "</small>" : "") +
           (cur ? ' <span class="pill live">กำลังแข่ง</span>' : "") + "</div>" +
         '<div class="ev-r">' + chipsHtml(state, x.top) + "</div></div>";
+    }
+
+    // แบ่งตามรายการ: รวมรายการชื่อเดียวกันจากทุกระดับชั้นไว้ใต้หัวเดียว
+    if (sort.ath === "event") {
+      var pool = [];
+      groups.forEach(function (g) {
+        if (filter.level === "*" || filter.level === g.level) pool = pool.concat(g.items);
+      });
+      var byEvent = groupByTitle(pool, function (x) { return x.e.title; }).map(function (g) {
+        var rows = g.items.filter(passStatus).map(function (x) { return rowHtml(x, "event"); }).join("");
+        if (!rows) return "";
+        var done = g.items.filter(function (x) { return x.top.length; }).length;
+        return '<div class="group"><div class="group-h"><span>' + esc(g.title || "ไม่มีชื่อรายการ") + "</span>" +
+          "<span>" + done + " / " + g.items.length + "</span></div>" + rows + "</div>";
+      }).join("");
+      return byEvent || '<div class="empty">ไม่มีรายการตรงกับตัวกรอง</div>';
     }
 
     // เรียงแบบอื่นนอกจากระดับชั้น = รายการเดียวต่อเนื่อง ไม่แบ่งกลุ่ม และบอกระดับชั้นในแถวแทน
@@ -226,7 +259,7 @@
     if (m.id === sp.currentId) return 0;
     return (Number(m.hs) || 0) > 0 || (Number(m.as) || 0) > 0 ? 1 : 2;
   }
-  function matchHtml(state, sp, m, showLevel) {
+  function matchHtml(state, sp, m, showLevel, hideTitle) {
     var hs = Number(m.hs) || 0, as = Number(m.as) || 0;
     var live = m.id === sp.currentId && !m.done;
     var started = live || m.done || hs > 0 || as > 0;
@@ -239,7 +272,17 @@
           (started ? hs + " : " + as : "VS") + "</div></div>" +
         teamHtml(state, m.away, m.done && as > hs ? "win" : "") + "</div>" +
       '<div class="mt-f">' + (showLevel ? "<span>" + esc(m.level || "ทั่วไป") + "</span>" : "") +
-        (m.title ? "<span>" + esc(m.title) + "</span>" : "") + pill + "</div></div>";
+        (m.title && !hideTitle ? "<span>" + esc(m.title) + "</span>" : "") + pill + "</div></div>";
+  }
+  // แบ่งตามรายการ: แมตช์ชื่อเดียวกันอยู่กลุ่มเดียว ภายในกลุ่มเรียงตามระดับชั้น
+  function matchesByTitleHtml(state, sp) {
+    var ordered = [];
+    T.sportLevels(sp).forEach(function (lv) { ordered = ordered.concat(T.matchesIn(sp, lv)); });
+    return groupByTitle(ordered, function (m) { return m.title; }).map(function (g) {
+      return '<div class="group"><div class="group-h"><span>' + esc(g.title || "ไม่มีชื่อรายการ") + "</span>" +
+        "<span>" + matchesDone({ matches: g.items }) + " / " + g.items.length + "</span></div>" +
+        g.items.map(function (m) { return matchHtml(state, sp, m, true, true); }).join("") + "</div>";
+    }).join("");
   }
   function sortedMatchesHtml(state, sp) {
     var rows = (sp.matches || []).map(function (m, i) { return { m: m, i: i, st: matchStage(sp, m) }; });
@@ -257,6 +300,7 @@
     return sports.map(function (sp, i) {
       var ms = sp.matches || [];
       var body = !ms.length ? '<div class="empty">ยังไม่มีแมตช์</div>'
+        : sort.sport === "event" ? matchesByTitleHtml(state, sp)
         : sort.sport !== "level" ? sortedMatchesHtml(state, sp)
         : T.sportLevels(sp).map(function (lv) {
         var list = T.matchesIn(sp, lv);
